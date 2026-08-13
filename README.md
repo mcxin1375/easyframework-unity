@@ -1,2 +1,2 @@
 # easyframework-unitypackage
-GameFramework for unity
+UnityPackage
