@@ -1,0 +1,18 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <ui:VisualElement style="flex-grow: 1; flex-direction: row; align-self: auto; flex-shrink: 1;">
+        <ui:VisualElement style="flex-grow: 1; height: auto; border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-left-color: rgb(0, 0, 0); border-right-color: rgb(0, 0, 0); border-top-color: rgb(0, 0, 0); border-bottom-color: rgb(0, 0, 0); flex-direction: column; width: 250px; bottom: auto; top: auto; max-width: 250px; min-height: 40px; max-height: 4000px; flex-shrink: 1; flex-basis: auto; align-items: stretch; align-self: auto; align-content: flex-start;">
+            <ui:ListView name="TabListView" horizontal-scrolling="false" fixed-item-height="50" style="height: auto; flex-direction: column; flex-grow: 1; width: auto; flex-shrink: 1; overflow: visible; visibility: visible; display: flex; opacity: 1;" />
+        </ui:VisualElement>
+        <ui:VisualElement style="flex-grow: 1; border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-left-color: rgb(0, 0, 0); border-right-color: rgb(0, 0, 0); border-top-color: rgb(0, 0, 0); border-bottom-color: rgb(0, 0, 0); margin-left: 1px; padding-right: 0; margin-right: 1px;">
+            <ui:VisualElement style="flex-grow: 0; height: auto; flex-direction: column; border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-left-color: rgb(0, 0, 0); border-right-color: rgb(0, 0, 0); border-top-color: rgb(0, 0, 0); border-bottom-color: rgb(0, 0, 0); margin-top: 1px; margin-right: 1px; margin-bottom: 1px;">
+                <ui:TextField picking-mode="Ignore" label="Search" name="TextFieldSearch" />
+                <ui:RadioButtonGroup label="DLC Type" value="-1" name="RadioGroup" style="display: none;" />
+                <ui:Label tabindex="-1" text="Label" parse-escape-sequences="true" display-tooltip-when-elided="true" name="LabText" />
+                <ui:Button text="Refresh" parse-escape-sequences="true" display-tooltip-when-elided="true" name="Refresh" style="width: 150px; height: 35px;" />
+            </ui:VisualElement>
+            <ui:VisualElement style="flex-grow: 1;">
+                <ui:TreeView name="TreeView" auto-expand="false" horizontal-scrolling="true" reorderable="false" selection-type="Multiple" fixed-item-height="22" focusable="true" style="-unity-font-style: normal; -unity-text-align: lower-left; white-space: normal; text-overflow: clip; flex-grow: 1; align-self: auto; justify-content: flex-start; border-left-color: rgb(0, 0, 0); border-right-color: rgb(0, 0, 0); border-top-color: rgb(0, 0, 0); border-bottom-color: rgb(0, 0, 0);" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

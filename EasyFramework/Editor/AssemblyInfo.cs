@@ -1,0 +1,2 @@
+
+[assembly: EasyFramework.EasyFrameworkReflection]

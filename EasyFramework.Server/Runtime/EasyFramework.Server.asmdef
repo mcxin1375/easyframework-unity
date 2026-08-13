@@ -1,0 +1,18 @@
+{
+    "name": "EasyFramework.Server",
+    "rootNamespace": "",
+    "references": [
+        "GUID:73325a7e2bce08341b61ab53f0f987ac",
+        "GUID:b3a971c5b8967934f9fb07eed51b236a",
+        "GUID:32c47e60511973e47b558c8d444d91ba"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

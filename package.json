@@ -1,0 +1,13 @@
+{
+  "name": "com.cookie.easyframework",
+  "displayName": "Easy Framework",
+  "version": "0.0.1",
+  "description": "Easy Framework",
+  "author": {
+    "name": "Cookie"
+  },
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.2",
+    "com.unity.scriptablebuildpipeline": "1.21.25"
+  }
+}
