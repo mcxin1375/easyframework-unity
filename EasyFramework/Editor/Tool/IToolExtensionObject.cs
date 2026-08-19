@@ -6,12 +6,8 @@
 
 namespace EasyFramework.Editor
 {
-    public interface IToolEvent<T> : IToolExtensionObject where T : ToolBase<T>, new()
+    public interface IToolExtensionObject
     {
-        int ToolOrder => 0;
-        
-        void OnExecuteBefore() { }
-        void OnExecute() { }
-        void OnExecuteAfter() { }
+        int Order => 0;
     }
 }

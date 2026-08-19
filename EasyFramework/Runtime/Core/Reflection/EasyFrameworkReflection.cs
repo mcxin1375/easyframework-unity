@@ -82,6 +82,10 @@ namespace EasyFramework
         {
             return (T)Activator.CreateInstance(type);
         }
+        public static object CreateObject(Type type)
+        {
+            return Activator.CreateInstance(type);
+        }
         public static T CreateInstance<T>(params Assembly[] assemblies)
         {
             var types = FindInstanceTypes(typeof(T), assemblies);

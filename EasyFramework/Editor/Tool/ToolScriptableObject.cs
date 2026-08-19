@@ -8,13 +8,13 @@ using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    public abstract class ToolScriptableObject<T> : ScriptableObject, IToolEvent<T> where T : SingletonTool<T>, new()
+    public abstract class ToolScriptableObject<T> : ScriptableObject, IToolEvent<T> where T : ToolBase<T>, new()
     {
         [Header("Base Settings")]
         public bool enabled = true;
         public int order;
         
-        int IToolEvent<T>.Order => order;
+        public int Order => order;
 
         void IToolEvent<T>.OnExecute()
         {

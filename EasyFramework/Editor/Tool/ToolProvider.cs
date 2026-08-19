@@ -22,17 +22,20 @@ namespace EasyFramework.Editor
 
         protected override ScriptableObject[] LoadObjects()
         {
-            AssetImporter.Instance.RefreshExtensions();
-            AssetCreator.Instance.RefreshExtensions();
-            AssetBuilder.Instance.RefreshExtensions();
+            ToolImporter.Instance.RefreshExtensions();
+            ToolCreator.Instance.RefreshExtensions();
+            ToolBuilder.Instance.RefreshExtensions();
+            ToolPublisher.Instance.RefreshExtensions();
+            
             return null;
         }
 
         protected override void OnAfterDraw()
         {
-            ToolDrawHelper.DrawExtensions(AssetImporter.Instance.Extensions);
-            ToolDrawHelper.DrawExtensions(AssetCreator.Instance.Extensions);
-            ToolDrawHelper.DrawExtensions(AssetBuilder.Instance.Extensions);
+            ToolDrawHelper.DrawToolEvents(ToolImporter.Instance.ToolEvents);
+            ToolDrawHelper.DrawToolEvents(ToolCreator.Instance.ToolEvents);
+            ToolDrawHelper.DrawToolEvents(ToolBuilder.Instance.ToolEvents);
+            ToolDrawHelper.DrawToolEvents(ToolPublisher.Instance.ToolEvents);
         }
     }
 }

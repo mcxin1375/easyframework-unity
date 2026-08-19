@@ -8,19 +8,16 @@ namespace EasyFramework.Editor
 {
     public static class ToolOrder
     {
-        public const int AssetImporter = 100;
-        public const int AssetCreator = 200;
-        public const int AssetBuilder = 300;
-        public const int DLCBuilder = 600;
+        public const int ToolImporter = 2000;
         
-        public const int AssetBundleBuilder = 400;
-        public const int HybridCLRBuilder = 450;
-        public const int DataBuilder = 500;
+        public const int ToolCreator = 2200;
         
-        public const int DLCReleaseBuilder = 650;
+        public const int ToolBuilder = 2400;
+        public const int HybridCLRBuilder = 2450;
+        public const int AssetBundleBuilder = 2500;
+        public const int DLCBuilder = 2550;
         
-        public const int PlayerBuilder = 800;
-        
-        public const int ToolsCommand = 999;
+        public const int ToolPublisher = 2800;
+        public const int PlayerBuilder = 2850;
     }
 }
