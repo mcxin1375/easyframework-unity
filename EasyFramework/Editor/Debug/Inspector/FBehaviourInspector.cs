@@ -3,7 +3,7 @@ using UnityEditor;
 namespace EasyFramework.Editor
 {
     [CustomEditor(typeof(FBehaviour))]
-    public class EasyFrameworkBehaviourInspector : UnityEditor.Editor
+    public class FBehaviourInspector : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {
