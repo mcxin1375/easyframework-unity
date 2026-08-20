@@ -4,6 +4,10 @@
 // describe:
 //----------------------------------------------------------------*/
 
+using System;
+using System.IO;
+using System.Linq;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 
@@ -11,12 +15,17 @@ namespace EasyFramework.Editor
 {
     public class EasyFrameworkProvider : ProjectSettingsProvider<EasyFrameworkProvider>
     {
+        public const string SettingPath = "Project/EasyFramework";
+        
         protected override bool DrawTab => false;
+        
+        private string[] _appSelects;
+        private int _appIndex;
+        
+        private static readonly Type[] AppTypes = EasyFrameworkReflection.FindInstanceTypes<IApp>();
 
         [SettingsProvider]
         public static SettingsProvider Create() => GetOrCreate();
-
-        public const string SettingPath = "Project/EasyFramework";
         
         
         public EasyFrameworkProvider() : base(SettingPath) { }
@@ -27,6 +36,17 @@ namespace EasyFramework.Editor
         
         protected override ScriptableObject[] LoadObjects()
         {
+            _appSelects = AppTypes.Select(item => item.FullName).ToArray();
+            _appIndex = 0;
+            for (int i = 0; i < _appSelects.Length; i++)
+            {
+                if (_appSelects[i] == EasyFrameworkSettings.App.GetType().FullName)
+                {
+                    _appIndex = i;
+                    break;
+                }
+            }
+            
             return new ScriptableObject[]
             {
                 EasyFrameworkSettings.Instance,
@@ -37,17 +57,44 @@ namespace EasyFramework.Editor
 
         protected override void OnAfterDrawSettings(string settingsName)
         {
+            base.OnAfterDrawSettings(settingsName);
+            
+            var app = EasyFrameworkSettings.App;
+            EditorGUILayout.HelpBox($"{nameof(IApp)}: {app?.GetType().Name}", MessageType.Info);
+            if (app != null)
+            {
+                EditorGUILayout.LabelField("AppName", app.AppName);
+                EditorGUILayout.LabelField("MainVersion", $"{app.MainVersion}");
+                EditorGUILayout.LabelField("BundleVersion", app.BundleVersion);
+                EditorGUILayout.LabelField("BundleIdentifier", app.BundleIdentifier);
+                EditorGUILayout.LabelField("AppVersionFileUrl", app.AppVersionFileUrl);
+                EditorGUILayout.LabelField("DLCPlatformServerUrl", app.DLCPlatformServerUrl);
+            }
+        }
+        
+        protected override void OnSettingsChanged(string settingsName)
+        {
+            base.OnSettingsChanged(settingsName);
+
+            if (Application.isPlaying)
+            {
+                FDebug.DebugLevel = EasyFrameworkSettings.Instance.debugLevel;
+            }
         }
 
-        protected override void OnAfterDraw()
+        private void SelectApp(Type app)
         {
-            base.OnAfterDraw();
+            StringBuilder sb = new();
+            var str = EasyFrameworkSettings.App.AppSymbols?.Length > 0 ? string.Join(", ", EasyFrameworkSettings.App.AppSymbols) : string.Empty;
+            FDebug.Log($"{EasyFrameworkSettings.App.AppName}: {str}");
+            if (EasyFrameworkSettings.App.AppSymbols?.Length > 0)
+            {
+                foreach (var symbol in EasyFrameworkSettings.App.AppSymbols) sb.AppendLine($"-define:{symbol}");
+            }
             
-            // EditorGUILayout.HelpBox($"{nameof(EasyFrameworkReflection)}", MessageType.Info);
-            // foreach (var assembly in EasyFrameworkReflection.RegisterAssemblies)
-            // {
-            //     EditorGUILayout.LabelField($"{assembly.GetName().Name}");
-            // }
+            string cscFile = "Assets/csc.rsp";
+            File.WriteAllText(cscFile, sb.ToString());
+            AssetDatabase.Refresh();
         }
     }
 }

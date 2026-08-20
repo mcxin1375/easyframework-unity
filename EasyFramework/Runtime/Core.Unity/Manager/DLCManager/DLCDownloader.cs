@@ -12,7 +12,7 @@ namespace EasyFramework
         {
             bool result = false;
             bool isCompleted = false;
-            FAOT.DLCManager.DownloadFile(fileName, b =>
+            F.DLCManager.DownloadFile(fileName, b =>
             {
                 isCompleted = true;
                 result = b;
@@ -26,7 +26,7 @@ namespace EasyFramework
         {
             bool result = false;
             bool isCompleted = false;
-            FAOT.DLCManager.DownloadFiles(fileNames, b =>
+            F.DLCManager.DownloadFiles(fileNames, b =>
             {
                 isCompleted = true;
                 result = b;

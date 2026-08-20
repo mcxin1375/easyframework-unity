@@ -15,14 +15,14 @@ namespace EasyFramework
         {
             if (_instance == null)
             {
-                _instance = FAOT.LocalStorageManager.LoadOrCreate<T>($"{typeof(T).Name}.json", ELocalStorageType.Config);
+                _instance = F.LocalStorageManager.LoadOrCreate<T>($"{typeof(T).Name}.json", ELocalStorageType.Config);
             }
             return _instance;
         }
         
         public void Save()
         {
-            FAOT.LocalStorageManager.SaveObject($"{typeof(T).Name}.json", ELocalStorageType.Config);
+            F.LocalStorageManager.SaveObject($"{typeof(T).Name}.json", ELocalStorageType.Config);
         }
     }
 }

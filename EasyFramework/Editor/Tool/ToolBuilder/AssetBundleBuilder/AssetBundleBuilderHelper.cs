@@ -92,7 +92,7 @@ namespace EasyFramework.Editor
                 {
                     string name = Path.GetFileName(folder);
                     if (name == "Editor") continue;
-                    if (name.EndsWith(EasyFrameworkConst.ABSuffix))
+                    if (name.EndsWith(EasyFrameworkSettings.Instance.abSuffix))
                     {
                         // folderList.Add(folder);
                         string newPath = folder.Replace('\\', '/');
@@ -202,9 +202,9 @@ namespace EasyFramework.Editor
                 return default;
             }
 
-            if (!abName.EndsWith(EasyFrameworkConst.ABSuffix))
+            if (!abName.EndsWith(EasyFrameworkSettings.Instance.abSuffix))
             {
-                abName = $"{abName}{EasyFrameworkConst.ABSuffix}";
+                abName = $"{abName}{EasyFrameworkSettings.Instance.abSuffix}";
             }
 
             return new AssetBundleBuild

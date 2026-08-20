@@ -6,70 +6,46 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 
 namespace EasyFramework
 {
-    // [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
-    // public sealed class EventDispatcherAttribute : Attribute
-    // {
-    //     public readonly Type DispatcherType;
-    //     public EventDispatcherAttribute(Type type)
-    //     {
-    //         DispatcherType = type;
-    //     }
-    // }
-    // public interface IEventDispatcher
-    // {
-    // }
-    // public static class EventDispatcherExtensions
-    // {
-    //     public static void Invoke<T>(this IEventDispatcher dispatcher, in T t) where T : IEvent
-    //     {
-    //         Event<T>.Invoke(t, dispatcher.GetType());
-    //     }
-    // }
-
-    public interface IEvent
-    {
-        
-    }
-    public interface IEvent<T> where T : IEvent
+    public interface IEvent<T>
     {
         void Execute(in T args);
     }
 
-    internal static class Event<T> where T : IEvent
+    internal static class Event<T>
     {
         private static readonly List<IEvent<T>> EventList = new();
-        // private static readonly Type DispatcherType;
-        
-        // static Event()
-        // {
-        //     var attribute = EasyFrameworkReflection.GetCustomAttribute<EventDispatcherAttribute>(typeof(T));
-        //     DispatcherType = attribute?.DispatcherType;
-        // }
+        private static readonly List<Action<T>> ActionList = new();
 
         public static void Add(IEvent<T> handler)
         {
+            if (handler == null) return;
             if (!EventList.Contains(handler)) EventList.Add(handler);
         }
+
         public static void Remove(IEvent<T> handler)
         {
+            if (handler == null) return;
             if (EventList.Contains(handler)) EventList.Remove(handler);
         }
 
-        public static void Invoke(in T args, Type dispatcher = null)
+        public static void Add(Action<T> handler)
         {
-            // if (DispatcherType != null)
-            // {
-            //     if (dispatcher == null || !DispatcherType.IsAssignableFrom(dispatcher))
-            //     {
-            //         FDebug.LogError($"Invoke event error. dispatcher type not match: {DispatcherType.Name}");
-            //         return;
-            //     }
-            // }
+            if (handler == null) return;
+            if (!ActionList.Contains(handler)) ActionList.Add(handler);
+        }
 
+        public static void Remove(Action<T> handler)
+        {
+            if (handler == null) return;
+            if (ActionList.Contains(handler)) ActionList.Remove(handler);
+        }
+
+        public static void Invoke(in T args)
+        {
+            // Invoke IEvent handlers
             var handlers = EventList;
             int count = handlers.Count;
 
@@ -84,76 +60,33 @@ namespace EasyFramework
                     FDebug.LogError(e);
                 }
             }
+
+            // Invoke Action handlers
+            var actions = ActionList;
+            int actionCount = actions.Count;
+
+            for (int i = 0; i < actionCount; i++)
+            {
+                try
+                {
+                    actions[i]?.Invoke(args);
+                }
+                catch (Exception e)
+                {
+                    FDebug.LogError(e);
+                }
+            }
         }
     }
-    
+
     public class Event : Singleton<Event>
     {
-        public Event()
-        {
-            var eventObjects = EasyFrameworkReflection.CreateObjectsByAttribute(typeof(EventObjectAttribute));
-        }
-        
-        public void Invoke<T>(in T args) where T : IEvent
-        {
-            Event<T>.Invoke(args);
-        }
-        
-        public void Add<T>(IEvent<T> instance) where T : IEvent => Event<T>.Add(instance);
-        public void Add(object instance)
-        {
-            var type = instance.GetType();
-            var interfaces = type.GetInterfaces();
+        public void Add<T>(IEvent<T> instance) => Event<T>.Add(instance);
+        public void Remove<T>(IEvent<T> instance) => Event<T>.Remove(instance);
 
-            foreach (var i in interfaces)
-            {
-                if (!i.IsGenericType)
-                    continue;
+        public void Add<T>(Action<T> handler) => Event<T>.Add(handler);
+        public void Remove<T>(Action<T> handler) => Event<T>.Remove(handler);
 
-                if (i.GetGenericTypeDefinition() != typeof(IEvent<>))
-                    continue;
-
-                var argType = i.GetGenericArguments()[0];
-
-                var method = typeof(Event)
-                    .GetMethod(nameof(AddGeneric), BindingFlags.NonPublic | BindingFlags.Static)
-                    .MakeGenericMethod(argType);
-
-                method.Invoke(null, new[] { instance });
-            }
-        }
-        
-        public void Remove<T>(IEvent<T> instance) where T : IEvent => Event<T>.Remove(instance);
-        public void Remove(object instance)
-        {
-            var type = instance.GetType();
-            var interfaces = type.GetInterfaces();
-
-            foreach (var i in interfaces)
-            {
-                if (!i.IsGenericType)
-                    continue;
-
-                if (i.GetGenericTypeDefinition() != typeof(IEvent<>))
-                    continue;
-
-                var argType = i.GetGenericArguments()[0];
-
-                var method = typeof(Event)
-                    .GetMethod(nameof(RemoveGeneric), BindingFlags.NonPublic | BindingFlags.Static)
-                    .MakeGenericMethod(argType);
-
-                method.Invoke(null, new[] { instance });
-            }
-        }
-
-        private static void AddGeneric<T>(object instance) where T : IEvent
-        {
-            Event<T>.Add((IEvent<T>)instance);
-        }
-        private static void RemoveGeneric<T>(object instance) where T : IEvent
-        {
-            Event<T>.Remove((IEvent<T>)instance);
-        }
+        public void Invoke<T>(in T args) => Event<T>.Invoke(args);
     }
 }

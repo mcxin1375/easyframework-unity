@@ -78,11 +78,11 @@ namespace EasyFramework
         {
 #if UNITY_EDITOR
             Assembly assemblyEditor = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == assemblyName);
-            EnterLogic(assemblyEditor);
+            HybridCLRHelper.Enter(assemblyEditor);
             return assemblyEditor;
 #endif
             
-            var result = await FAOT.DLCManager.DownloadFileAsync(assemblyName);
+            var result = await F.DLCManager.DownloadFileAsync(assemblyName);
             if (result)
             {
                 switch (loadType)
@@ -92,20 +92,20 @@ namespace EasyFramework
                         var dllFileName = $"{assemblyName}{FileExtension}";
                         var dllPdbFileName = $"{assemblyName}.pdb{FileExtension}";
 
-                        var dllData = FAOT.LocalStorageManager.ReadAllBytes(dllFileName, ELocalStorageType.DLC);
-                        var dllPdbData = FAOT.LocalStorageManager.ReadAllBytes(dllPdbFileName, ELocalStorageType.DLC);
+                        var dllData = F.LocalStorageManager.ReadAllBytes(dllFileName, ELocalStorageType.DLC);
+                        var dllPdbData = F.LocalStorageManager.ReadAllBytes(dllPdbFileName, ELocalStorageType.DLC);
                         
-                        var assembly = LoadDll(dllData, dllPdbData);
+                        var assembly = HybridCLRHelper.LoadDll(dllData, dllPdbData);
                         _assemblies.Add(assembly);
                         
-                        EnterLogic(assembly);
+                        HybridCLRHelper.Enter(assembly);
 
                         return assembly;
                     case ELoadType.MetaData:
                         var metaDataFileName = assemblyName.EndsWith(FileExtension)
                             ? assemblyName
                             : $"{assemblyName}{FileExtension}";
-                        LoadMetaData(FAOT.LocalStorageManager.ReadAllBytes(metaDataFileName, ELocalStorageType.DLC));
+                        HybridCLRHelper.LoadMetaData(F.LocalStorageManager.ReadAllBytes(metaDataFileName, ELocalStorageType.DLC));
                         
                         break;
                 }
@@ -144,20 +144,20 @@ namespace EasyFramework
 
         private void UpdateVersion()
         {
-            if (FAOT.LocalStorageManager.Exists(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC))
+            if (F.LocalStorageManager.Exists(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC))
             {
-                _versionInfo = FAOT.LocalStorageManager.LoadObject<HybridCLRBuilderVersion>(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC);
+                _versionInfo = F.LocalStorageManager.LoadObject<HybridCLRBuilderVersion>(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC);
                 EnterState(EState.Loading);
                 return;
             }
             
             FDebug.Log($"更新版本：{HybridCLRBuilderVersion.FileName}");
-            FAOT.DLCManager.DownloadFile(HybridCLRBuilderVersion.FileName, b =>
+            F.DLCManager.DownloadFile(HybridCLRBuilderVersion.FileName, b =>
             {
                 FDebug.Log($"更新版本：{HybridCLRBuilderVersion.FileName}, {b}");
                 if (b)
                 {
-                    _versionInfo = FAOT.LocalStorageManager.LoadObject<HybridCLRBuilderVersion>(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC);
+                    _versionInfo = F.LocalStorageManager.LoadObject<HybridCLRBuilderVersion>(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC);
                     EnterState(EState.Downloading);
                 }
                 else
@@ -188,7 +188,7 @@ namespace EasyFramework
                     tmpList.Add(pdbFileName);
                 }
             }
-            FAOT.DLCManager.DownloadFiles(tmpList.ToArray(), b =>
+            F.DLCManager.DownloadFiles(tmpList.ToArray(), b =>
             {
                 if (b)
                 {
@@ -212,7 +212,7 @@ namespace EasyFramework
                         var stripDll = _versionInfo.stripDlls[i];
                         var fileName = $"{stripDll}{FileExtension}";
 
-                        LoadMetaData(FAOT.LocalStorageManager.ReadAllBytes(fileName, ELocalStorageType.DLC));
+                        HybridCLRHelper.LoadMetaData(F.LocalStorageManager.ReadAllBytes(fileName, ELocalStorageType.DLC));
                     }
                 }
                 if (_versionInfo.loadDlls?.Length > 0)
@@ -223,14 +223,14 @@ namespace EasyFramework
                         var fileName = $"{dllName}{FileExtension}";
                         var pdbFileName = $"{dllName}.pdb{FileExtension}";
 
-                        var dllData = FAOT.LocalStorageManager.ReadAllBytes(fileName, ELocalStorageType.DLC);
-                        var dllPdbData = FAOT.LocalStorageManager.ReadAllBytes(pdbFileName, ELocalStorageType.DLC);
-                        _assemblies.Add(LoadDll(dllData, dllPdbData));
+                        var dllData = F.LocalStorageManager.ReadAllBytes(fileName, ELocalStorageType.DLC);
+                        var dllPdbData = F.LocalStorageManager.ReadAllBytes(pdbFileName, ELocalStorageType.DLC);
+                        _assemblies.Add(HybridCLRHelper.LoadDll(dllData, dllPdbData));
                     }
                 }
                 foreach (var assembly in _assemblies)
                 {
-                    EnterLogic(assembly);
+                    HybridCLRHelper.Enter(assembly);
                 }
                 OnCompleted(EResult.Success);
             }
@@ -264,7 +264,7 @@ namespace EasyFramework
 
                 foreach (var assembly in _assemblies)
                 {
-                    EnterLogic(assembly);
+                    HybridCLRHelper.Enter(assembly);
                 }
                 OnCompleted(EResult.Success);
             }
@@ -276,45 +276,6 @@ namespace EasyFramework
         }
 #endif
 
-        private LoadImageErrorCode LoadMetaData(string metaDataFile)
-        {
-            Debug.Log($"[HybridCLR - LoadMetaData] metaDataFile: {metaDataFile}");
-            byte[] bytes = File.ReadAllBytes(metaDataFile);
-            return HybridCLR.RuntimeApi.LoadMetadataForAOTAssembly(bytes, HybridCLR.HomologousImageMode.SuperSet);
-        }
-        private LoadImageErrorCode LoadMetaData(byte[] data)
-        {   
-            return HybridCLR.RuntimeApi.LoadMetadataForAOTAssembly(data, HybridCLR.HomologousImageMode.SuperSet);
-        }
-
-        private Assembly LoadDll(string dllFile, string pdbFile)
-        {
-            Debug.Log($"[HybridCLR - LoadDll] DllFile: {dllFile}, PdbFile: {pdbFile}");
-            return File.Exists(pdbFile)
-                ? Assembly.Load(File.ReadAllBytes(dllFile), File.ReadAllBytes(pdbFile))
-                : Assembly.Load(File.ReadAllBytes(dllFile));
-        }
-        private Assembly LoadDll(byte[] dllData, byte[] pdbData)
-        {
-            return pdbData != null
-                ? Assembly.Load(dllData, pdbData)
-                : Assembly.Load(dllData);
-        }
-
-        private void EnterLogic(Assembly assembly)
-        {
-            var enterType = EasyFrameworkAOTSettings.Instance.enterType;
-            var enterMethod = EasyFrameworkAOTSettings.Instance.enterMethod;
-
-            string typeFullName = $"{assembly.GetName().Name}.{enterType}";
-            var type = assembly.GetType(typeFullName) ?? assembly.GetType(enterType);
-            var method = type?.GetMethod(enterMethod);
-            if (method != null)
-            {
-                Debug.Log($"[HybridCLR - EnterLogic] Assembly: {assembly.GetName().Name} Type: {type}  Method: {method}");
-                method.Invoke(null, null);
-            }
-        }
     }
 }
 

@@ -90,23 +90,23 @@ namespace EasyFramework
 
         private void UpdateVersion()
         {
-            if (EasyFrameworkAOTSettings.App == null || string.IsNullOrEmpty(EasyFrameworkAOTSettings.App.AppVersionFileUrl))
+            if (EasyFrameworkSettings.App == null || string.IsNullOrEmpty(EasyFrameworkSettings.App.AppVersionFileUrl))
             {
                 FDebug.LogError($"AppVersionFileUrl is empty");
                 OnCompleted(EResult.UpdateVersionError);
                 return;
             }
 
-            // var url = $"{EasyFrameworkAOTSettings.App.AppVersionFileUrl}?{Guid.NewGuid()}";
-            var url = $"{EasyFrameworkAOTSettings.App.AppVersionFileUrl}";
+            // var url = $"{EasyFrameworkSettings.App.AppVersionFileUrl}?{Guid.NewGuid()}";
+            var url = $"{EasyFrameworkSettings.App.AppVersionFileUrl}";
             Debug.Log(url);
-            FAOT.HttpManager.GetString(url, (b, s) =>
+            F.HttpManager.GetString(url, (b, s) =>
             {
                 Debug.Log($"{b}, {s}");
                 if (b)
                 {
                     Version = JsonUtility.FromJson<DLCVersion>(s);
-                    if (Version.mainVersion > EasyFrameworkAOTSettings.App.MainVersion)
+                    if (Version.mainVersion > EasyFrameworkSettings.App.MainVersion)
                     {
                         OnCompleted(EResult.AppVersionTooLow);
                         return;
@@ -126,9 +126,9 @@ namespace EasyFramework
 
         private void UpdateVersionInfo()
         {
-            ServerUrl = $"{EasyFrameworkAOTSettings.App.DLCPlatformServerUrl}/{Config.dlcVersion}/{EDLCOptions.DLC}";
+            ServerUrl = $"{EasyFrameworkSettings.App.DLCPlatformServerUrl}/{Config.dlcVersion}/{EDLCOptions.DLC}";
 
-            var localVersionInfo = FAOT.LocalStorageManager.LoadObject<DLCVersionInfo>(DLCVersionInfo.FileName, ELocalStorageType.DLC);
+            var localVersionInfo = F.LocalStorageManager.LoadObject<DLCVersionInfo>(DLCVersionInfo.FileName, ELocalStorageType.DLC);
             if (Config.dlcVersionUid == Version.versionUid && localVersionInfo != null)
             {
                 UpdateHashInfos(localVersionInfo);
@@ -138,7 +138,7 @@ namespace EasyFramework
             
             var versionUrl = $"{ServerUrl}/{DLCVersionInfo.FileName}?{Guid.NewGuid()}";
             Debug.Log(versionUrl);
-            FAOT.HttpManager.GetString(versionUrl, (b, s) =>
+            F.HttpManager.GetString(versionUrl, (b, s) =>
             {
                 Debug.Log($"{b}, {s}");
                 if (b)
@@ -150,7 +150,7 @@ namespace EasyFramework
                         return;
                     }
                     
-                    FAOT.LocalStorageManager.SaveString(DLCVersionInfo.FileName, s, ELocalStorageType.DLC);
+                    F.LocalStorageManager.SaveString(DLCVersionInfo.FileName, s, ELocalStorageType.DLC);
                     Config.dlcVersionUid = Version.versionUid;
                     Config.Save();
 
@@ -191,7 +191,7 @@ namespace EasyFramework
             {
                 if (!hashSet.Contains(info.hashFileName))
                 {
-                    FAOT.LocalStorageManager.Delete(info.fileName, ELocalStorageType.DLC);
+                    F.LocalStorageManager.Delete(info.fileName, ELocalStorageType.DLC);
                 }
             }
         }
@@ -204,8 +204,8 @@ namespace EasyFramework
                 return ETask.FromResult(false);
 
             var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
-            var downloadFile = FAOT.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
-            return FAOT.HttpManager.DownloadFileAsync(downloadUrl, downloadFile);
+            var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
+            return F.HttpManager.DownloadFileAsync(downloadUrl, downloadFile);
         }
         public void DownloadFile(string fileName, Action<bool> callback = null)
         {
@@ -218,8 +218,8 @@ namespace EasyFramework
             }
 
             var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
-            var downloadFile = FAOT.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
-            FAOT.HttpManager.DownloadFile(downloadUrl, downloadFile, callback);
+            var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
+            F.HttpManager.DownloadFile(downloadUrl, downloadFile, callback);
         }
         
         public ETask<bool> DownloadFilesAsync(string[] fileNames)
@@ -233,11 +233,11 @@ namespace EasyFramework
                     return ETask.FromResult(false);
                 
                 var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
-                var downloadFile = FAOT.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
+                var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
                 requests[i] = new HttpDownloadRequest(downloadUrl, downloadFile);
             }
             
-            return FAOT.HttpManager.DownloadFilesAsync(requests);
+            return F.HttpManager.DownloadFilesAsync(requests);
         }
         public void DownloadFiles(string[] fileNames, Action<bool> callback = null)
         {
@@ -253,10 +253,10 @@ namespace EasyFramework
                 }
                 
                 var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
-                var downloadFile = FAOT.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
+                var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
                 requests[i] = new HttpDownloadRequest(downloadUrl, downloadFile);
             }
-            FAOT.HttpManager.DownloadFiles(requests, callback);
+            F.HttpManager.DownloadFiles(requests, callback);
         }
 
 #if !UNITY_WEBGL

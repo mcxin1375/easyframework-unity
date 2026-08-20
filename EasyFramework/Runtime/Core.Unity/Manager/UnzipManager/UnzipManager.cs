@@ -39,7 +39,7 @@ namespace EasyFramework
 
         public UnzipManager()
         {
-            _parallel = Math.Min(EasyFrameworkAOTSettings.Instance.unzipParallel, Environment.ProcessorCount);
+            _parallel = Math.Min(EasyFrameworkSettings.Instance.unzipParallel, Environment.ProcessorCount);
             _progressAction = InProgressAction;
         }
         

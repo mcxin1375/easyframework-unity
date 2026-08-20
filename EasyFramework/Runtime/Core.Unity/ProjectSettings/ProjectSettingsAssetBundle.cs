@@ -24,7 +24,7 @@ namespace EasyFramework
         public static T CreateInstance()
         {
 #if UNITY_EDITOR
-            _instance = EditorBridge.Instance.LoadProjectSetting<T>();
+            _instance = EditorBridge.LoadProjectSetting<T>();
             _instance.OnCreate();
             return _instance;
 #endif

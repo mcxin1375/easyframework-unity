@@ -32,7 +32,7 @@ namespace EasyFramework
         {
             try
             {
-                UnityComponentHelper.AutoSetComponents(this, gameObject);
+                UnityHelper.AutoSetComponents(this, gameObject);
             }
             catch (Exception e)
             {

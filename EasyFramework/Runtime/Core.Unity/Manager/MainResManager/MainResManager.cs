@@ -22,7 +22,7 @@ namespace EasyFramework
         }
         private float _downloadProgress;
 
-        private StreamingAssetsResZipInfo ResZipInfo => EasyFrameworkAOTSettings.Instance.streamingAssetsResZipInfo;
+        private StreamingAssetsResZipInfo ResZipInfo => EasyFrameworkSettings.Instance.streamingAssetsResZipInfo;
 
         public bool IsMainResLoaded 
         {
@@ -36,14 +36,14 @@ namespace EasyFramework
         public async ETask<MainResManagerResult> EnterAsync(CancellationToken cancellationToken = default)
         {
             var easyMainConfig = EasyFrameworkAOTConfig.Instance;
-            var mainResInfo = EasyFrameworkAOTSettings.Instance.streamingAssetsResZipInfo;
+            var mainResInfo = EasyFrameworkSettings.Instance.streamingAssetsResZipInfo;
             Debug.Log($"MainRes UID: {easyMainConfig.mainResUid} - {mainResInfo.mainResUid}");
             
             if (IsMainResLoaded) return MainResManagerResult.Success;
             
             if (mainResInfo.mainResZipArray == null || mainResInfo.mainResZipArray.Length == 0)
             {
-                FAOT.LocalStorageManager.ClearDirectory(ELocalStorageType.DLC);
+                F.LocalStorageManager.ClearDirectory(ELocalStorageType.DLC);
                 UpdateConfig();
                 return MainResManagerResult.Success;
             }
@@ -51,7 +51,7 @@ namespace EasyFramework
             var mainResPath = Application.streamingAssetsPath;
             if (Application.platform == RuntimePlatform.Android || Application.isEditor)
             {
-                mainResPath = FAOT.LocalStorageManager.GetDirectoryPath(ELocalStorageType.DownloadTemp);
+                mainResPath = F.LocalStorageManager.GetDirectoryPath(ELocalStorageType.DownloadTemp);
 
                 var result = await DownloadMainResFromLocalAsync(cancellationToken);
                 if (!result) return MainResManagerResult.LoadFromStreamingAssetsError;
@@ -78,7 +78,7 @@ namespace EasyFramework
             _downloadProgress = 0;
 
             var downloadUrl = Application.streamingAssetsPath;
-            var downloadPath = FAOT.LocalStorageManager.GetDirectoryPath(ELocalStorageType.DownloadTemp);
+            var downloadPath = F.LocalStorageManager.GetDirectoryPath(ELocalStorageType.DownloadTemp);
             if (ResZipInfo.mainResZipArray?.Length > 0)
             {
                 // float rate = 1 / (float)mainResInfo.mainResZipArray.Length;
@@ -90,7 +90,7 @@ namespace EasyFramework
                     string fromFile = $"{downloadUrl}/{resInfo.name}";
                     string toFile = $"{downloadPath}/{resInfo.name}";
                     
-                    var result = await FAOT.HttpManager.DownloadFileAsync(fromFile, toFile, cancellationToken);
+                    var result = await F.HttpManager.DownloadFileAsync(fromFile, toFile, cancellationToken);
                     if (!result)
                     {
                         FDebug.LogError("DownloadFileAsync Failed: " + resInfo.name);
@@ -108,7 +108,7 @@ namespace EasyFramework
         {
             // Debug.Log("UnzipMainResAsync");
             
-            FAOT.LocalStorageManager.ClearDirectory(ELocalStorageType.DLC);
+            F.LocalStorageManager.ClearDirectory(ELocalStorageType.DLC);
             
             if (ResZipInfo.mainResZipArray?.Length > 0)
             {
@@ -118,7 +118,7 @@ namespace EasyFramework
                 {
                     var resInfo = ResZipInfo.mainResZipArray[i];
                     string unzipFile = $"{downloadPath}/{resInfo.name}";
-                    UnzipManager.Instance.AddRequest(unzipFile, FAOT.LocalStorageManager.GetDirectoryPath(ELocalStorageType.DLC));
+                    UnzipManager.Instance.AddRequest(unzipFile, F.LocalStorageManager.GetDirectoryPath(ELocalStorageType.DLC));
                 }
 
                 // List<UnzipRequest> tmpList = new();
@@ -133,7 +133,7 @@ namespace EasyFramework
                 }
             }
             
-            FAOT.LocalStorageManager.ClearDirectory(ELocalStorageType.DownloadTemp);
+            F.LocalStorageManager.ClearDirectory(ELocalStorageType.DownloadTemp);
             
             return true;
         }

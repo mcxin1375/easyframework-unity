@@ -14,7 +14,7 @@ namespace EasyFramework.Editor
         private const int Priority = 1000;
         
         [MenuItem("EasyFramework/Settings...", priority = 0)]
-        public static void OpenSettings() => SettingsService.OpenProjectSettings(EasyFrameworkAOTProvider.SettingPath);
+        public static void OpenSettings() => SettingsService.OpenProjectSettings(EasyFrameworkProvider.SettingPath);
         
         [MenuItem("EasyFramework/Preferences...", priority = 0)]
         public static void OpenPreferences() => SettingsService.OpenUserPreferences(EasyFrameworkPreferences.SettingPath);

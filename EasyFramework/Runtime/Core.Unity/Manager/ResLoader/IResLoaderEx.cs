@@ -4,12 +4,23 @@ namespace EasyFramework
 {
     public static class IResLoaderEx
     {
+        public static GameObject CreateObjResources(this IResLoader resLoader, string resourcePath, Transform parent = null)
+        {
+            var go = Resources.Load<GameObject>(resourcePath);
+            if (go == null)
+            {
+                FDebug.LogError($"CreateObjResources failed: {resourcePath}");
+                return null;
+            }
+            return Object.Instantiate(go, parent);
+        }
+        
         public static GameObject CreateObj(this IResLoader resLoader, string resName, Transform parent = null, IResRequest request = null)
         {
             var go = resLoader.LoadAsset<GameObject>(resName, request);
             if (go == null)
             {
-                FDebug.LogError($"CreateObj [{resName}] is empty!");
+                FDebug.LogError($"CreateObj failed: {resName}");
                 return null;
             }
             
@@ -30,7 +41,7 @@ namespace EasyFramework
             var go = await resLoader.LoadAssetAsync<GameObject>(resName, request);
             if (go == null)
             {
-                FDebug.LogError($"CreateObjAsync [{resName}] is empty!");
+                FDebug.LogError($"CreateObjAsync failed: {resName}");
                 return null;
             }
             
@@ -51,7 +62,7 @@ namespace EasyFramework
             var go = await resLoader.LoadAssetAsync<GameObject>(resName, request);
             if (go == null)
             {
-                FDebug.LogError($"CreateObjAsync [{resName}] is empty!");
+                FDebug.LogError($"CreateObjAsync failed: {resName}");
                 return null;
             }
             

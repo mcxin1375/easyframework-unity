@@ -27,7 +27,7 @@ namespace EasyFramework
         internal void Create(IUIScrollRectList behaviour)
         {
             UIScrollRectList = behaviour;
-            UnityComponentHelper.AutoSetComponents(this, gameObject);
+            UnityHelper.AutoSetComponents(this, gameObject);
             
             var uiButtonBinding = gameObject.AddComponent<UIButtonBinding>();
             uiButtonBinding.BindAction(OnButtonClick);

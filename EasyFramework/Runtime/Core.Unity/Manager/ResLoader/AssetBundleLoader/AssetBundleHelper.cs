@@ -8,13 +8,13 @@ namespace EasyFramework
     public static class AssetBundleHelper
     {
         
-        public static string NameToKey(string abName) => abName.EndsWith(EasyFrameworkConst.ABSuffix)
+        public static string NameToKey(string abName) => abName.EndsWith(EasyFrameworkSettings.Instance.abSuffix)
             ? abName
-            : $"{abName}{EasyFrameworkConst.ABSuffix}";
+            : $"{abName}{EasyFrameworkSettings.Instance.abSuffix}";
         
         public static string NameToURL(string abName)
         {
-            return FAOT.LocalStorageManager.GetFilePath(abName, ELocalStorageType.DLC);
+            return F.LocalStorageManager.GetFilePath(abName, ELocalStorageType.DLC);
         }
 
 #if UNITY_EDITOR

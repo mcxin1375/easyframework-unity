@@ -40,7 +40,7 @@ namespace EasyFramework
 
         public readonly string FileName;
         public readonly string FilePath;
-        public readonly AssetBundleManifestItem ManifestItem;
+        public readonly string[] DepNames;
         public AssetBundleInfo[] Dependencies;
         public int RefCount;
         public AssetBundleState State { get; private set; } = AssetBundleState.None;
@@ -49,10 +49,10 @@ namespace EasyFramework
         private AssetBundleUnloadOperation _assetBundleUnloadOperation;
         private bool _downloading;
 
-        public AssetBundleInfo(AssetBundleManifestItem item)
+        public AssetBundleInfo(string abName, string[] abDepNames)
         {
-            ManifestItem = item;
-            FileName = ManifestItem.abName;
+            FileName = abName;
+            DepNames = abDepNames;
             FilePath = AssetBundleHelper.NameToURL(FileName);
         }
 

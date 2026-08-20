@@ -73,12 +73,12 @@ namespace EasyFramework.Editor
             OnCreateGUI();
             
             _windowExes = EasyFrameworkReflection.FindFieldsAndProperties<UIToolkitEditorWindowEx>(this);
-            UnityComponentHelper.AutoSetUIToolkitElement(this, rootVisualElement);
+            UnityHelper.AutoSetUIToolkitElement(this, rootVisualElement);
             if (_windowExes?.Length > 0)
             {
                 foreach (UIToolkitEditorWindowEx baseWindowEx in _windowExes)
                 {
-                    UnityComponentHelper.AutoSetUIToolkitElement(baseWindowEx, rootVisualElement);
+                    UnityHelper.AutoSetUIToolkitElement(baseWindowEx, rootVisualElement);
                     baseWindowEx.Create(this);
                 }
             }

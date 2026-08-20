@@ -21,7 +21,7 @@ namespace EasyFramework.Editor
             foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
                 if (scene.enabled) editorScenes.Add(scene.path);
 
-            string buildPlayerName = $"{EasyFrameworkAOTSettings.App?.AppName ?? "-"}_{EasyFrameworkAOTSettings.App?.MainVersion}";
+            string buildPlayerName = $"{EasyFrameworkSettings.App?.AppName ?? "-"}_{EasyFrameworkSettings.App?.MainVersion}";
              
             BuildPlayerOptions options = new BuildPlayerOptions();
             options.scenes = editorScenes.ToArray();

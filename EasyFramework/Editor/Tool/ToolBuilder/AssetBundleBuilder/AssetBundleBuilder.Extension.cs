@@ -43,7 +43,7 @@ namespace EasyFramework.Editor
             if (bundleManifest != null)
             {
                 FileHelper.CreateDirectory(AssetsDataPath);
-                var manifestFile = $"{AssetsDataPath}/{EasyFrameworkConst.ManifestAssetFileName}";
+                var manifestFile = $"{AssetsDataPath}/{PlatformHelper.PlatformName}.asset";
                 if (File.Exists(manifestFile)) AssetDatabase.DeleteAsset(manifestFile);
                 AssetDatabase.CreateAsset(bundleManifest, manifestFile);
                 
@@ -88,7 +88,7 @@ namespace EasyFramework.Editor
             if (bundleManifest != null)
             {
                 var buildNameList = assetBundleBuilds.Select(item => item.assetBundleName).ToHashSet();
-                string[] assetFiles = Directory.GetFiles(outputPath, $"*{EasyFrameworkConst.ABSuffix}", SearchOption.AllDirectories);
+                string[] assetFiles = Directory.GetFiles(outputPath, $"*{EasyFrameworkSettings.Instance.abSuffix}", SearchOption.AllDirectories);
 
                 // Debug.Log("------------------------ delete unused asset");
                 foreach (string assetFile in assetFiles)
@@ -103,20 +103,12 @@ namespace EasyFramework.Editor
 
                 var abManifest = new AssetBundleManifest();
                 abManifest.abNames = bundleManifest.GetAllAssetBundles();
-
-                List<AssetBundleManifestItem> tmpList = new();
                 foreach (var bundle in abManifest.abNames)
                 {
                     var deps = bundleManifest.GetAllDependencies(bundle);
                     if (deps.Length == 0) continue;
-                    tmpList.Add(new AssetBundleManifestItem()
-                    {
-                        abName = bundle,
-                        deps = deps
-                    });
+                    abManifest.depDict[bundle] = deps;
                 }
-
-                abManifest.abItems = tmpList.ToArray();
                 
                 var manifestFile = $"{outputPath}/{AssetBundleManifest.FileName}";
                 NewtonsoftHelper.Save(manifestFile, abManifest, true);

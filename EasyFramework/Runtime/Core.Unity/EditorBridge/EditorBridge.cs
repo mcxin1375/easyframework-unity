@@ -4,28 +4,25 @@
 // describe:
 //----------------------------------------------------------------*/
 
-using UnityEngine;
-
 #if UNITY_EDITOR
+
+using UnityEngine;
 
 namespace EasyFramework
 {
     public interface IEditorBridgeObject
     {
         IResLoader ResLoader { get; }
-        
-        void Initialize();
         T LoadProjectSetting<T>() where T : ScriptableObject;
     }
 
     internal static class EditorBridge
     {
-        public static readonly IEditorBridgeObject Instance = EasyFrameworkReflection.CreateInstance<IEditorBridgeObject>();
-
-        public static void Initialize()
-        {
-            Instance.Initialize();
-        }
+        public static IResLoader ResLoader => Instance.ResLoader;
+        
+        public static T LoadProjectSetting<T>() where T : ScriptableObject => Instance.LoadProjectSetting<T>();
+        
+        private static readonly IEditorBridgeObject Instance = EasyFrameworkReflection.CreateInstance<IEditorBridgeObject>();
     }
 }
 

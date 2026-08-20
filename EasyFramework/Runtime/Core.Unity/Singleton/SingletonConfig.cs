@@ -16,7 +16,7 @@ namespace EasyFramework
         public static T LoadOrCreate()
         {
             // var filePath = $"{LocalStorageHelper.Instance.DataPath}/ConfigSingleton/{typeof(T).Name}.json";
-            var filePath = FAOT.LocalStorageManager.GetFilePath($"{typeof(T).Name}.json", ELocalStorageType.Config);
+            var filePath = F.LocalStorageManager.GetFilePath($"{typeof(T).Name}.json", ELocalStorageType.Config);
             return LoadOrCreate(filePath);
         }
         public static T LoadOrCreate(string filePath)

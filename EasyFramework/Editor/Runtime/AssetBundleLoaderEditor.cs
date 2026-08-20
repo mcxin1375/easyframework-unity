@@ -21,10 +21,10 @@ namespace EasyFramework.Editor
         public AssetBundleLoaderEditor()
         {
             var assetBundleBuilds = AssetBundleBuilderHelper.CreateAssetBundleBuildBySettings();
-            _assetsMap = assetBundleBuilds.ToDictionary(item => item.assetBundleName.Replace(EasyFrameworkConst.ABSuffix, ""), item => item);
+            _assetsMap = assetBundleBuilds.ToDictionary(item => item.assetBundleName.Replace(EasyFrameworkSettings.Instance.abSuffix, ""), item => item);
         }
 
-        public ETask InitializeAsync() => ETask.CompletedTask;
+        public ETask PreInitializeAsync() => ETask.CompletedTask;
         public string GetFilePath(string abName)
         {
             if (_assetsMap.TryGetValue(abName, out var info)) return info.assetNames[0];

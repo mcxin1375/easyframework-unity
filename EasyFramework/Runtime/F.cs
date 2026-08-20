@@ -8,43 +8,6 @@ using UnityEngine;
 
 namespace EasyFramework
 {
-    
-    public static class FAOT
-    {
-        public static EasyFrameworkBehaviour Behaviour { get; private set; }
-        public static IHttpManager HttpManager { get; private set; }
-
-        public static LocalStorageManager LocalStorageManager => LocalStorageManager.Instance;
-        
-        public static IWindowManager WindowManager => EasyFramework.WindowManager.Instance;
-        
-        public static MainResManager MainResManager => MainResManager.Instance;
-        public static DLCManager DLCManager => DLCManager.Instance;
-#if EASYFRAMEWORK_HYBRIDCLR
-        public static HybridCLRManager HybridCLRManager => HybridCLRManager.Instance;
-#endif
-        
-        private static bool _initialized;
-        public static void Initialize()
-        {
-            if (_initialized) return;
-            _initialized = true;
-
-            FDebug.Debugger = UnityDebugger.Instance;
-            FDebug.DebugLevel = EasyFrameworkAOTSettings.Instance.debugLevel;
-            Behaviour = EasyFrameworkBehaviour.Instance;
-            HttpManager = UnityWebRequestManager.Instance;
-        }
-
-        [RuntimeInitializeOnLoadMethod]
-        private static void Init()
-        {
-            var settings = EasyFrameworkAOTSettings.CreateInstance();
-            if (!settings.autoInitialize) return;
-            Initialize();
-        }
-    }
-    
     public static class F
     {
         public static readonly FWorld World = new();
@@ -53,20 +16,13 @@ namespace EasyFramework
         public static FBehaviour Behaviour { get; private set; }
         
         public static Event Event => Event.Instance;
-
-        public static IResLoader ResLoader
-        {
-            get
-            {
-#if UNITY_EDITOR
-                return EditorBridge.Instance.ResLoader;
-#endif
-                return AssetBundleLoader.Instance;
-            }
-        }
+        public static LocalStorageManager LocalStorageManager => LocalStorageManager.Instance;
+        public static MainResManager MainResManager => MainResManager.Instance;
+        public static DLCManager DLCManager => DLCManager.Instance;
+        public static IHttpManager HttpManager => UnityWebRequestManager.Instance;
+        public static IWindowManager WindowManager => EasyFramework.WindowManager.Instance;
         
         public static DLCDownloader DLCDownloader => EasyFramework.DLCDownloader.Instance;
-        public static IWindowManager WindowManager => EasyFramework.WindowManager.Instance;
         public static ISpriteLoader SpriteLoader => EasyFramework.SpriteLoader.Instance;
         public static IShaderLoader ShaderLoader => EasyFramework.ShaderLoader.Instance;
         public static ISceneLoader SceneLoader => EasyFramework.SceneLoader.Instance;
@@ -76,31 +32,53 @@ namespace EasyFramework
         
         public static IAudioPlayer AudioPlayer => EasyFramework.AudioPlayer.Instance;
 
+        public static IResLoader ResLoader
+        {
+            get
+            {
+#if UNITY_EDITOR
+                if (EasyFrameworkSettings.Instance.resLoaderEditorMode)
+                {
+                    return EditorBridge.ResLoader;
+                }
+                return AssetBundleLoader.Instance;
+#endif
+                return AssetBundleLoader.Instance;
+            }
+        }
+        
+#if EF_HYBRIDCLR
+        public static HybridCLRManager HybridCLRManager => HybridCLRManager.Instance;
+#endif
+
         private static bool _initialized;
-        public static async ETask InitializeAsync()
+        public static void Initialize()
         {
             if (_initialized) return;
             _initialized = true;
-
-            // Init Editor Mode
-#if UNITY_EDITOR
-            EditorBridge.Initialize();
-#endif
+            
+            EasyFrameworkSettings.CreateInstance();
+            FDebug.Debugger = UnityDebugger.Instance;
+            FDebug.DebugLevel = EasyFrameworkSettings.Instance.debugLevel;
+            
             Behaviour = FBehaviour.Instance;
 
-            await ResLoader.InitializeAsync();
-            
-            AssetBundleLoader.Instance.ResRequestAliveTime = EasyFrameworkSettings.Instance.resRequestAliveTime;
-            
             EasyFramework.WindowManager.CreateInstance();
             EasyFramework.SpriteLoader.CreateInstance();
             EasyFramework.ShaderLoader.CreateInstance();
             EasyFramework.SceneLoader.CreateInstance();
             EasyFramework.ControllerManager.CreateInstance();
-            
             EasyFramework.AudioPlayer.CreateInstance();
             
             World.CreateSystem(typeof(F).Assembly);
+        }
+        
+        [RuntimeInitializeOnLoadMethod]
+        private static void InitOnLoadMethod()
+        {
+            var settings = EasyFrameworkSettings.CreateInstance();
+            if (!settings.autoInitialize) return;
+            Initialize();
         }
     }
 }

@@ -8,6 +8,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using Object = UnityEngine.Object;
+#if EF_URP
+using UnityEngine.Rendering.Universal;
+#endif
 
 namespace EasyFramework
 {
@@ -25,7 +28,9 @@ namespace EasyFramework
             {
                 if (_instance == null)
                 {
-                    var obj = EasyFrameworkAOTSettings.Instance.uiRoot ?? Resources.Load<GameObject>("UIRoot");
+                    var obj = EasyFrameworkSettings.Instance.uiRoot != null
+                        ? EasyFrameworkSettings.Instance.uiRoot
+                        : Resources.Load<GameObject>("UIRoot");
                     var uiRoot = Object.Instantiate(obj);
                     _instance = uiRoot.GetComponent<UIRootBehaviour>();
                 }
@@ -74,8 +79,28 @@ namespace EasyFramework
             }
             eventSystem.gameObject.SetActive(true);
 
-            Resolution = EasyFrameworkAOTSettings.Instance.resolution;
-            UIRenderMode = EasyFrameworkAOTSettings.Instance.uiRenderMode;
+            Resolution = EasyFrameworkSettings.Instance.resolution;
+            UIRenderMode = EasyFrameworkSettings.Instance.uiRenderMode;
+            
+#if EF_URP
+            switch (UIRenderMode)
+            {
+                case EUIRenderMode.Overlay:
+                    break;
+                case EUIRenderMode.UICamera:
+                    
+                    if (Camera.main != null)
+                    {
+                        var uiCamera = UICamera;
+                        var cameraData = uiCamera.GetUniversalAdditionalCameraData();
+                        cameraData.renderType = CameraRenderType.Overlay;
+            
+                        var mainData = Camera.main.GetUniversalAdditionalCameraData();
+                        mainData.cameraStack.Add(uiCamera);
+                    }
+                    break;
+            }
+#endif
         }
 
         protected override void OnValidateEditorEx()

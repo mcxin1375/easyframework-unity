@@ -47,7 +47,7 @@ namespace EasyFramework.Editor
             }
             
             DLCVersion dlcVersion = new();
-            dlcVersion.mainVersion = EasyFrameworkAOTSettings.App.MainVersion;
+            dlcVersion.mainVersion = EasyFrameworkSettings.App.MainVersion;
             dlcVersion.versionName = versionName;
             dlcVersion.versionUid = Guid.NewGuid().ToString();
             UnityJsonHelper.Save($"{outputDir}/{DLCVersion.FileName}", dlcVersion, true);

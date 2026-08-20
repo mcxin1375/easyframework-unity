@@ -27,7 +27,7 @@ namespace EasyFramework
 
         public void OnRent()
         {
-            AliveTime = Time.time + AssetBundleLoader.Instance.ResRequestAliveTime;
+            AliveTime = Time.time + EasyFrameworkSettings.Instance.resRequestAliveTime;
         }
         public void OnReturn()
         {
@@ -73,7 +73,7 @@ namespace EasyFramework
 
         public AssetBundle Load(IResRequest handler = null)
         {
-            AliveTime = Time.time + AssetBundleLoader.Instance.ResRequestAliveTime;
+            AliveTime = Time.time + EasyFrameworkSettings.Instance.resRequestAliveTime;
             AddRefer(handler);
 
             if (MainInfo.Dependencies?.Length > 0)
@@ -87,7 +87,7 @@ namespace EasyFramework
 
         public ETask<AssetBundle> LoadAsync(IResRequest handler = null)
         {
-            AliveTime = Time.time + AssetBundleLoader.Instance.ResRequestAliveTime;
+            AliveTime = Time.time + EasyFrameworkSettings.Instance.resRequestAliveTime;
             AddRefer(handler);
 
             if (MainInfo.Dependencies?.Length > 0)

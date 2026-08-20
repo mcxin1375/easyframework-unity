@@ -13,11 +13,11 @@ namespace EasyFramework.Editor
     {
         public void OnExecuteBefore()
         {
-            PlayerSettings.companyName = EasyFrameworkAOTSettings.App.CompanyName;
-            PlayerSettings.productName = EasyFrameworkAOTSettings.App.ProductName;
-            PlayerSettings.bundleVersion = EasyFrameworkAOTSettings.App.BundleVersion;
+            PlayerSettings.companyName = EasyFrameworkSettings.App.CompanyName;
+            PlayerSettings.productName = EasyFrameworkSettings.App.ProductName;
+            PlayerSettings.bundleVersion = EasyFrameworkSettings.App.BundleVersion;
             var namedTarget = NamedBuildTarget.FromBuildTargetGroup(BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget));
-            PlayerSettings.SetApplicationIdentifier(namedTarget, EasyFrameworkAOTSettings.App.BundleIdentifier);
+            PlayerSettings.SetApplicationIdentifier(namedTarget, EasyFrameworkSettings.App.BundleIdentifier);
         }
     }
 }

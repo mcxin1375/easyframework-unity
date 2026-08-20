@@ -14,8 +14,6 @@ namespace EasyFramework
 {
     internal class AssetBundleLoader : Singleton<AssetBundleLoader>, ITickerNode, IResLoader
     {
-        public int ResRequestAliveTime { get; set; } = 60;
-
         public AssetBundleManifest Manifest { get; private set; }
 
         internal IReadOnlyDictionary<string, AssetBundleInfo> AbDict => _abDict;
@@ -33,10 +31,9 @@ namespace EasyFramework
             ETask.AddTick(this);
         }
 
-        async ETask IResLoader.InitializeAsync()
+        async ETask IResLoader.PreInitializeAsync()
         {
-            Debug.Log($"Initialize AssetBundleLoader: {FAOT.LocalStorageManager.Exists(AssetBundleManifest.FileName, ELocalStorageType.DLC)}");
-            if (!FAOT.LocalStorageManager.Exists(AssetBundleManifest.FileName, ELocalStorageType.DLC))
+            if (!F.LocalStorageManager.Exists(AssetBundleManifest.FileName, ELocalStorageType.DLC))
             {
                 var result = await F.DLCDownloader.DownloadAsync(AssetBundleManifest.FileName);
                 if (!result)
@@ -46,14 +43,12 @@ namespace EasyFramework
                 }
             }
 
-            var content = FAOT.LocalStorageManager.ReadAllText(AssetBundleManifest.FileName, ELocalStorageType.DLC);
-            Debug.Log(content);
-            Manifest = UnityJsonHelper.LoadFromText<AssetBundleManifest>(content);
-            Manifest.BuildManifest();
+            var content = F.LocalStorageManager.ReadAllText(AssetBundleManifest.FileName, ELocalStorageType.DLC);
+            Manifest = NewtonsoftHelper.LoadFromText<AssetBundleManifest>(content);
             
-            foreach (var item in Manifest.abItems)
+            foreach (var kv in Manifest.depDict)
             {
-                _abDict.Add(item.abName, new AssetBundleInfo(item));
+                _abDict.Add(kv.Key, new AssetBundleInfo(kv.Key, kv.Value));
             }
         }
 

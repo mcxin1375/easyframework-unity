@@ -66,7 +66,8 @@ namespace EasyFramework
             LayerBehaviour = uiLayer;
             if (WindowObject != null) return;
             
-            WindowObject = await F.ResLoader.CreateObjAsync(Type.Name, uiLayer.transform, this);
+            // WindowObject = await F.ResLoader.CreateObjAsync(Type.Name, uiLayer.transform, this);
+            WindowObject = await CreateWindowObjectAsync(uiLayer.transform);
             if (WindowObject == null)
             {
                 Debug.LogError($"Failed to create window object of type {Type.Name}");
@@ -80,7 +81,7 @@ namespace EasyFramework
             LayerBehaviour = uiLayer;
             if (WindowObject != null) return;
             
-            WindowObject = F.ResLoader.CreateObj(Type.Name, uiLayer.transform);
+            WindowObject = CreateWindowObject(uiLayer.transform);
             if (WindowObject == null)
             {
                 Debug.LogError($"Failed to create window object of type {Type.Name}");
@@ -201,5 +202,8 @@ namespace EasyFramework
         protected virtual void OnRefreshOrderInLayer(int orderInLayer) { }
         protected virtual void OnButtonClick(Button btn) { }
         protected virtual void OnUpdate() { }
+
+        protected virtual GameObject CreateWindowObject(Transform parent) => F.ResLoader.CreateObj(Type.Name, parent);
+        protected virtual ETask<GameObject> CreateWindowObjectAsync(Transform parent) => F.ResLoader.CreateObjAsync(Type.Name, parent, this);
     }
 }

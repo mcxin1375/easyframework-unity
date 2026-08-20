@@ -87,7 +87,7 @@ namespace EasyFramework
             private CancellationToken _cancellationToken;
             private UnityWebRequest _unityWebRequest;
 
-            private int MaxRetryCount => EasyFrameworkAOTSettings.Instance.maxRetryCount;
+            private int MaxRetryCount => EasyFrameworkSettings.Instance.maxRetryCount;
             protected override bool OnTaskTick()
             {
                 if (Time.time < _lockTime) return true;
@@ -117,7 +117,7 @@ namespace EasyFramework
                             return false;
                         }
 
-                        _lockTime = Time.time + EasyFrameworkAOTSettings.Instance.retryDelayMs / 1000.0f;
+                        _lockTime = Time.time + EasyFrameworkSettings.Instance.retryDelayMs / 1000.0f;
                         _unityWebRequest.Dispose();
                         _unityWebRequest = null;
                     }
@@ -176,7 +176,7 @@ namespace EasyFramework
             }
             private EState _state = EState.None;
 
-            private int MaxRetryCount => EasyFrameworkAOTSettings.Instance.maxRetryCount;
+            private int MaxRetryCount => EasyFrameworkSettings.Instance.maxRetryCount;
 
             protected override bool OnTaskTick()
             {

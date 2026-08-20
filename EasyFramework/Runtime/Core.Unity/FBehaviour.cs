@@ -1,5 +1,6 @@
 
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace EasyFramework
 {
@@ -10,7 +11,9 @@ namespace EasyFramework
         void Awake()
         {
             transform.name = "[EasyFramework]";
-            FDebug.Log("FBehaviour OnAwake");
+            FDebug.Log($"[{transform.name}] OnAwake");
+            
+            Object.DontDestroyOnLoad(gameObject);
         }
         void Update()
         {
@@ -24,6 +27,8 @@ namespace EasyFramework
         }
         private void OnDestroy()
         {
+            FDebug.Log($"[{transform.name}] OnDestroy");
+            
             foreach (var obj in _eventList) obj.OnDestroy();
             F.World.Destroy();
         }
