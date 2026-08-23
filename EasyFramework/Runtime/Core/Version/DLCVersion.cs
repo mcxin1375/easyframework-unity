@@ -13,7 +13,7 @@ namespace EasyFramework
     {
         public const string FileName = "DLCVersion.json";
         
-        public int mainVersion;
+        public int versionIndex;
         public string versionName;
         public string versionUid;
     }

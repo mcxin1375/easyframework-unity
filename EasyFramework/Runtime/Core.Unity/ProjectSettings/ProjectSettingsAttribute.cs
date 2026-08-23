@@ -1,31 +1,28 @@
-using System;
-
-namespace EasyFramework
-{
-    public enum EProjectSettingsTag
-    {
-        Resources,
-        AssetBundle,
-        Editor
-    }
-    
-    [AttributeUsage(AttributeTargets.Class)]
-    public sealed class ProjectSettingsAttribute : Attribute
-    {
-        public readonly string BasePath;
-        public ProjectSettingsAttribute(string basePath)
-        {
-            BasePath = basePath;
-        }
-    }
-    
-    [AttributeUsage(AttributeTargets.Class)]
-    public sealed class ProjectSettingsTagAttribute : Attribute
-    {
-        public readonly EProjectSettingsTag SettingsTag;
-        public ProjectSettingsTagAttribute(EProjectSettingsTag settingsTag)
-        {
-            SettingsTag = settingsTag;
-        }
-    }
-}
+// using System;
+//
+// namespace EasyFramework
+// {
+//     [AttributeUsage(AttributeTargets.Class)]
+//     public sealed class ProjectSettingsAttribute : Attribute
+//     {
+//         public readonly ETag Tag;
+//         public readonly string FilePath;
+//         public ProjectSettingsAttribute(ETag tag)
+//         {
+//             Tag = tag;
+//             FilePath = string.Empty;
+//         }
+//         // public ProjectSettingsAttribute(string filePath)
+//         // {
+//         //     Tag = ETag.None;
+//         //     FilePath = filePath;
+//         // }
+//         
+//         public enum ETag
+//         {
+//             None,
+//             Resources,
+//             Editor,
+//         }
+//     }
+// }

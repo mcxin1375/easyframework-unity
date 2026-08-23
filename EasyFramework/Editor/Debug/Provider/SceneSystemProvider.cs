@@ -5,29 +5,19 @@
 //----------------------------------------------------------------*/
 
 using UnityEditor;
-using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    public class SceneSystemProvider : ProjectSettingsProvider<SceneSystemProvider>
+    public class SceneSystemProvider : ProjectSettingsProvider
     {
         [SettingsProvider]
-        public static SettingsProvider Create() => GetOrCreate();
+        public static SettingsProvider Create() => Singleton<SceneSystemProvider>.Instance;
         
         public SceneSystemProvider() : base(EasyFrameworkProvider.ToChildProvider<SceneLoader>()) { }
 
-        protected override ScriptableObject[] LoadObjects()
-        {
-            return new ScriptableObject[]
-            {
-                // settings,
-            };
-        }
 
-        protected override void OnAfterDraw()
+        protected override void OnDrawSettings(string searchContext)
         {
-            base.OnAfterDraw();
-
             if (!SceneLoader.HasInstance()) return;
             
             foreach (var value in SceneLoader.Instance.SceneDict.Values)

@@ -12,8 +12,8 @@ namespace EasyFramework.Editor
         Runtime,
     }
 
-    [ProjectSettings("ProjectSettings/EasyFramework")]
-    public class EasyFrameworkEditorSettings : ProjectSettingsEditor<EasyFrameworkEditorSettings>
+    [ProjectSettings(ProjectSettingsAttribute.ETag.Editor)]
+    public class EasyFrameworkEditorSettings : ProjectSettings<EasyFrameworkEditorSettings>
     {
         public EResLoaderMode resLoaderMode = EResLoaderMode.Editor;
     }

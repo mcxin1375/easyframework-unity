@@ -9,28 +9,17 @@ using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    public class AssetBundleProvider : ProjectSettingsProvider<AssetBundleProvider>
+    public class AssetBundleProvider : ProjectSettingsProvider
     {
-
         private bool _loaded = true;
         private bool _deps = true;
-        
+
         [SettingsProvider]
-        public static SettingsProvider Create() => GetOrCreate();
-        
+        public static SettingsProvider Create() => Singleton<AssetBundleProvider>.Instance;
         public AssetBundleProvider() : base(EasyFrameworkProvider.ToChildProvider<AssetBundle>()) { }
 
-        protected override ScriptableObject[] LoadObjects()
+        protected override void OnDrawSettingsAfter(string searchContext)
         {
-            return new ScriptableObject[]
-            {
-            };
-        }
-
-        protected override void OnAfterDraw()
-        {
-            base.OnAfterDraw();
-
             _loaded = EditorGUILayout.Toggle("Loaded", _loaded);
             _deps = EditorGUILayout.Toggle("Deps", _deps);
             

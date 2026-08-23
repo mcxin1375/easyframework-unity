@@ -5,33 +5,20 @@
 //----------------------------------------------------------------*/
 
 using UnityEditor;
-using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    public class AssetBundleLoaderProvider : ProjectSettingsProvider<AssetBundleLoaderProvider>
+    public class AssetBundleLoaderProvider : ProjectSettingsProvider
     {
         [SettingsProvider]
-        public static SettingsProvider Create() => GetOrCreate();
+        public static SettingsProvider Create() => Singleton<AssetBundleLoaderProvider>.Instance;
         
         public AssetBundleLoaderProvider() : base(EasyFrameworkProvider.ToChildProvider<AssetBundleLoader>()) { }
 
-        protected override ScriptableObject[] LoadObjects()
+        protected override void OnDrawSettings(string searchContext)
         {
-            return new ScriptableObject[]
-            {
-                
-            };
-        }
-
-        protected override void OnAfterDraw()
-        {
-            base.OnAfterDraw();
-
             if (AssetBundleLoader.HasInstance())
             {
-                var searchContext = GUISearchContext.ToLower();
-                
                 foreach (var info in AssetBundleLoader.Instance.RequestDict.Values)
                 {
                     if (!string.IsNullOrWhiteSpace(searchContext) && !info.AbName.ToLower().Contains(searchContext)) continue;

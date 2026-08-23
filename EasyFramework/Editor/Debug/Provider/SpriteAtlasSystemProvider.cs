@@ -9,25 +9,15 @@ using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    public class SpriteAtlasSystemProvider : ProjectSettingsProvider<SpriteAtlasSystemProvider>
+    public class SpriteAtlasSystemProvider : ProjectSettingsProvider
     {
         [SettingsProvider]
-        public static SettingsProvider Create() => GetOrCreate();
+        public static SettingsProvider Create() => Singleton<SpriteAtlasSystemProvider>.Instance;
         
         public SpriteAtlasSystemProvider() : base(EasyFrameworkProvider.ToChildProvider<SpriteLoader>()) { }
 
-        protected override ScriptableObject[] LoadObjects()
+        protected override void OnDrawSettings(string searchContext)
         {
-            return new ScriptableObject[]
-            {
-                // settings,
-            };
-        }
-
-        protected override void OnAfterDraw()
-        {
-            base.OnAfterDraw();
-
             if (!SpriteLoader.HasInstance()) return;
             
             foreach (var value in SpriteLoader.Instance.AtlasDict.Values)

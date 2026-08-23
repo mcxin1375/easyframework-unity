@@ -1,45 +1,57 @@
 using UnityEditor;
 using UnityEngine;
 
-
 namespace EasyFramework.Editor
 {
     public static class ToolDrawHelper
     {
-        public static void DrawExtensions<T>(T[] extensions) where T : IToolExtensionObject
+        public static void DrawTools<T>(T[] tools) where T : ITool
         {
-            EditorGUILayout.HelpBox($"Type: {typeof(T).Name}", MessageType.Info);
-
+            if (tools == null) return;
+            
+            foreach (var tool in tools)
+            {
+                // EditorGUILayout.HelpBox($"Tool: {tool.GetType().Name}  Order: {tool.Order}", MessageType.Info);
+                // EditorGUILayout.LabelField($"[{tool.Order}]  {tool.GetType().Name}", GUIStyles.MainStyle);
+                EditorGUILayout.LabelField($"[{tool.GetType().Name}]", GUIStyles.MainStyle);
+                DrawToolExtensions(tool.Extension);
+                
+                EditorGUILayout.Space(5);
+            }
+        }
+        
+        public static void DrawToolExtensions<T>(T[] extensions) where T : IToolExtension
+        {
             if (extensions == null) return;
             
             foreach (var ex in extensions)
             {
                 if (ex is ScriptableObject o)
                 {
-                    EditorGUILayout.ObjectField($"Order: {ex.Order}", o, o.GetType(), false);
+                    EditorGUILayout.ObjectField($"{ex.Order}", o, o.GetType(), false);
                 }
                 else
                 {
-                    EditorGUILayout.LabelField($"Order: {ex.Order}", ex.GetType().Name);
+                    EditorGUILayout.LabelField($"{ex.Order}", ex.GetType().Name);
                 }
             }
         }
         
-        public static void DrawToolEvents<T>(IToolEvent<T>[] extensions) where T : ToolBase<T>, new()
+        public static void DrawExtensions<T>(T[] extensions) where T : IToolExtension
         {
-            EditorGUILayout.HelpBox($"Type: {typeof(T).Name}", MessageType.Info);
-
+            EditorGUILayout.HelpBox($"{typeof(T).Name}", MessageType.Info);
+            
             if (extensions == null) return;
             
             foreach (var ex in extensions)
             {
                 if (ex is ScriptableObject o)
                 {
-                    EditorGUILayout.ObjectField($"Order: {ex.Order}", o, o.GetType(), false);
+                    EditorGUILayout.ObjectField($"{ex.Order}", o, o.GetType(), false);
                 }
                 else
                 {
-                    EditorGUILayout.LabelField($"Order: {ex.Order}", ex.GetType().Name);
+                    EditorGUILayout.LabelField($"{ex.Order}", ex.GetType().Name);
                 }
             }
         }

@@ -51,44 +51,45 @@ namespace EasyFramework.Editor
             InternalEditorUtility.SaveToSerializedFileAndForget(obj, saveFile, saveAsText);
         }
         
-        public static T LoadProjectSettings<T>() where T : ScriptableObject
+        public static T LoadProjectSettings<T>() where T : ProjectSettings<T>
         {
-            var attribute = EasyFrameworkReflection.GetCustomAttribute<ProjectSettingsTagAttribute>(typeof(T));
+            var attribute = EasyFrameworkReflection.GetCustomAttribute<ProjectSettingsAttribute>(typeof(T));
             if (attribute == null) return null;
-
-            var fullPath = GetProjectSettingsFullPath(typeof(T), attribute.SettingsTag);
-            var o = attribute.SettingsTag == EProjectSettingsTag.Editor ? LoadScriptableObject<T>(fullPath) : AssetDatabase.LoadMainAssetAtPath(fullPath);
-            if (o is T t) return t;
+            switch (attribute.Tag)
+            {
+                case ProjectSettingsAttribute.ETag.Resources:
+                    return Resources.Load<T>(typeof(T).Name);
+                case ProjectSettingsAttribute.ETag.Editor:
+                    return LoadScriptableObject<T>(GetProjectSettingsFilePath(typeof(T)));
+                default:
+                    var obj = AssetDatabase.LoadMainAssetAtPath(GetProjectSettingsFilePath(typeof(T)));
+                    if (obj is T t) return t;
+                    break;
+            }
             return ScriptableObject.CreateInstance(typeof(T)) as T;
         }
 
-        public static string GetProjectSettingsFullPath(Type type, EProjectSettingsTag settingsTag)
+        public static string GetProjectSettingsFilePath(Type type)
         {
             var attribute = EasyFrameworkReflection.GetCustomAttribute<ProjectSettingsAttribute>(type);
-            var basePath = string.Empty;
-            switch (settingsTag)
+            if (attribute == null) return null;
+            switch (attribute.Tag)
             {
-                case EProjectSettingsTag.Resources:
-                    basePath = attribute?.BasePath ?? EasyFrameworkPreferences.AssetsDataResourcesPath;
-                    break;
-                case EProjectSettingsTag.AssetBundle:
-                    basePath = attribute?.BasePath ?? EasyFrameworkPreferences.AssetsDataDLCPath;
-                    break;
-                case EProjectSettingsTag.Editor:
-                    basePath = attribute?.BasePath ?? $"ProjectSettings/EasyFramework";
-                    break;
+                case ProjectSettingsAttribute.ETag.Resources:
+                    return $"{EasyFrameworkPreferences.AssetsDataResourcesPath}/{type.Name}.asset";
+                // case ProjectSettingsAttribute.ETag.Resources:
+                    // return $"{EasyFrameworkPreferences.AssetsDataResourcesPath}/{typeof(T).Name}.asset";
+                case ProjectSettingsAttribute.ETag.Editor:
+                    return $"ProjectSettings/EasyFramework/{type.Name}.asset";
+                default:
+                    return attribute.FilePath;
             }
-            return $"{basePath}/{type.Name}.asset";
         }
 
-        public static void SaveEx(this ScriptableObject obj)
+        public static void SaveEx<T>(this T obj) where T : ProjectSettings<T>
         {
-            var attribute = EasyFrameworkReflection.GetCustomAttribute<ProjectSettingsTagAttribute>(obj.GetType());
-            if (attribute != null)
-            {
-                var assetPath = GetProjectSettingsFullPath(obj.GetType(), attribute.SettingsTag);
-                SaveScriptableObject(assetPath, obj);
-            }
+            var assetPath = GetProjectSettingsFilePath(obj.GetType());
+            SaveScriptableObject(assetPath, obj);
         }
     }
 }

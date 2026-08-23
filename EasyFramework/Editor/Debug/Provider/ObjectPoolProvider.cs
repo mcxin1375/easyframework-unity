@@ -10,25 +10,16 @@ using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    public class ObjectPoolProvider : ProjectSettingsProvider<ObjectPoolProvider>
+    public class ObjectPoolProvider : ProjectSettingsProvider
     {
         [SettingsProvider]
-        public static SettingsProvider Create() => GetOrCreate();
+        public static SettingsProvider Create() => Singleton<ObjectPoolProvider>.Instance;
         
         public ObjectPoolProvider() : base(EasyFrameworkProvider.ToChildProvider(". ObjectPool")) { }
 
-        protected override ScriptableObject[] LoadObjects()
-        {
-            return new ScriptableObject[]
-            {
-                // settings,
-            };
-        }
 
-        protected override void OnAfterDraw()
+        protected override void OnDrawSettings(string searchContext)
         {
-            base.OnAfterDraw();
-
             if (!Application.isPlaying) return;
 
             EditorGUILayout.HelpBox("Type - (PooledCount / CreatedCount)", MessageType.Info);

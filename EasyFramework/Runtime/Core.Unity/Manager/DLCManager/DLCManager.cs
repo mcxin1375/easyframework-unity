@@ -106,7 +106,7 @@ namespace EasyFramework
                 if (b)
                 {
                     Version = JsonUtility.FromJson<DLCVersion>(s);
-                    if (Version.mainVersion > EasyFrameworkSettings.App.MainVersion)
+                    if (Version.versionIndex > EasyFrameworkSettings.Instance.dlcVersionIndex)
                     {
                         OnCompleted(EResult.AppVersionTooLow);
                         return;
@@ -126,7 +126,7 @@ namespace EasyFramework
 
         private void UpdateVersionInfo()
         {
-            ServerUrl = $"{EasyFrameworkSettings.App.DLCPlatformServerUrl}/{Config.dlcVersion}/{EDLCOptions.DLC}";
+            ServerUrl = $"{EasyFrameworkSettings.App.DLCPlatformServerUrl}/{Config.dlcVersion}/{EDLCMode.List}";
 
             var localVersionInfo = F.LocalStorageManager.LoadObject<DLCVersionInfo>(DLCVersionInfo.FileName, ELocalStorageType.DLC);
             if (Config.dlcVersionUid == Version.versionUid && localVersionInfo != null)

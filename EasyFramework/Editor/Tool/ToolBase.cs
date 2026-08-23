@@ -10,8 +10,10 @@ using UnityEditor;
 
 namespace EasyFramework.Editor
 {
-    public abstract class ToolBase<T> : Singleton<T> where T : ToolBase<T>, new()
+    public abstract class ToolBase<T> : Singleton<T>, ITool, IToolEvent<T> where T : ToolBase<T>, new()
     {
+        public virtual int Order => 0;
+
         public readonly string ProjectDataPath;
         public readonly string AssetsDataPath;
         public readonly string DebugPath;
@@ -19,14 +21,15 @@ namespace EasyFramework.Editor
 
         public ToolVersion Version { get; private set; }
         public IToolEvent<T>[] ToolEvents => ToolExtension<IToolEvent<T>>.Instances;
+        public IToolExtension[] Extension => ToolExtension<IToolEvent<T>>.Instances;
 
         protected ToolBase()
         {
-            Version = UnityJsonHelper.LoadOrCreate<ToolVersion>(VersionFilePath);
             ProjectDataPath = $"{EasyFrameworkPreferences.ProjectDataPath}/{typeof(T).Name}/{PlatformHelper.PlatformName}";
             AssetsDataPath = $"{EasyFrameworkPreferences.AssetsDataPath}/{typeof(T).Name}/{PlatformHelper.PlatformName}";
             DebugPath = $"{EasyFrameworkPreferences.ProjectDataPath}/.ToolsDebug/{typeof(T).Name}/{PlatformHelper.PlatformName}";
             VersionFilePath = $"{EasyFrameworkPreferences.ProjectDataPath}/.ToolsVersion/{PlatformHelper.PlatformName}/{typeof(T).Name}.json";
+            Version = UnityJsonHelper.LoadOrCreate<ToolVersion>(VersionFilePath);
         }
         
         protected void UpgradeVersion()
@@ -55,7 +58,7 @@ namespace EasyFramework.Editor
         
         public void Execute()
         {
-            RefreshExtensions();
+            Refresh();
 
             var timeDebug = FDebug.StartTime();
             FDebug.Log($"[{GetType().Name} - {typeof(T).Name}] Execute");
@@ -70,9 +73,17 @@ namespace EasyFramework.Editor
             AssetDatabase.Refresh();
         }
         
-        public void RefreshExtensions()
+        public void Refresh()
         {
             ToolExtension<IToolEvent<T>>.Refresh();
         }
+
+        void IToolEvent<T>.OnExecuteBefore() => OnToolExecuteBefore();
+        void IToolEvent<T>.OnExecute() => OnToolExecute();
+        void IToolEvent<T>.OnExecuteAfter() => OnToolExecuteAfter();
+        protected virtual void OnToolExecuteBefore() { }
+        protected virtual void OnToolExecute() { }
+        protected virtual void OnToolExecuteAfter() { }
+        
     }
 }

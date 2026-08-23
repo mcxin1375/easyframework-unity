@@ -9,25 +9,16 @@ using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    public class ControllerSystemProvider : ProjectSettingsProvider<ControllerSystemProvider>
+    public class ControllerSystemProvider : ProjectSettingsProvider
     {
         [SettingsProvider]
-        public static SettingsProvider Create() => GetOrCreate();
+        public static SettingsProvider Create() => Singleton<ControllerSystemProvider>.Instance;
         
         public ControllerSystemProvider() : base(EasyFrameworkProvider.ToChildProvider<ControllerManager>()) { }
+        
 
-        protected override ScriptableObject[] LoadObjects()
+        protected override void OnDrawSettings(string searchContext)
         {
-            return new ScriptableObject[]
-            {
-                // settings,
-            };
-        }
-
-        protected override void OnAfterDraw()
-        {
-            base.OnAfterDraw();
-
             if (!ControllerManager.HasInstance()) return;
             
             EditorGUILayout.HelpBox("EnterList", MessageType.Info);

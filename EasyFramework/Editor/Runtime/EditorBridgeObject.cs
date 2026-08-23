@@ -22,6 +22,6 @@ namespace EasyFramework.Editor
             
         }
 
-        public T LoadProjectSetting<T>() where T : ScriptableObject => UnityEditorHelper.LoadProjectSettings<T>();
+        public T LoadProjectSetting<T>() where T : ProjectSettings<T> => UnityEditorHelper.LoadProjectSettings<T>();
     }
 }

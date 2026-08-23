@@ -13,14 +13,14 @@ namespace EasyFramework
     public interface IEditorBridgeObject
     {
         IResLoader ResLoader { get; }
-        T LoadProjectSetting<T>() where T : ScriptableObject;
+        T LoadProjectSetting<T>() where T : ProjectSettings<T>;
     }
 
     internal static class EditorBridge
     {
         public static IResLoader ResLoader => Instance.ResLoader;
         
-        public static T LoadProjectSetting<T>() where T : ScriptableObject => Instance.LoadProjectSetting<T>();
+        public static T LoadProjectSetting<T>() where T : ProjectSettings<T> => Instance.LoadProjectSetting<T>();
         
         private static readonly IEditorBridgeObject Instance = EasyFrameworkReflection.CreateInstance<IEditorBridgeObject>();
     }

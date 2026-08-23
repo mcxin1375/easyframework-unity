@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace EasyFramework.Editor
 {
-    public static class ToolExtension<T> where T : IToolExtensionObject
+    public static class ToolExtension<T> where T : IToolExtension
     {
         private static T[] _instances;
         public static T[] Instances => _instances ?? GetObjects();

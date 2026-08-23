@@ -9,25 +9,16 @@ using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    public class EasyTaskProvider : ProjectSettingsProvider<EasyTaskProvider>
+    public class EasyTaskProvider : ProjectSettingsProvider
     {
         [SettingsProvider]
-        public static SettingsProvider Create() => GetOrCreate();
+        public static SettingsProvider Create() => Singleton<EasyTaskProvider>.Instance;
         
         public EasyTaskProvider() : base(EasyFrameworkProvider.ToChildProvider(". EasyTask")) { }
 
-        protected override ScriptableObject[] LoadObjects()
-        {
-            return new ScriptableObject[]
-            {
-                // settings,
-            };
-        }
 
-        protected override void OnAfterDraw()
+        protected override void OnDrawSettings(string searchContext)
         {
-            base.OnAfterDraw();
-
             // EditorGUILayout.HelpBox("Type - (PooledCount / CreatedCount)", MessageType.Info);
             
             EditorGUILayout.LabelField("ThreadId", $"{ETask.ThreadId}");

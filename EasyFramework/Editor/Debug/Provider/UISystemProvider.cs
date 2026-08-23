@@ -9,25 +9,16 @@ using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    public class UISystemProvider : ProjectSettingsProvider<UISystemProvider>
+    public class UISystemProvider : ProjectSettingsProvider
     {
         [SettingsProvider]
-        public static SettingsProvider Create() => GetOrCreate();
+        public static SettingsProvider Create() => Singleton<UISystemProvider>.Instance;
         
         public UISystemProvider() : base(EasyFrameworkProvider.ToChildProvider<WindowManager>()) { }
 
-        protected override ScriptableObject[] LoadObjects()
-        {
-            return new ScriptableObject[]
-            {
-                // settings,
-            };
-        }
 
-        protected override void OnAfterDraw()
+        protected override void OnDrawSettings(string searchContext)
         {
-            base.OnAfterDraw();
-
             if (!WindowManager.HasInstance()) return;
             
             EditorGUILayout.HelpBox("UILayerData", MessageType.Info);

@@ -28,11 +28,18 @@ namespace EasyFramework
         DLC_CDN
     }
 
-    [Serializable]
-    public class EasyFrameworkSettings : ProjectSettingsResources<EasyFrameworkSettings>
+    [ProjectSettings(ProjectSettingsAttribute.ETag.Resources)]
+    public class EasyFrameworkSettings : ProjectSettings<EasyFrameworkSettings>
     {
         [Header("Framework Settings")] 
         public bool autoInitialize = true;
+        
+        [Header("App Settings")]
+        public AppSettings appSettings;
+        /// <summary>
+        /// 版本索引，发布时底包会记录该值，判断一致才可热更新
+        /// </summary>
+        public int dlcVersionIndex = 1;
         
         [Header("AssetBundle Settings")]
         public string abSuffix = ".ab";
@@ -62,7 +69,19 @@ namespace EasyFramework
         
         [Header("Debug Settings")]
         public EDebugLevel debugLevel = EDebugLevel.Log | EDebugLevel.LogWarning | EDebugLevel.LogError;
-        
+
+
+        private static IAppSettings _appSettings;
+        public static IAppSettings AppSettings
+        {
+            get
+            {
+                if (Instance.appSettings != null) return Instance.appSettings;
+                _appSettings ??= EasyFrameworkReflection.CreateInstance<IAppSettings>();
+                return _appSettings;
+            }
+        }
+
         private static IApp _app;
         public static IApp App
         {

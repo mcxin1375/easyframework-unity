@@ -5,8 +5,6 @@
 //----------------------------------------------------------------*/
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -14,241 +12,111 @@ using UnityEngine.UIElements;
 
 namespace EasyFramework.Editor
 {
-    public class SettingsObjectInfo
+    public abstract class ProjectSettingsProvider<T> : ProjectSettingsProvider where T : ProjectSettings<T>
     {
-        public string Name => ScriptableObj.GetType().Name;
-        public string TabName { get; }
-        public string[] TabArr { get; }
-        public ScriptableObject ScriptableObj { get; }
-        public SerializedObject SerializedObject { get; private set; }
-        public FieldInfo[] FieldInfos { get; private set; }
-
-        public SettingsObjectInfo(ScriptableObject o)
+        protected T Settings { get; private set; }
+        private readonly FieldInfo[] _fieldInfos = typeof(T).GetFields(BindingFlags.Instance | BindingFlags.Public);
+        private SerializedObject _serializedObject;
+        
+        protected ProjectSettingsProvider(string path) : base(path) { }
+        
+        public override void OnDeactivate()
         {
-            ScriptableObj = o;
-            SerializedObject = new SerializedObject(o);
-            FieldInfos = o.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public);
-            
-            var attribute = EasyFrameworkReflection.GetCustomAttribute<ProjectSettingsTagAttribute>(o.GetType());
-            if (attribute != null)
+            base.OnDeactivate();
+            SaveData();
+        }
+        protected override void OnFocusChanged(bool value)
+        {
+            if (value) OnRefresh();
+            else SaveData();
+        }
+        protected override void OnRefresh()
+        {
+            Settings = ProjectSettings<T>.ReloadEditorOnly();
+            _serializedObject = Settings != null ? new SerializedObject(Settings) : null;
+        }
+
+        private void SaveData()
+        {
+            Settings?.SaveEx();
+        }
+
+        protected override void OnDrawSettings(string searchContext)
+        {
+            if (_serializedObject != null && _serializedObject.targetObject != null)
             {
-                switch (attribute.SettingsTag)
+                _serializedObject.Update();
+                EditorGUI.BeginChangeCheck();
+                    
+                // EditorGUILayout.HelpBox($"{objInfo.ScriptableObj.GetType().Name}", MessageType.Info);
+                foreach (var fieldInfo in _fieldInfos)
                 {
-                    case EProjectSettingsTag.Resources:
-                        TabName = $"{Name}(Res)";
-                        break;
-                    case EProjectSettingsTag.AssetBundle:
-                        TabName = $"{Name}(AB)";
-                        break;
-                    case EProjectSettingsTag.Editor:
-                        TabName = $"{Name}(Editor)";
-                        break;
+                    var p = _serializedObject.FindProperty(fieldInfo.Name);
+                    if (p == null) continue;
+                    DrawSettingsProperty(p);
+                }
+                    
+                if (EditorGUI.EndChangeCheck())
+                {
+                    _serializedObject.ApplyModifiedProperties();
+                    SaveData();
+                    OnSettingsChanged();
                 }
             }
-            else
-            {
-                TabName = Name;
-            }
-            TabArr = new string[] { TabName };
         }
-    }
 
-    public abstract class ProjectSettingsProvider<T> : ProjectSettingsProvider where T : ProjectSettingsProvider<T>, new()
-    {
-        private static T _provider;
-        protected static T GetOrCreate()
-        {
-            // Debug.Log(typeof(T).Name);
-            
-            // var sw = new System.Diagnostics.Stopwatch();
-            // sw.Start();
-            if (_provider == null) _provider = new T();
-            // sw.Stop();
-            // string timeStr = sw.Elapsed.ToString(@"hh\:mm\:ss\.fff");
-            // Debug.Log($"{typeof(T).Name}: {timeStr}");
-            
-            return _provider;
-        }
-        protected ProjectSettingsProvider(string path) : base(path) { }
-        protected ProjectSettingsProvider(string path, SettingsScope settingsScope) : base(path, settingsScope) { }
+        protected virtual void DrawSettingsProperty(SerializedProperty property) => EditorGUILayout.PropertyField(property);
+        protected virtual void OnSettingsChanged() { }
     }
     
     public abstract class ProjectSettingsProvider : SettingsProvider
     {
-        protected virtual bool DrawTab => true;
-        protected virtual int DefaultTabIndex => 0;
-        
-        private readonly List<SettingsObjectInfo> _objList = new List<SettingsObjectInfo>();
-        private string[] _tabArr;
-        private int _tabIndex;
-
-        protected string GUISearchContext { get; private set; }
-
         protected ProjectSettingsProvider(string path) : base(path, SettingsScope.Project) { }
-        protected ProjectSettingsProvider(string path, SettingsScope settingsScope) : base(path, settingsScope) { }
 
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
             base.OnActivate(searchContext, rootElement);
-
-            _tabIndex = DefaultTabIndex;
-            
             EditorApplication.focusChanged += EditorApplicationOnfocusChanged;
-            
-            // var sw = new System.Diagnostics.Stopwatch();
-            // sw.Start();
-            LoadData();
-            // sw.Stop();
-            // string timeStr = sw.Elapsed.ToString(@"hh\:mm\:ss\.fff");
-            // Debug.Log($"{GetType().Name}: {timeStr}");
+            OnRefresh();
         }
-
-        private void EditorApplicationOnfocusChanged(bool obj)
-        {
-            OnfocusChanged(obj);
-            Repaint();
-        }
-
         public override void OnDeactivate()
         {
             base.OnDeactivate();
-            
             EditorApplication.focusChanged -= EditorApplicationOnfocusChanged;
-            
-            SaveData();
-            _objList.Clear();
         }
-
-        public override void OnInspectorUpdate()
+        private void EditorApplicationOnfocusChanged(bool obj)
         {
-            base.OnInspectorUpdate();
-            
-            if (_objList.Count == 0) return;
-            SettingsObjectInfo objInfo = _objList[_tabIndex];
-            if (objInfo.SerializedObject == null || objInfo.SerializedObject.targetObject == null)
-            {
-                LoadData();
-            }
+            OnFocusChanged(obj);
+            Repaint();
         }
 
         public override void OnGUI(string searchContext)
         {
             base.OnGUI(searchContext);
 
-            GUISearchContext = searchContext;
-
             // using (CreateSettingsWindowGUIScope())
             // {
-                OnBeforeDraw();
+            DrawSettings(searchContext);
+            OnDrawSettingsBefore(searchContext);
+            
+            // Rect r = EditorGUILayout.BeginVertical(SettingsFrameBox);
+            // EditorGUILayout.Space(5);
+            OnDrawSettings(searchContext);
+            // EditorGUILayout.EndVertical();
                 
-                if (DrawTab)
-                {
-                    if (_objList.Count > 0)
-                    {
-                        Rect r = EditorGUILayout.BeginVertical(SettingsFrameBox);
-                        _tabIndex = Mathf.Clamp(_tabIndex, 0, _objList.Count - 1);
-                        _tabIndex = DrawTabGUI(r, _tabArr, _tabIndex);
-                        EditorGUILayout.Space(20);
-
-                        SettingsObjectInfo objInfo = _objList[_tabIndex];
-                        DrawSettingsObj(objInfo);
-                    
-                        EditorGUILayout.EndVertical();
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < _objList.Count; i++)
-                    {
-                        var objInfo = _objList[i];
-                        
-                        Rect r = EditorGUILayout.BeginVertical(SettingsFrameBox);
-                        EditorGUILayout.Space(20);
-                        DrawTabGUI(r, objInfo.TabArr, 0);
-                        DrawSettingsObj(objInfo);
-                        EditorGUILayout.EndVertical();
-
-                        if (i < _objList.Count - 1)
-                            EditorGUILayout.Space(10);
-                    }
-                }
-                
-                OnAfterDraw();
+            OnDrawSettingsAfter(searchContext);
             // }
         }
-
-        protected virtual void DrawSettingsObj(SettingsObjectInfo objInfo)
-        {
-            if (objInfo.SerializedObject != null && objInfo.SerializedObject.targetObject != null)
-            {
-                objInfo.SerializedObject.Update();
-                EditorGUI.BeginChangeCheck();
-
-                OnBeforeDrawSettings(objInfo.Name);
-                    
-                // EditorGUILayout.HelpBox($"{objInfo.ScriptableObj.GetType().Name}", MessageType.Info);
-                foreach (FieldInfo fieldInfo in objInfo.FieldInfos)
-                {
-                    SerializedProperty p = objInfo.SerializedObject.FindProperty(fieldInfo.Name);
-                    if (p == null) continue;
-                    OnDrawSettingsProperty(p);
-                }
-                    
-                OnAfterDrawSettings(objInfo.Name);
-                
-                if (EditorGUI.EndChangeCheck())
-                {
-                    objInfo.SerializedObject.ApplyModifiedProperties();
-                    SaveData();
-                    OnSettingsChanged(objInfo.Name);
-                }
-            }
-        }
-
-        protected virtual void OnfocusChanged(bool value)
-        {
-            if (value) LoadData();
-            else SaveData();
-        }
-
-        private void LoadData()
-        {
-            // Debug.Log($"LoadData: {GetType().Name}");
-            // return;
-            
-            _objList.Clear();
-            
-            var objs = LoadObjects();
-            if(objs == null) return;
-            foreach (var o in objs) _objList.Add(new SettingsObjectInfo(o));
-            _tabArr = _objList.Select(item => item.TabName).ToArray();
-        }
-        private void SaveData() => SaveObjects();
-
-        protected virtual void OnBeforeDraw() { }
-        protected virtual void OnAfterDraw() { }
-        protected virtual void OnBeforeDrawSettings(string settingsName) { }
-        protected virtual void OnAfterDrawSettings(string settingsName) { }
-        protected virtual void OnDrawSettingsProperty(SerializedProperty property)
-        {
-            EditorGUILayout.PropertyField(property);
-        }
-        protected virtual void OnSettingsChanged(string settingsName) { }
-
-        // protected abstract Type[] GetSettings();
-
-        protected abstract ScriptableObject[] LoadObjects();
-
-        protected virtual void SaveObjects()
-        {
-            // Debug.Log($"SaveObjects: {GetType().Name}");
-            // return;
-            
-            foreach (SettingsObjectInfo objectInfo in _objList)
-            {
-                objectInfo.ScriptableObj.SaveEx();
-            }
-        }
+        
+        protected virtual void OnRefresh() { }
+        protected virtual void OnFocusChanged(bool value) { }
+        
+        
+        protected virtual void DrawSettings(string searchContext) { }
+        
+        protected virtual void OnDrawSettingsBefore(string searchContext) { }
+        protected virtual void OnDrawSettings(string searchContext) { }
+        protected virtual void OnDrawSettingsAfter(string searchContext) { }
 
         protected IDisposable CreateSettingsWindowGUIScope()
         {
