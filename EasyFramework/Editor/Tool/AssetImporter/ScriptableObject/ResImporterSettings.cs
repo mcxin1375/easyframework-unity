@@ -11,7 +11,7 @@ namespace EasyFramework.Editor
 {
 
     [CreateAssetMenu(menuName = "EasyFramework/AssetImporter/ResImporterSettings", fileName = "ResImporterSettings.asset")]
-    public class ResImporterSettingsSO : ToolScriptableObject<AssetImporter>
+    public class ResImporterSettings : ToolScriptableObject<AssetImporter>
     {
         [Header("Settings")]
         public ResImporterConfig[] resImporterConfigs;

@@ -29,7 +29,7 @@ namespace EasyFramework.Editor
     [ProjectSettings(ProjectSettingsAttribute.ETag.Editor)]
     public class DLCBuilderSettings : ProjectSettings<DLCBuilderSettings>
     {
-        [Header("自定义版本Id，留空使用ToolVersion版本号")]
+        [Header("自定义版本Id，默认使用版本号递增")]
         public string versionCustomId;
         /// <summary>
         /// 最大缓存版本数量，按照时间排序
