@@ -11,6 +11,8 @@ namespace EasyFramework
     public static class F
     {
         public static readonly FWorld World = new();
+        public static WorldManager WorldManager => EasyFramework.WorldManager.Instance;
+        public static IControllerManager ControllerManager => EasyFramework.ControllerManager.Instance;
         
         public static EasyFrameworkSettings Settings => EasyFrameworkSettings.Instance;
         public static FBehaviour Behaviour { get; private set; }
@@ -26,7 +28,6 @@ namespace EasyFramework
         public static ISpriteLoader SpriteLoader => EasyFramework.SpriteLoader.Instance;
         public static IShaderLoader ShaderLoader => EasyFramework.ShaderLoader.Instance;
         public static ISceneLoader SceneLoader => EasyFramework.SceneLoader.Instance;
-        public static IControllerManager ControllerManager => EasyFramework.ControllerManager.Instance;
         public static IInputManager InputManager => EasyFramework.InputManager.Instance;
         public static IPoolManager PoolManager => EasyFramework.PoolManager.Instance;
         

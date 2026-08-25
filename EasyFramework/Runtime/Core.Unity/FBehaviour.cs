@@ -1,13 +1,15 @@
+/*----------------------------------------------------------------
+// author:Cookie(mcx)
+// date:2023/6/23
+// describe:
+//----------------------------------------------------------------*/
 
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace EasyFramework
 {
     public class FBehaviour : SingletonBehaviour<FBehaviour>
     {
-        private readonly List<IEvent> _eventList = new();
-        
         void Awake()
         {
             transform.name = "[EasyFramework]";
@@ -17,30 +19,23 @@ namespace EasyFramework
         }
         void Update()
         {
-            foreach (var obj in _eventList) obj.OnUpdate();
+            WorldManager.Instance.Update();
+            ControllerManager.Instance.Update();
             F.World.Update();
         }
         void LateUpdate()
         {
-            foreach (var obj in _eventList) obj.OnLateUpdate();
+            WorldManager.Instance.LateUpdate();
+            ControllerManager.Instance.LateUpdate();
             F.World.LateUpdate();
         }
         private void OnDestroy()
         {
+            WorldManager.Instance.Destroy();
+            ControllerManager.Instance.Destroy();
             FDebug.Log($"[{transform.name}] OnDestroy");
             
-            foreach (var obj in _eventList) obj.OnDestroy();
             F.World.Destroy();
-        }
-        internal void Register(IEvent obj)
-        {
-            _eventList.Add(obj);
-        }
-        internal interface IEvent
-        {
-            void OnUpdate();
-            void OnLateUpdate();
-            void OnDestroy();
         }
     }
 }

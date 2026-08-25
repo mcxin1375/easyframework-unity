@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace EasyFramework
 {
-    public class ShaderLoader : Singleton<ShaderLoader>, IShaderLoader, IResRequest
+    internal class ShaderLoader : Singleton<ShaderLoader>, IShaderLoader, IResRequest
     {
         public bool Alive { get; } = true;
         private readonly Dictionary<string, Shader> _shaderDict = new();

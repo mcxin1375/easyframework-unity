@@ -10,7 +10,7 @@ using System.Reflection;
 
 namespace EasyFramework
 {
-    public partial class ControllerManager : Singleton<ControllerManager>, IControllerManager, FBehaviour.IEvent
+    internal partial class ControllerManager : Singleton<ControllerManager>, IControllerManager
     {
         public event Action<IController> OnEnter; 
         public event Action<IController> OnExit;
@@ -24,11 +24,7 @@ namespace EasyFramework
         private readonly List<IController> _updateList = new();
         private bool _needRefresh;
 
-        public ControllerManager()
-        {
-            FBehaviour.Instance.Register(this);
-        }
-        void FBehaviour.IEvent.OnUpdate()
+        internal void Update()
         {
             if (_needRefresh)
             {
@@ -39,11 +35,11 @@ namespace EasyFramework
 
             foreach (var c in _updateList) c.Update();
         }
-        void FBehaviour.IEvent.OnLateUpdate()
+        internal void LateUpdate()
         {
             foreach (var c in _updateList) c.LateUpdate();
         }
-        void FBehaviour.IEvent.OnDestroy()
+        internal void Destroy()
         {
             foreach (var c in _controllerDict.Values) c.Destroy();
         }

@@ -11,7 +11,7 @@ using UnityEngine.U2D;
 
 namespace EasyFramework
 {
-    public class SpriteLoader : Singleton<SpriteLoader>, ISpriteLoader
+    internal class SpriteLoader : Singleton<SpriteLoader>, ISpriteLoader
     {
         public IReadOnlyDictionary<string, SpriteAtlasInfo> AtlasDict => _atlasDict;
         

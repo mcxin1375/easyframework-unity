@@ -15,7 +15,7 @@ namespace EasyFramework
         AdditiveBackground
     }
 
-    public partial class ControllerManager
+    internal partial class ControllerManager
     {
         private sealed class Command : ICommand
         {

@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 
 namespace EasyFramework
 {
-    public class SceneLoader : Singleton<SceneLoader>, ISceneLoader
+    internal class SceneLoader : Singleton<SceneLoader>, ISceneLoader
     {
         public string CurrentActiveScene { get; private set; }
 

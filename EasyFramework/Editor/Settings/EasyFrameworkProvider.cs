@@ -46,19 +46,19 @@ namespace EasyFramework.Editor
             }
         }
 
-        protected override void OnDrawSettingsAfter(string searchContext)
-        {
-            var app = EasyFrameworkSettings.AppSettings;
-            EditorGUILayout.HelpBox($"{nameof(IAppSettings)}: {app?.GetType().Name}", MessageType.Info);
-            if (app != null)
-            {
-                EditorGUILayout.LabelField("AppName", app.AppName);
-                EditorGUILayout.LabelField("AppVersion", app.AppVersion);
-                // EditorGUILayout.LabelField("BundleIdentifier", app.BundleIdentifier);
-                // EditorGUILayout.LabelField("AppVersionFileUrl", app.AppVersionFileUrl);
-                // EditorGUILayout.LabelField("DLCPlatformServerUrl", app.DLCPlatformServerUrl);
-            }
-        }
+        // protected override void OnDrawSettingsAfter(string searchContext)
+        // {
+        //     var app = EasyFrameworkSettings.AppSettings;
+        //     EditorGUILayout.HelpBox($"{nameof(IAppSettings)}: {app?.GetType().Name}", MessageType.Info);
+        //     if (app != null)
+        //     {
+        //         EditorGUILayout.LabelField("AppName", app.AppName);
+        //         EditorGUILayout.LabelField("AppVersion", app.AppVersion);
+        //         // EditorGUILayout.LabelField("BundleIdentifier", app.BundleIdentifier);
+        //         // EditorGUILayout.LabelField("AppVersionFileUrl", app.AppVersionFileUrl);
+        //         // EditorGUILayout.LabelField("DLCPlatformServerUrl", app.DLCPlatformServerUrl);
+        //     }
+        // }
         
         protected override void OnSettingsChanged()
         {

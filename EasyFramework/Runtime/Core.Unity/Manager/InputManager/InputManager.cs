@@ -16,28 +16,16 @@ namespace EasyFramework
         Up,
     }
 
-    public class InputManager : Singleton<InputManager>, IInputManager, FBehaviour.IEvent
+    public class InputManager : SingletonBehaviour<InputManager>, IInputManager
     {
         public event Action<EInputType, int, Vector2> OnInputEvent;
 
-        public InputManager()
+        private void Awake()
         {
             Input.multiTouchEnabled = true;
-            FBehaviour.Instance.Register(this);
-        }
-        void FBehaviour.IEvent.OnUpdate()
-        {
-            OnTick();
-        }
-        void FBehaviour.IEvent.OnLateUpdate()
-        {
-            
-        }
-        void FBehaviour.IEvent.OnDestroy()
-        {
         }
 
-        void OnTick()
+        private void Update()
         {
             switch (Application.platform)
             {
