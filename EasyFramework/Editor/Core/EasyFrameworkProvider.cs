@@ -53,8 +53,7 @@ namespace EasyFramework.Editor
             if (app != null)
             {
                 EditorGUILayout.LabelField("AppName", app.AppName);
-                // EditorGUILayout.LabelField("MainVersion", $"{app.MainVersion}");
-                EditorGUILayout.LabelField("BundleVersion", app.BundleVersion);
+                EditorGUILayout.LabelField("AppVersion", app.AppVersion);
                 // EditorGUILayout.LabelField("BundleIdentifier", app.BundleIdentifier);
                 // EditorGUILayout.LabelField("AppVersionFileUrl", app.AppVersionFileUrl);
                 // EditorGUILayout.LabelField("DLCPlatformServerUrl", app.DLCPlatformServerUrl);

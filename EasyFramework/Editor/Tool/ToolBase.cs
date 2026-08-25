@@ -34,7 +34,7 @@ namespace EasyFramework.Editor
         
         protected void UpgradeVersion()
         {
-            Version.version++;
+            Version.buildIndex++;
             Version.dateTime = DateTime.Now.ToFileTime();
             // SVNCommand.TryGetRevision(EasyFrameworkPreferences.ProjectFullPath, out Version.revision);
             UnityJsonHelper.Save(VersionFilePath, Version, true);

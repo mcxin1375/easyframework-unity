@@ -14,13 +14,13 @@ namespace EasyFramework
         public string DateTimeStr => DateTime.ToString("yyyy_MMd_HHmm");
         public DateTime DateTime => DateTime.FromFileTime(dateTime);
         
-        public int version;
+        public int buildIndex;
         public int revision;
         public long dateTime;
         
         public void SetToolVersion(ToolVersion toolVersion)
         {
-            version = toolVersion.version;
+            buildIndex = toolVersion.buildIndex;
             revision = toolVersion.revision;
             dateTime = toolVersion.dateTime;
         }

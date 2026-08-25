@@ -21,6 +21,8 @@ namespace EasyFramework.Editor
     [ProjectSettings(ProjectSettingsAttribute.ETag.Editor)]
     public class PlayerBuilderSettings : ProjectSettings<PlayerBuilderSettings>
     {
+        [Header("Pre Settings")]
+        public bool preSettingsEnabled = true;
         public string companyName;
         public string productName;
         

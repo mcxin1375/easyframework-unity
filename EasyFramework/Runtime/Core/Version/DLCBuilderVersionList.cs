@@ -24,7 +24,7 @@ namespace EasyFramework
         public string[] ToHistoryVersions()
         {
             var selections = versions
-                ?.Select(item => $"DLCVersion:{item.version} SVNRevision:{item.revision} DateTime:{item.DateTimeStr}")
+                ?.Select(item => $"DLCVersion:{item.buildIndex} SVNRevision:{item.revision} DateTime:{item.DateTimeStr}")
                 .ToArray() ?? Array.Empty<string>();
             return selections;
         }
@@ -35,7 +35,7 @@ namespace EasyFramework
             tmpList.Add(LatestVersion);
             // tmpList.Add(SkipVersion);
             var selections = versions
-                ?.Select(item => $"DLCVersion:{item.version} SVNRevision:{item.revision} DateTime:{item.DateTimeStr}")
+                ?.Select(item => $"DLCVersion:{item.buildIndex} SVNRevision:{item.revision} DateTime:{item.DateTimeStr}")
                 .ToArray() ?? Array.Empty<string>();
             tmpList.AddRange(selections);
             return tmpList.ToArray();

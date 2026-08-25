@@ -16,20 +16,31 @@ namespace EasyFramework.Editor
         public void BuildBySettingsBefore()
         {
             var settings = PlayerBuilderSettings.Instance;
+            if (!settings.preSettingsEnabled) return;
+            
+            var appSettings = EasyFrameworkSettings.AppSettings;
             
             if (!settings.companyName.IsNullOrEmpty())
                 PlayerSettings.companyName = settings.companyName;
             if (!settings.productName.IsNullOrEmpty())
                 PlayerSettings.productName = settings.productName;
-            if (!EasyFrameworkSettings.AppSettings.BundleVersion.IsNullOrEmpty())
-                PlayerSettings.bundleVersion = EasyFrameworkSettings.AppSettings.BundleVersion;
-            
-            var appName = EasyFrameworkSettings.AppSettings.AppName;
-            if (!settings.companyName.IsNullOrEmpty() && !appName.IsNullOrEmpty())
+            if (!appSettings.AppVersion.IsNullOrEmpty())
+                PlayerSettings.bundleVersion = appSettings.AppVersion;
+            if (!appSettings.BundleIdentifier.IsNullOrEmpty())
             {
-                var bundleIdentifier = $"cn.{settings.companyName}.{appName}".ToLower();
                 var namedTarget = NamedBuildTarget.FromBuildTargetGroup(BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget));
-                PlayerSettings.SetApplicationIdentifier(namedTarget, bundleIdentifier);
+                PlayerSettings.SetApplicationIdentifier(namedTarget, appSettings.BundleIdentifier);
+            }
+            
+            switch (EditorUserBuildSettings.activeBuildTarget)
+            {
+                case BuildTarget.Android:
+                    var ver = appSettings.BundleVersion > 0
+                        ? appSettings.BundleVersion
+                        : PlayerBuilder.Instance.Version.buildIndex;
+                    PlayerSettings.Android.bundleVersionCode = 0;
+                    EditorUserBuildSettings.exportAsGoogleAndroidProject = settings.exportAsGoogleAndroidProject;
+                    break;
             }
         }
         
@@ -49,12 +60,6 @@ namespace EasyFramework.Editor
             var locationDirectory = Path.GetDirectoryName(options.locationPathName);
             FileHelper.CreateDirectory(locationDirectory);
 
-            switch (EditorUserBuildSettings.activeBuildTarget)
-            {
-                case BuildTarget.Android:
-                    EditorUserBuildSettings.exportAsGoogleAndroidProject = settings.exportAsGoogleAndroidProject;
-                    break;
-            }
             var result = BuildPipeline.BuildPlayer(options);
             FDebug.Log($"BuildPlayer: {result.summary.result}");
 

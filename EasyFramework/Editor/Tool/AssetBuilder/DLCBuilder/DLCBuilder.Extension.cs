@@ -22,7 +22,7 @@ namespace EasyFramework.Editor
 
             var settings = DLCBuilderSettings.Instance;
 
-            var versionName = string.IsNullOrEmpty(settings.versionCustomId) ? Version.version.ToString() : settings.versionCustomId;
+            var versionName = string.IsNullOrEmpty(settings.versionCustomId) ? Version.buildIndex.ToString() : settings.versionCustomId;
             var outputDir = $"{ProjectDataPath}/{versionName}";
             var sourceDirs = new string[]
             {

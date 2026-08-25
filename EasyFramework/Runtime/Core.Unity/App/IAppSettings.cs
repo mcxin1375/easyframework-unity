@@ -9,7 +9,9 @@ namespace EasyFramework
     public interface IAppSettings
     {
         string AppName { get; }
-        string BundleVersion { get; }
+        string AppVersion { get; }
+        string BundleIdentifier { get; }
+        int BundleVersion { get; }
         string CdnURL { get; }
         string AppVersionURL { get; }
     }
