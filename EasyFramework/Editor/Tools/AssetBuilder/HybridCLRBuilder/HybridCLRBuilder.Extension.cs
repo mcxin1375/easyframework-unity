@@ -12,12 +12,6 @@ using UnityEditor;
 
 namespace EasyFramework.Editor
 {
-    class HybridCLRBuilderExtension : IToolEvent<ToolBuilder>, IToolEvent<HybridCLRBuilder>
-    {
-        void IToolEvent<ToolBuilder>.OnExecute() => HybridCLRBuilder.Instance.Execute();
-        void IToolEvent<HybridCLRBuilder>.OnExecute() => HybridCLRBuilder.Instance.BuildBySettings();
-    }
-    
     public partial class HybridCLRBuilder
     {
         public void BuildBySettings()

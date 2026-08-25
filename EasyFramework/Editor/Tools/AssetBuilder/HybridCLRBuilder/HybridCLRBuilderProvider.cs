@@ -7,33 +7,17 @@
 #if EF_HYBRIDCLR
 
 using UnityEditor;
-using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    public class HybridCLRBuilderProvider : ProjectSettingsProvider<HybridCLRBuilderProvider>
+    public class HybridCLRBuilderProvider : ProjectSettingsProvider<HybridCLRBuilderSettings>
     {
-        private const string SettingsPath = ToolProvider.SettingPath + "/" + nameof(HybridCLRBuilder);
+        private const string SettingsPath = ToolsProvider.SettingPath + "/" + nameof(HybridCLRBuilder);
         
         [SettingsProvider]
-        public static SettingsProvider Create() => GetOrCreate();
+        public static SettingsProvider Create() => Singleton<HybridCLRBuilderProvider>.Instance;
         
         public HybridCLRBuilderProvider() : base(SettingsPath) { }
-
-        protected override ScriptableObject[] LoadObjects()
-        {
-            return new ScriptableObject[]
-            {
-                HybridCLRBuilderSettings.CreateInstance(),
-            };
-        }
-        
-        protected override void OnAfterDrawSettings(string settingsName)
-        {
-            base.OnAfterDrawSettings(settingsName);
-            
-            ToolDrawHelper.DrawToolEvents(HybridCLRBuilder.Instance.ToolEvents);
-        }
     }
 }
 

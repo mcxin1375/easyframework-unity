@@ -10,8 +10,8 @@ using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    [ProjectSettings("ProjectSettings/EasyFramework")]
-    public class HybridCLRBuilderSettings : ProjectSettingsEditor<HybridCLRBuilderSettings>
+    [ProjectSettings(ProjectSettingsAttribute.ETag.Editor)]
+    public class HybridCLRBuilderSettings : ProjectSettings<HybridCLRBuilderSettings>
     {
         [Header("初始化阶段加载所有Dll")]
         public bool loadAll = true;
