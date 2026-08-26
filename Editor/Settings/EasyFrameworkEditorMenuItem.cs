@@ -11,7 +11,7 @@ namespace EasyFramework.Editor
 {
     public static class EasyFrameworkEditorMenuItem
     {
-        private const int Priority = 1000;
+        private const int Priority = MenuItemOrder.Editor;
         
         [MenuItem("EasyFramework/Settings...", priority = 0)]
         public static void OpenSettings() => SettingsService.OpenProjectSettings(EasyFrameworkProvider.SettingPath);

@@ -25,7 +25,7 @@ namespace EasyFramework.Editor
             var dllStripDir = HybridCLR.Editor.SettingsUtil.GetAssembliesPostIl2CppStripDir(EditorUserBuildSettings.activeBuildTarget);
 
             var info = CreateHybridCLRVersionInfo();
-            if (info.allDlls.Length > 0)
+            if (info.allDlls?.Length > 0)
             {
                 foreach (string dll in info.allDlls)
                 {
@@ -39,7 +39,7 @@ namespace EasyFramework.Editor
                 }
             }
 
-            if (info.stripDlls.Length > 0)
+            if (info.stripDlls?.Length > 0)
             {
                 foreach (var stripDll in info.stripDlls)
                 {

@@ -55,20 +55,19 @@ namespace EasyFramework.Editor
         {
             return $"{EasyFrameworkPreferences.AssetsDataPath}/{typeof(T).Name}/{platform.ToPlatformName()}";
         }
-        
+
         public void Execute()
         {
-            Refresh();
-
             var timeDebug = FDebug.StartTime();
             FDebug.Log($"[{GetType().Name} - {typeof(T).Name}] Execute");
 
+            Refresh();
             foreach (var extension in ToolEvents) extension.OnExecuteBefore();
             UpgradeVersion();
             foreach (var extension in ToolEvents) extension.OnExecute();
             foreach (var extension in ToolEvents) extension.OnExecuteAfter();
             
-            FDebug.Log($"[{GetType().Name} - {typeof(T).Name}] Execute Completed! Time: {timeDebug.StopToSeconds():hh:mm:nn}");
+            FDebug.Log($"[{GetType().Name} - {typeof(T).Name}] Execute Completed! Time: {TimeSpan.FromSeconds(timeDebug.StopToSeconds()):hh\\:mm\\:ss\\.fff}");
             
             AssetDatabase.Refresh();
         }
@@ -78,12 +77,14 @@ namespace EasyFramework.Editor
             ToolExtension<IToolEvent<T>>.Refresh();
         }
 
-        void IToolEvent<T>.OnExecuteBefore() => OnToolExecuteBefore();
-        void IToolEvent<T>.OnExecute() => OnToolExecute();
-        void IToolEvent<T>.OnExecuteAfter() => OnToolExecuteAfter();
-        protected virtual void OnToolExecuteBefore() { }
-        protected virtual void OnToolExecute() { }
-        protected virtual void OnToolExecuteAfter() { }
+        public void OnExecute() => Execute();
+
+        void IToolEvent<T>.OnExecuteBefore() => OnSelfExecuteBefore();
+        void IToolEvent<T>.OnExecute() => OnSelfExecute();
+        void IToolEvent<T>.OnExecuteAfter() => OnSelfExecuteAfter();
+        protected virtual void OnSelfExecuteBefore() { }
+        protected virtual void OnSelfExecute() { }
+        protected virtual void OnSelfExecuteAfter() { }
         
     }
 }

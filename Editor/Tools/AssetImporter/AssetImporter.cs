@@ -12,7 +12,7 @@ namespace EasyFramework.Editor
     {
         public override int Order => ToolOrder.AssetImporter;
 
-        [MenuItem("EasyFramework/Tools/ToolImporter - Execute", priority = Editor.ToolOrder.AssetImporter)]
+        [MenuItem("EasyFramework/Tools/AssetImporter - Execute", priority = Editor.ToolOrder.AssetImporter)]
         public static void MenuItem()
         {
             Instance.Execute();

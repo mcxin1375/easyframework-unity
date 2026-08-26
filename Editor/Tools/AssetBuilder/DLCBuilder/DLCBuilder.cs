@@ -12,7 +12,7 @@ namespace EasyFramework.Editor
     {
         public override int Order => ToolOrder.DLCBuilder;
 
-        protected override void OnToolExecute() => BuildBySettings();
+        protected override void OnSelfExecute() => BuildBySettings();
         
         [MenuItem("EasyFramework/Tools/DLCBuilder - Execute", priority = ToolOrder.DLCBuilder)]
         public static void MenuItem1()

@@ -14,7 +14,7 @@ namespace EasyFramework.Editor
     {
         public override int Order => ToolOrder.HybridCLRBuilder;
         
-        protected override void OnToolExecute() => BuildBySettings();
+        protected override void OnSelfExecute() => BuildBySettings();
 
         
         [MenuItem("EasyFramework/Tools/HybridCLRBuilder - Execute", priority = ToolOrder.HybridCLRBuilder)]

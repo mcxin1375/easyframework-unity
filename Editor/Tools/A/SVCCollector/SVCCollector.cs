@@ -9,7 +9,7 @@ namespace EasyFramework.Editor
 
     public partial class SVCCollector : ToolBase<SVCCollector>
     {
-        protected override void OnToolExecute()
+        protected override void OnSelfExecute()
         {
             SaveCurrentSVC();
         }
