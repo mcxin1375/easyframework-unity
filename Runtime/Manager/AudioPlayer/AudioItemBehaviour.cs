@@ -10,7 +10,7 @@ using UnityEngine;
 namespace EasyFramework
 {
     [RequireComponent(typeof(AudioSource))]
-    public class AudioItemBehaviour : MonoBehaviour, IPoolItem
+    public class AudioItemBehaviour : MonoBehaviour, IObjectPoolEvent
     {
         public bool IsPlaying => audioSource.clip != null && audioSource.isPlaying;
         public EAudioType AudioType => audioType;
@@ -28,18 +28,13 @@ namespace EasyFramework
             audioSource = gameObject.AddComponentEx<AudioSource>();
         }
 
-        void IPoolItem.OnRent()
-        {
-            
-        }
-
-        void IPoolItem.OnReturn()
+        void IObjectPoolEvent.OnReturn()
         {
             Stop();
             transform.SetParent(AudioPlayer.Instance.transform);
         }
 
-        void IPoolItem.OnDispose()
+        void IObjectPoolEvent.OnDispose()
         {
             Stop();
             Destroy(gameObject);

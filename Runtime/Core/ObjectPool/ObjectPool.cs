@@ -9,78 +9,73 @@ using System.Collections.Generic;
 
 namespace EasyFramework
 {
-    public interface IPoolItem
+    public interface IObjectPoolEvent
     {
-        void OnRent();
-        void OnReturn();
-        void OnDispose();
+        void OnRent() { }
+        void OnReturn() { }
+        void OnCreate() { }
+        void OnDispose() { }
     }
-
-    public class ObjectPoolItem<T> : IPoolDebug where T : class, IPoolItem, new()
+    
+    public sealed class ObjectPool<T> : IPoolDebug where T : class, new()
     {
-        private static ObjectPoolItem<T> _shared;
-        public static ObjectPoolItem<T> Shared
+        private static ObjectPool<T> _shared;
+        public static ObjectPool<T> Shared
         {
             get
             {
-                _shared ??= new();
+                _shared ??= new ObjectPool<T>();
                 return _shared;
             }
         }
         
-        public int MaxSize { get; set; } = 1024;
+        public int MaxSize { get; set; } = 128;
         public Func<T> CreateFunc { get; set; }
-        
+
         public int CreatedCount { get; private set; }
-        public int PooledCount
-        {
-            get
-            {
-                lock (_locker)
-                {
-                    return _pool.Count;
-                }
-            }
-        }
+        public int PooledCount => _pool.Count;
         public Type ObjectType { get; } = typeof(T);
-        
+
         private readonly Queue<T> _pool = new();
         private readonly object _locker = new();
-        
-        public ObjectPoolItem()
+
+        private ObjectPool()
         {
             this.AddDebug();
         }
 
         public T Rent()
         {
-            T item = null;
+            var item = TakeOrCreate();
+            if (item is IObjectPoolEvent e) e.OnRent();
+            return item;
+        }
+
+        private T TakeOrCreate()
+        {
             lock (_locker)
             {
-                if (_pool.Count > 0) item = _pool.Dequeue();
-                else
-                {
-                    CreatedCount++;
-                    item = CreateFunc();
-                    // item = CreateFunc?.Invoke() ?? new T();
-                }
+                if (_pool.Count > 0) return _pool.Dequeue();
             }
-            
-            item.OnRent();
+            CreatedCount++;
+            var item = CreateFunc();
+            if (item is IObjectPoolEvent e) e.OnCreate();
             return item;
-            // Debug.Log($"ObjectPool<{typeof(T).Name}> create new object, CreateCount: {_index}");
         }
 
         public void Return(T item)
         {
+            var e = item as IObjectPoolEvent;
+            e?.OnReturn();
+            
             lock (_locker)
             {
                 if (_pool.Count >= MaxSize)
                 {
-                    item.OnDispose();
+                    e?.OnDispose();
                     return;
                 }
-                
+
                 if (_pool.Contains(item))
                 {
                     FDebug.LogError($"Object pool already contains item {item}");
@@ -89,18 +84,17 @@ namespace EasyFramework
 
                 _pool.Enqueue(item);
             }
-            item.OnReturn();
         }
 
         public void Clear()
         {
             lock (_locker)
             {
-                while (_pool.Count > 0)
+                foreach (var t in _pool)
                 {
-                    var item = _pool.Dequeue();
-                    item.OnDispose();
+                    if (t is IObjectPoolEvent e) e.OnDispose();
                 }
+                _pool.Clear();
             }
         }
     }

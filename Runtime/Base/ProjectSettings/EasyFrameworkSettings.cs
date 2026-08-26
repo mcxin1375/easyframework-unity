@@ -19,9 +19,9 @@ namespace EasyFramework
     public enum EResLoaderMode
     {
         /// <summary>
-        /// SteamingAssets
+        /// StreamingAssets
         /// </summary>
-        DLC_SA,
+        DLC_StreamingAssets,
         /// <summary>
         /// Cdn
         /// </summary>
@@ -46,7 +46,7 @@ namespace EasyFramework
         
         [Header("ResLoader Settings")]
         public bool resLoaderEditorMode = true;
-        public EResLoaderMode resLoaderMode = EResLoaderMode.DLC_SA;
+        public EResLoaderMode resLoaderMode = EResLoaderMode.DLC_StreamingAssets;
         public int resRequestAliveTime = 60;
         
         [Header("HttpManager")]

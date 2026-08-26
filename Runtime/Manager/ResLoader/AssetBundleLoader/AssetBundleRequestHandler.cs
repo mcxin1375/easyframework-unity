@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace EasyFramework
 {
-    internal class AssetBundleRequestHandler : IPoolItem
+    internal class AssetBundleRequestHandler : IObjectPoolEvent
     {
         
         public bool Alive
@@ -41,10 +41,6 @@ namespace EasyFramework
             MainInfo = null;
             AliveTime = 0;
             AbName = string.Empty;
-        }
-        public void OnDispose()
-        {
-            OnReturn();
         }
 
         public void InitInfo(string abName, AssetBundleInfo mainInfo)

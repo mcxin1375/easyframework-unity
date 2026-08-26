@@ -27,7 +27,7 @@ namespace EasyFramework
 
         public AssetBundleLoader()
         {
-            ObjectPoolItem<AssetBundleRequestHandler>.Shared.CreateFunc = () => new AssetBundleRequestHandler();
+            ObjectPool<AssetBundleRequestHandler>.Shared.CreateFunc = () => new AssetBundleRequestHandler();
             ETask.AddTick(this);
         }
 
@@ -67,7 +67,7 @@ namespace EasyFramework
                     _requestDict.Remove(request.AbName);
                     
                     request.UnloadForce(false);
-                    ObjectPoolItem<AssetBundleRequestHandler>.Shared.Return(request);
+                    ObjectPool<AssetBundleRequestHandler>.Shared.Return(request);
                 }
             }
 
@@ -116,7 +116,7 @@ namespace EasyFramework
             if (request.Unload(handler, false))
             {
                 _requestDict.Remove(abName);
-                ObjectPoolItem<AssetBundleRequestHandler>.Shared.Return(request);
+                ObjectPool<AssetBundleRequestHandler>.Shared.Return(request);
             }
         }
         
@@ -125,7 +125,7 @@ namespace EasyFramework
             if (!_requestDict.TryGetValue(abName, out var request)) return;
             request.UnloadForce(unloadAllLoadedObjects);
             _requestDict.Remove(abName);
-            ObjectPoolItem<AssetBundleRequestHandler>.Shared.Return(request);
+            ObjectPool<AssetBundleRequestHandler>.Shared.Return(request);
         }
 
         public void UnloadAllForce(bool unloadAllLoadedObjects = false)
@@ -133,7 +133,7 @@ namespace EasyFramework
             foreach (var request in _requestDict.Values)
             {
                 request.UnloadForce(unloadAllLoadedObjects);
-                ObjectPoolItem<AssetBundleRequestHandler>.Shared.Return(request);
+                ObjectPool<AssetBundleRequestHandler>.Shared.Return(request);
             }
             _requestDict.Clear();
         }

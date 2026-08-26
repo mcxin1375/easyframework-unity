@@ -36,7 +36,7 @@ namespace EasyFramework
 
         void Awake()
         {
-            ObjectPoolItem<AudioItemBehaviour>.Shared.CreateFunc = CreateFunc;
+            ObjectPool<AudioItemBehaviour>.Shared.CreateFunc = CreateFunc;
             
             transform.SetParent(FBehaviour.Instance.transform);
             
@@ -59,7 +59,7 @@ namespace EasyFramework
                 var behaviour = _playingList[i];
                 if (behaviour.IsPlaying) continue;
                 _playingList.RemoveAt(i);
-                ObjectPoolItem<AudioItemBehaviour>.Shared.Return(behaviour);
+                ObjectPool<AudioItemBehaviour>.Shared.Return(behaviour);
             }
         }
 
@@ -67,7 +67,7 @@ namespace EasyFramework
         public AudioObject PlayMusic(string clipName, bool isLoop = false) => Play(clipName, isLoop, EAudioType.Music);
         public AudioObject Play(string clipName, bool loop, EAudioType audioType)
         {
-            var sourceBehaviour = ObjectPoolItem<AudioItemBehaviour>.Shared.Rent();
+            var sourceBehaviour = ObjectPool<AudioItemBehaviour>.Shared.Rent();
             sourceBehaviour.audioSource.loop = loop;
             sourceBehaviour.audioSource.volume = GetVolume(audioType);
             sourceBehaviour.audioSource.mute = GetMute(audioType);
@@ -100,7 +100,7 @@ namespace EasyFramework
 
         public void StopAll()
         {
-            foreach (var behaviour in _playingList) ObjectPoolItem<AudioItemBehaviour>.Shared.Return(behaviour);
+            foreach (var behaviour in _playingList) ObjectPool<AudioItemBehaviour>.Shared.Return(behaviour);
             _playingList.Clear();
         }
         public void StopAll(EAudioType audioType)
@@ -110,7 +110,7 @@ namespace EasyFramework
                 var behaviour = _playingList[i];
                 if (behaviour.AudioType != audioType) continue;
                 _playingList.RemoveAt(i);
-                ObjectPoolItem<AudioItemBehaviour>.Shared.Return(behaviour);
+                ObjectPool<AudioItemBehaviour>.Shared.Return(behaviour);
             }
         }
 
