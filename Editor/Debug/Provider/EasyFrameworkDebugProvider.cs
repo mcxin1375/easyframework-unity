@@ -36,9 +36,13 @@ namespace EasyFramework.Editor
 //             }
             
             EditorGUILayout.HelpBox("WorldManager", MessageType.Info);
-            foreach (var val in F.World.SystemList)
+            foreach (var world in WorldManager.Instance.WorldList)
             {
-                EditorGUILayout.LabelField($"{val.Order}", val.GetType().Name);
+                EditorGUILayout.LabelField($"World: {world.Index}");
+                foreach (var val in world.SystemList)
+                {
+                    EditorGUILayout.LabelField($"{val.Order}", val.GetType().Name);
+                }
             }
             
             EditorGUILayout.HelpBox("ControllerManager", MessageType.Info);

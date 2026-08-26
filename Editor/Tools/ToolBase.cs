@@ -7,6 +7,7 @@
 using System;
 using System.IO;
 using UnityEditor;
+using UnityEngine;
 
 namespace EasyFramework.Editor
 {
@@ -34,6 +35,7 @@ namespace EasyFramework.Editor
         
         protected void UpgradeVersion()
         {
+            Debug.Log("UpgradeVersion: " + Version.buildIndex);
             Version.buildIndex++;
             Version.dateTime = DateTime.Now.ToFileTime();
             // SVNCommand.TryGetRevision(EasyFrameworkPreferences.ProjectFullPath, out Version.revision);

@@ -27,11 +27,10 @@ namespace EasyFramework
 
         public AssetBundleLoader()
         {
-            ObjectPool<AssetBundleRequestHandler>.Shared.CreateFunc = () => new AssetBundleRequestHandler();
             ETask.AddTick(this);
         }
 
-        async ETask IResLoader.PreInitializeAsync()
+        public async ETask PreInitializeAsync()
         {
             if (!F.LocalStorageManager.Exists(AssetBundleManifest.FileName, ELocalStorageType.DLC))
             {
@@ -82,11 +81,9 @@ namespace EasyFramework
             {
                 if (!TryGetOrCreate(abName, out var mainInfo)) return null;
                 
-                // request = ObjectPoolItem<AssetBundleRequestHandler>.Shared.Rent();
-                request = new();
-                _requestDict.Add(abName, request);
-
+                request = ObjectPool<AssetBundleRequestHandler>.Shared.Rent();
                 request.InitInfo(abName, mainInfo);
+                _requestDict.Add(abName, request);
             }
             
             return request.Load(handler);
@@ -100,11 +97,9 @@ namespace EasyFramework
             {
                 if (!TryGetOrCreate(abName, out var mainInfo)) return null;
                 
-                // request = ObjectPoolItem<AssetBundleRequestHandler>.Shared.Rent();
-                request = new();
-                _requestDict.Add(abName, request);
-
+                request = ObjectPool<AssetBundleRequestHandler>.Shared.Rent();
                 request.InitInfo(abName, mainInfo);
+                _requestDict.Add(abName, request);
             }
             
             return await request.LoadAsync(handler);

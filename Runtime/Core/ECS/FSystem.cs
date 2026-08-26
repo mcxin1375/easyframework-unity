@@ -1,5 +1,9 @@
+/*----------------------------------------------------------------
+// author:Cookie(mcx)
+// date:2023/6/23
+// describe: 
+//----------------------------------------------------------------*/
 
-using System;
 using System.Reflection;
 
 namespace EasyFramework
@@ -34,24 +38,4 @@ namespace EasyFramework
         protected virtual void OnUpdate() { }
         protected virtual void OnLateUpdate() { }
     }
-    
-    public interface ISystem
-    {
-        int Order { get; }
-        void Create();
-        void Destroy();
-        void Update();
-        void LateUpdate();
-    }
-
-    [AttributeUsage(AttributeTargets.Class)]
-    public class FSystemOrderAttribute : Attribute
-    {
-        public readonly int Order;
-        public FSystemOrderAttribute(int order)
-        {
-            Order = order;
-        }
-    }
-
 }

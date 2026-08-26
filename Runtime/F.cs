@@ -10,7 +10,6 @@ namespace EasyFramework
 {
     public static class F
     {
-        public static readonly FWorld World = new();
         public static WorldManager WorldManager => EasyFramework.WorldManager.Instance;
         public static IControllerManager ControllerManager => EasyFramework.ControllerManager.Instance;
         
@@ -68,10 +67,7 @@ namespace EasyFramework
             EasyFramework.SpriteLoader.CreateInstance();
             EasyFramework.ShaderLoader.CreateInstance();
             EasyFramework.SceneLoader.CreateInstance();
-            EasyFramework.ControllerManager.CreateInstance();
             EasyFramework.AudioPlayer.CreateInstance();
-            
-            World.CreateSystem(typeof(F).Assembly);
         }
         
         [RuntimeInitializeOnLoadMethod]

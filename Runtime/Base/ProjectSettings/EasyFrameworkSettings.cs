@@ -36,10 +36,6 @@ namespace EasyFramework
         
         [Header("App Settings")]
         public AppSettings appSettings;
-        /// <summary>
-        /// 版本索引，发布时底包会记录该值，判断一致才可热更新
-        /// </summary>
-        public int dlcVersionIndex = 1;
         
         [Header("AssetBundle Settings")]
         public string abSuffix = ".ab";
@@ -49,11 +45,17 @@ namespace EasyFramework
         public EResLoaderMode resLoaderMode = EResLoaderMode.DLC_StreamingAssets;
         public int resRequestAliveTime = 60;
         
+        /// <summary>
+        /// 版本索引，发布时底包会记录该值，判断一致才可热更新
+        /// </summary>
+        [Header("DLCManager")]
+        public int dlcVersionIndex = 1;
+        
         [Header("HttpManager")]
-        public int maxRetryCount = 3;
-        public int retryDelayMs = 1000;
         public int downloadParallel = 3;
         public int unzipParallel = 3;
+        public int maxRetryCount = 3;
+        public int retryDelayMs = 1000;
         
         [Header("HttpManager")] 
         public GameObject uiRoot;

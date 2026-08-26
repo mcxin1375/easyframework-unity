@@ -13,7 +13,7 @@ namespace EasyFramework.Editor
             {
                 // EditorGUILayout.HelpBox($"Tool: {tool.GetType().Name}  Order: {tool.Order}", MessageType.Info);
                 // EditorGUILayout.LabelField($"[{tool.Order}]  {tool.GetType().Name}", GUIStyles.MainStyle);
-                EditorGUILayout.LabelField($"[{tool.GetType().Name}]", GUIStyles.MainStyle);
+                EditorGUILayout.LabelField($"[{tool.GetType().Name}]", $"Build: {tool.Version.buildIndex} Time: {tool.Version.DateTimeStr}", GUIStyles.MainStyle);
                 DrawToolExtensions(tool.Extension);
                 
                 EditorGUILayout.Space(5);

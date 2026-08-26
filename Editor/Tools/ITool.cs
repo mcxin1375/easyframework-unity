@@ -9,6 +9,7 @@ namespace EasyFramework.Editor
     public interface ITool
     {
         int Order => 0;
+        ToolVersion Version { get; }
         IToolExtension[] Extension => null;
         
         void Refresh();

@@ -18,10 +18,7 @@ namespace EasyFramework.Editor
         {
             foreach (var extension in ToolEvents) extension.OnExecuteBefore();
             
-            UpgradeVersion();
-
             var settings = DLCBuilderSettings.Instance;
-
             var versionName = string.IsNullOrEmpty(settings.versionCustomId) ? Version.buildIndex.ToString() : settings.versionCustomId;
             var outputDir = $"{ProjectDataPath}/{versionName}";
             var sourceDirs = new string[]

@@ -42,6 +42,9 @@ namespace EasyFramework.Editor
                     EditorUserBuildSettings.exportAsGoogleAndroidProject = settings.exportAsGoogleAndroidProject;
                     break;
             }
+            
+            
+            
         }
         
         public void BuildBySettings()

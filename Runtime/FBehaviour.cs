@@ -21,21 +21,18 @@ namespace EasyFramework
         {
             WorldManager.Instance.Update();
             ControllerManager.Instance.Update();
-            F.World.Update();
         }
         void LateUpdate()
         {
             WorldManager.Instance.LateUpdate();
             ControllerManager.Instance.LateUpdate();
-            F.World.LateUpdate();
         }
         private void OnDestroy()
         {
-            WorldManager.Instance.Destroy();
-            ControllerManager.Instance.Destroy();
             FDebug.Log($"[{transform.name}] OnDestroy");
             
-            F.World.Destroy();
+            WorldManager.Instance.Destroy();
+            ControllerManager.Instance.Destroy();
         }
     }
 }
