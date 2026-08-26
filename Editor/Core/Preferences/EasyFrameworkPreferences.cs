@@ -1,3 +1,4 @@
+using System;
 using UnityEditor;
 using UnityEngine;
 
@@ -8,7 +9,6 @@ namespace EasyFramework.Editor
         public const string SettingPath = "Preferences/Easy Framework";
 
         private static Settings _settings;
-
         internal static Settings s_Settings
         {
             get
@@ -22,12 +22,12 @@ namespace EasyFramework.Editor
 
         internal static void LoadSettings()
         {
-            _settings = NewtonsoftHelper.LoadOrCreate<Settings>(kSettingPath);
+            _settings = ConfigHelper.LoadOrCreate<Settings>(kSettingPath);
         }
 
         internal static void SaveSettings()
         {
-            NewtonsoftHelper.Save(kSettingPath, s_Settings, true);
+            ConfigHelper.Save(s_Settings, kSettingPath, true);
         }
 
         private class GUIScope : GUI.Scope
@@ -100,6 +100,7 @@ namespace EasyFramework.Editor
 
         public static string ProjectFullPath => $"{Application.dataPath}/../";
 
+        [Serializable]
         internal class Settings
         {
             public string ProjectDataPath = "EasyFramework";

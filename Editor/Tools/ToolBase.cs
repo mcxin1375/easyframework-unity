@@ -29,7 +29,7 @@ namespace EasyFramework.Editor
             AssetsDataPath = $"{EasyFrameworkPreferences.AssetsDataPath}/{typeof(T).Name}/{PlatformHelper.PlatformName}";
             DebugPath = $"{EasyFrameworkPreferences.ProjectDataPath}/.ToolsDebug/{typeof(T).Name}/{PlatformHelper.PlatformName}";
             VersionFilePath = $"{EasyFrameworkPreferences.ProjectDataPath}/.ToolsVersion/{PlatformHelper.PlatformName}/{typeof(T).Name}.json";
-            Version = UnityJsonHelper.LoadOrCreate<ToolVersion>(VersionFilePath);
+            Version = ConfigHelper.LoadOrCreate<ToolVersion>(VersionFilePath);
         }
         
         protected void UpgradeVersion()
@@ -37,7 +37,7 @@ namespace EasyFramework.Editor
             Version.buildIndex++;
             Version.dateTime = DateTime.Now.ToFileTime();
             // SVNCommand.TryGetRevision(EasyFrameworkPreferences.ProjectFullPath, out Version.revision);
-            UnityJsonHelper.Save(VersionFilePath, Version, true);
+            ConfigHelper.Save(Version, VersionFilePath, true);
         }
 
         public string[] GetBuildFiles() => GetBuildFiles(EditorUserBuildSettings.activeBuildTarget.ToPlatform());

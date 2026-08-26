@@ -50,7 +50,7 @@ namespace EasyFramework.Editor
             }
 
             info.SetToolVersion(HybridCLRBuilder.Instance.Version);
-            UnityJsonHelper.Save($"{outputPath}/{HybridCLRBuilderVersion.FileName}", info, true);
+            ConfigHelper.Save(info, $"{outputPath}/{HybridCLRBuilderVersion.FileName}", true);
         }
 
         public HybridCLRBuilderVersion CreateHybridCLRVersionInfo()

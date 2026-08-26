@@ -105,7 +105,7 @@ namespace EasyFramework.Editor
                 }
                 
                 var manifestFile = $"{outputPath}/{AssetBundleManifest.FileName}";
-                NewtonsoftHelper.Save(manifestFile, abManifest, true);
+                ConfigHelper.Save(abManifest, manifestFile, true);
             }
 
             return bundleManifest;

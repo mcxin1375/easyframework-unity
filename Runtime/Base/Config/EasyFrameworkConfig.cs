@@ -4,7 +4,7 @@ using System;
 namespace EasyFramework
 {
     [Serializable]
-    public class EasyFrameworkConfig : SingletonJson<EasyFrameworkConfig>
+    public class EasyFrameworkConfig : SingletonConfig<EasyFrameworkConfig>
     {
         public string mainResUid;
         public string dlcVersion;

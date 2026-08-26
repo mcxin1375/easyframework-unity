@@ -42,7 +42,7 @@ namespace EasyFramework.Editor
             dlcVersion.versionIndex = EasyFrameworkSettings.Instance.dlcVersionIndex;
             dlcVersion.versionName = versionName;
             dlcVersion.versionUid = Guid.NewGuid().ToString();
-            UnityJsonHelper.Save($"{outputDir}/{DLCVersion.FileName}", dlcVersion, true);
+            ConfigHelper.Save(dlcVersion, $"{outputDir}/{DLCVersion.FileName}", true);
             
             DLCBuilderVersion dlcBuilderVersion = new();
             dlcBuilderVersion.dlcVersion = dlcVersion;
@@ -52,7 +52,7 @@ namespace EasyFramework.Editor
 #if EF_HYBRIDCLR
             dlcBuilderVersion.dllBuilderVersion = HybridCLRBuilder.Instance.Version;
 #endif
-            UnityJsonHelper.Save($"{outputDir}/{DLCBuilderVersion.FileName}", dlcBuilderVersion, true);
+            ConfigHelper.Save(dlcBuilderVersion, $"{outputDir}/{DLCBuilderVersion.FileName}", true);
 
             DLCBuilderVersionList.Refresh(ProjectDataPath, settings.maxCacheNum);
             
@@ -230,13 +230,13 @@ namespace EasyFramework.Editor
             DLCVersionInfo versionInfo = new();
             versionInfo.hashFiles = hashFileList.ToArray();
             
-            UnityJsonHelper.Save($"{outputDir}/{DLCVersionInfo.FileName}", versionInfo, true);
+            ConfigHelper.Save(versionInfo, $"{outputDir}/{DLCVersionInfo.FileName}", true);
         }
 
         public DLCBuilderVersion GetNewBuilderVersion()
         {
             var file = $"{ProjectDataPath}/{DLCBuilderVersionList.FileName}";
-            var versionList = UnityJsonHelper.LoadOrCreate<DLCBuilderVersionList>(file);
+            var versionList = ConfigHelper.LoadOrCreate<DLCBuilderVersionList>(file);
             return versionList.versions?.Length > 0 ? versionList.versions[0] : null;
         }
         public string GetDLCVersionFile(string dlcVersion)

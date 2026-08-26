@@ -70,7 +70,7 @@ namespace EasyFramework
                 string versionFile = $"{directory}/{nameof(DLCBuilderVersion)}.json";
                 if (!File.Exists(versionFile)) continue;
 
-                var info = UnityJsonHelper.LoadOrCreate<DLCBuilderVersion>(versionFile);
+                var info = ConfigHelper.LoadOrCreate<DLCBuilderVersion>(versionFile);
                 versionList.Add(info);
             }
             versionList = versionList.OrderByDescending(item => item.DateTime).ToList();
@@ -95,7 +95,7 @@ namespace EasyFramework
             }
             var dlcVersionList = new DLCBuilderVersionList();
             dlcVersionList.versions = versionList.ToArray();
-            UnityJsonHelper.Save($"{rootPath}/{nameof(DLCBuilderVersionList)}.json", dlcVersionList, true);
+            ConfigHelper.Save(dlcVersionList, $"{rootPath}/{nameof(DLCBuilderVersionList)}.json", true);
         }
         
     }

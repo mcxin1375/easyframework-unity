@@ -6,39 +6,27 @@
 
 namespace EasyFramework
 {
-    public class SingletonConfig<T> where T : SingletonConfig<T>, new()
+    public class SingletonConfig<T> : Config<T> where T : SingletonConfig<T>, new()
     {
         public string FilePath { get; private set; }
         
         private static T _instance;
-        public static T Instance => _instance ?? LoadOrCreate();
 
-        public static T LoadOrCreate()
+        public static T Instance
         {
-            // var filePath = $"{LocalStorageHelper.Instance.DataPath}/ConfigSingleton/{typeof(T).Name}.json";
-            var filePath = F.LocalStorageManager.GetFilePath($"{typeof(T).Name}.json", ELocalStorageType.Config);
-            return LoadOrCreate(filePath);
-        }
-        public static T LoadOrCreate(string filePath)
-        {
-            _instance = UnityJsonHelper.LoadOrCreate<T>(filePath);
-            _instance.FilePath = filePath;
-            return _instance;
-        }
-        
-        public void Save() => SaveTo(FilePath);
-        public void SaveTo(string filePath)
-        {
-            UnityJsonHelper.Save(filePath, this);
-        }
-        
-        public ETask SaveAsync() => SaveToAsync(FilePath);
-        public ETask SaveToAsync(string filePath)
-        {
-            return ETask.RunOnThreadPool(() =>
+            get
             {
-                UnityJsonHelper.Save(filePath, this);
-            });
+                if (_instance == null)
+                {
+                    var filePath = F.LocalStorageManager.GetFilePath($"{typeof(T).Name}.json", ELocalStorageType.Config);
+                    _instance = LoadFromFile(filePath);
+                    _instance.FilePath = filePath;
+                }
+
+                return _instance;
+            }
         }
+
+        public void Save() => Save(FilePath);
     }
 }

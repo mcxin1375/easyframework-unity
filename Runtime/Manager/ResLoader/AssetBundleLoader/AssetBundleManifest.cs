@@ -8,6 +8,7 @@ using System.Collections.Generic;
 
 namespace EasyFramework
 {
+    [ConfigSettings(EConfigType.Newtonsoft)]
     public class AssetBundleManifest
     {
         public const string FileName = "AssetBundleManifest.json";

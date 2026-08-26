@@ -44,7 +44,7 @@ namespace EasyFramework
             }
 
             var content = F.LocalStorageManager.ReadAllText(AssetBundleManifest.FileName, ELocalStorageType.DLC);
-            Manifest = NewtonsoftHelper.LoadFromText<AssetBundleManifest>(content);
+            Manifest = ConfigHelper.LoadFromText<AssetBundleManifest>(content);
             
             foreach (var kv in Manifest.depDict)
             {
