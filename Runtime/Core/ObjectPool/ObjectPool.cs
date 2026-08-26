@@ -58,7 +58,7 @@ namespace EasyFramework
                 if (_pool.Count > 0) return _pool.Dequeue();
             }
             CreatedCount++;
-            var item = CreateFunc();
+            var item = CreateFunc?.Invoke() ?? new T();
             if (item is IObjectPoolEvent e) e.OnCreate();
             return item;
         }

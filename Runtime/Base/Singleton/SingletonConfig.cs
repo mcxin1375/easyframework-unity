@@ -6,7 +6,7 @@
 
 namespace EasyFramework
 {
-    public class SingletonConfig<T> : Config<T> where T : SingletonConfig<T>, new()
+    public class SingletonConfig<T> where T : SingletonConfig<T>, new()
     {
         public string FilePath { get; private set; }
         
@@ -19,7 +19,7 @@ namespace EasyFramework
                 if (_instance == null)
                 {
                     var filePath = F.LocalStorageManager.GetFilePath($"{typeof(T).Name}.json", ELocalStorageType.Config);
-                    _instance = LoadFromFile(filePath);
+                    _instance = ConfigHelper.LoadOrCreate<T>(filePath);
                     _instance.FilePath = filePath;
                 }
 
@@ -27,6 +27,6 @@ namespace EasyFramework
             }
         }
 
-        public void Save() => Save(FilePath);
+        public void Save() => ConfigHelper.Save(this, FilePath);
     }
 }
