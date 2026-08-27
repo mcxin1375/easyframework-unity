@@ -21,7 +21,7 @@ namespace EasyFramework
             _nameDict = new();
             if (hashFiles != null)
             {
-                foreach (var file in hashFiles) _nameDict.Add(file.fileName, file.hashFileName);
+                foreach (var file in hashFiles) _nameDict.Add(file.resName, file.fileName);
             }
         }
 

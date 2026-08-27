@@ -12,7 +12,8 @@ namespace EasyFramework
     public class DLCVersionInfo
     {
         public const string FileName = "DLCVersionInfo.json";
-        
+
+        public string uid;
         public HashFileInfo[] hashFiles;
     }
 }

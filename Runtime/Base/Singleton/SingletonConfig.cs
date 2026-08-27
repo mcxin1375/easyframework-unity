@@ -18,7 +18,7 @@ namespace EasyFramework
             {
                 if (_instance == null)
                 {
-                    var filePath = F.LocalStorageManager.GetFilePath($"{typeof(T).Name}.json", ELocalStorageType.Config);
+                    var filePath = $"{EasyFrameworkSettings.Instance.ConfigPath}/{typeof(T).Name}.json";
                     _instance = ConfigHelper.LoadOrCreate<T>(filePath);
                     _instance.FilePath = filePath;
                 }

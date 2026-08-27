@@ -32,23 +32,23 @@ namespace EasyFramework
 
         public async ETask PreInitializeAsync()
         {
-            if (!F.LocalStorageManager.Exists(AssetBundleManifest.FileName, ELocalStorageType.DLC))
-            {
-                var result = await F.DLCDownloader.DownloadAsync(AssetBundleManifest.FileName);
-                if (!result)
-                {
-                    FDebug.LogError($"DLCDownloader download {AssetBundleManifest.FileName} error!");
-                    return;
-                }
-            }
-
-            var content = F.LocalStorageManager.ReadAllText(AssetBundleManifest.FileName, ELocalStorageType.DLC);
-            Manifest = ConfigHelper.LoadFromText<AssetBundleManifest>(content);
-            
-            foreach (var kv in Manifest.depDict)
-            {
-                _abDict.Add(kv.Key, new AssetBundleInfo(kv.Key, kv.Value));
-            }
+            // if (!F.LocalStorageManager.Exists(AssetBundleManifest.FileName, ELocalStorageType.DLC))
+            // {
+            //     var result = await F.DLCDownloader.DownloadAsync(AssetBundleManifest.FileName);
+            //     if (!result)
+            //     {
+            //         FDebug.LogError($"DLCDownloader download {AssetBundleManifest.FileName} error!");
+            //         return;
+            //     }
+            // }
+            //
+            // var content = F.LocalStorageManager.ReadAllText(AssetBundleManifest.FileName, ELocalStorageType.DLC);
+            // Manifest = ConfigHelper.LoadFromText<AssetBundleManifest>(content);
+            //
+            // foreach (var kv in Manifest.depDict)
+            // {
+            //     _abDict.Add(kv.Key, new AssetBundleInfo(kv.Key, kv.Value));
+            // }
         }
 
         bool ITickerNode.OnTick()

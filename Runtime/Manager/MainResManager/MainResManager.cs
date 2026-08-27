@@ -1,6 +1,7 @@
 using System.IO;
 using System.Threading;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace EasyFramework
 {
@@ -43,7 +44,7 @@ namespace EasyFramework
             
             if (mainResInfo.mainResZipArray == null || mainResInfo.mainResZipArray.Length == 0)
             {
-                F.LocalStorageManager.ClearDirectory(ELocalStorageType.DLC);
+                FileHelper.ClearDirectory(EasyFrameworkSettings.Instance.DLCPath);
                 UpdateConfig();
                 return MainResManagerResult.Success;
             }
@@ -51,7 +52,7 @@ namespace EasyFramework
             var mainResPath = Application.streamingAssetsPath;
             if (Application.platform == RuntimePlatform.Android || Application.isEditor)
             {
-                mainResPath = F.LocalStorageManager.GetDirectoryPath(ELocalStorageType.DownloadTemp);
+                mainResPath = EasyFrameworkSettings.Instance.DownloadPath;
 
                 var result = await DownloadMainResFromLocalAsync(cancellationToken);
                 if (!result) return MainResManagerResult.LoadFromStreamingAssetsError;
@@ -78,7 +79,7 @@ namespace EasyFramework
             _downloadProgress = 0;
 
             var downloadUrl = Application.streamingAssetsPath;
-            var downloadPath = F.LocalStorageManager.GetDirectoryPath(ELocalStorageType.DownloadTemp);
+            var downloadPath = EasyFrameworkSettings.Instance.DownloadPath;
             if (ResZipInfo.mainResZipArray?.Length > 0)
             {
                 // float rate = 1 / (float)mainResInfo.mainResZipArray.Length;
@@ -90,8 +91,8 @@ namespace EasyFramework
                     string fromFile = $"{downloadUrl}/{resInfo.name}";
                     string toFile = $"{downloadPath}/{resInfo.name}";
                     
-                    var result = await F.HttpManager.DownloadFileAsync(fromFile, toFile, cancellationToken);
-                    if (!result)
+                    var webRequest = await ETask.UnityWebRequestDownload(fromFile, toFile);
+                    if (webRequest.result != UnityWebRequest.Result.Success)
                     {
                         FDebug.LogError("DownloadFileAsync Failed: " + resInfo.name);
                         return false;
@@ -108,7 +109,7 @@ namespace EasyFramework
         {
             // Debug.Log("UnzipMainResAsync");
             
-            F.LocalStorageManager.ClearDirectory(ELocalStorageType.DLC);
+            FileHelper.ClearDirectory(EasyFrameworkSettings.Instance.DLCPath);
             
             if (ResZipInfo.mainResZipArray?.Length > 0)
             {
@@ -118,7 +119,7 @@ namespace EasyFramework
                 {
                     var resInfo = ResZipInfo.mainResZipArray[i];
                     string unzipFile = $"{downloadPath}/{resInfo.name}";
-                    UnzipManager.Instance.AddRequest(unzipFile, F.LocalStorageManager.GetDirectoryPath(ELocalStorageType.DLC));
+                    UnzipManager.Instance.AddRequest(unzipFile, EasyFrameworkSettings.Instance.DLCPath);
                 }
 
                 // List<UnzipRequest> tmpList = new();
@@ -133,7 +134,7 @@ namespace EasyFramework
                 }
             }
             
-            F.LocalStorageManager.ClearDirectory(ELocalStorageType.DownloadTemp);
+            FileHelper.ClearDirectory(EasyFrameworkSettings.Instance.DownloadPath);
             
             return true;
         }

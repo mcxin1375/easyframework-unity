@@ -6,7 +6,7 @@ namespace EasyFramework
     public static class PlatformHelper
     {
         public static readonly string PlatformName;
-
+        
         static PlatformHelper()
         {
 #if UNITY_EDITOR

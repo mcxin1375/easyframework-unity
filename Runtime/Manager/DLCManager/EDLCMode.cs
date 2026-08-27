@@ -14,9 +14,9 @@ namespace EasyFramework
         None = 0,
         
         /// <summary>
-        /// 资源列表模式
+        /// 基础模式
         /// </summary>
-        List = 1,
+        DLC = 1,
         
         // DLCZip = 2,
     }

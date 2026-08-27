@@ -8,6 +8,6 @@ namespace EasyFramework
     {
         public string mainResUid;
         public string dlcVersion;
-        public string dlcVersionUid;
+        public string dlcVersionInfoUid;
     }
 }

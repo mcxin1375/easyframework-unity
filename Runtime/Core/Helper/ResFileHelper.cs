@@ -25,8 +25,8 @@ namespace EasyFramework
                 var hashFileName = $"{md5}{Path.GetExtension(resFile)}";
                 arr[i] = new HashFileInfo
                 {
-                    fileName = Path.GetFileName(resFile),
-                    hashFileName = hashFileName,
+                    resName = Path.GetFileName(resFile),
+                    fileName = hashFileName,
                     length = fi.Length,
                 };
                 

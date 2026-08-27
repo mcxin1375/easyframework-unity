@@ -8,18 +8,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using Random = UnityEngine.Random;
+using UnityEngine.Networking;
 
 namespace EasyFramework
 {
-    public class DLCManager : Singleton<DLCManager>
+    public class DLCManager : Singleton<DLCManager>, IDLCManager
     {
         public enum EResult
         {
             Success,
+            Error,
             AppVersionTooLow,
-            UpdateVersionError,
-            UpdateVersionInfoError,
+            DLCUpdaterError,
+            
         }
         public enum EState
         {
@@ -33,234 +34,287 @@ namespace EasyFramework
 
         public string ServerUrl { get; private set; }
         public DLCVersion Version { get; private set; }
+        public DLCVersionInfo DLCVersionInfo { get; private set; }
 
         private EasyFrameworkConfig Config => EasyFrameworkConfig.Instance;
         private readonly Dictionary<string, string> _fileNameHashDict = new();
         private readonly Dictionary<string, HashFileInfo> _fileInfoHashDict = new();
 
-        private Action<EResult> _callback = null;
 
-        public void Enter(Action<EResult> callback = null)
+        public async ETask UpdateAsync()
         {
-            Enter(EasyFrameworkConfig.Instance.dlcVersion, callback);
-        }
-        public void Enter(string dlcVersion, Action<EResult> callback = null)
-        {
-            if (State != EState.None || State == EState.Completed)
+            var versionUrl = EasyFrameworkSettings.AppSettings.AppVersionURL;
+            var webRequest = await ETask.UnityWebRequest(versionUrl);
+            if (webRequest.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogError($"DLCManager is busying, current state: {State}");
+                FDebug.LogError($"AppVersionUrl: {versionUrl}\nresult: {webRequest.result}");
                 return;
             }
-
-            _callback = callback;
-
-            if (string.IsNullOrEmpty(dlcVersion))
-            {
-                EnterState(EState.UpdateVersion);
-            }
-            else
-            {
-                Config.dlcVersion = dlcVersion;
-                Config.Save();
-                    
-                EnterState(EState.UpdateVersionInfo);
-            }
+            FDebug.Log($"AppVersionUrl: {versionUrl}\n{webRequest.downloadHandler.text}");
+            var dlcVersion = ConfigHelper.LoadFromText<DLCVersion>(webRequest.downloadHandler.text);
+            await UpdateAsync(dlcVersion);
         }
-
-        private void OnCompleted(EResult result)
+        // public async ETask UpdateAsync(string dlcVersion)
+        // {
+        //     var versionUrl = $"{EasyFrameworkSettings.AppSettings.CdnURL}/{dlcVersion}";
+        //     
+        // }
+        private async ETask<EResult> UpdateAsync(DLCVersion dlcVersion)
         {
-            State = EState.Completed;
-            _callback?.Invoke(result);
-            _callback = null;
-        }
-
-        private void EnterState(EState state)
-        {
-            State = state;
-            switch (state)
+            if (dlcVersion == null)
             {
-                case EState.UpdateVersion:
-                    UpdateVersion();
-                    break;
-                case EState.UpdateVersionInfo:
-                    UpdateVersionInfo();
-                    break;
-            }
-        }
-
-        private void UpdateVersion()
-        {
-            if (EasyFrameworkSettings.App == null || string.IsNullOrEmpty(EasyFrameworkSettings.App.AppVersionFileUrl))
-            {
-                FDebug.LogError($"AppVersionFileUrl is empty");
-                OnCompleted(EResult.UpdateVersionError);
-                return;
+                FDebug.LogError($"dlcVersion is null");
+                return EResult.Error;
             }
 
-            // var url = $"{EasyFrameworkSettings.App.AppVersionFileUrl}?{Guid.NewGuid()}";
-            var url = $"{EasyFrameworkSettings.App.AppVersionFileUrl}";
-            Debug.Log(url);
-            F.HttpManager.GetString(url, (b, s) =>
-            {
-                Debug.Log($"{b}, {s}");
-                if (b)
-                {
-                    Version = JsonUtility.FromJson<DLCVersion>(s);
-                    if (Version.versionIndex > EasyFrameworkSettings.Instance.dlcVersionIndex)
-                    {
-                        OnCompleted(EResult.AppVersionTooLow);
-                        return;
-                    }
-
-                    Config.dlcVersion = Version.versionName;
-                    Config.Save();
-                    
-                    EnterState(EState.UpdateVersionInfo);
-                }
-                else
-                {
-                    OnCompleted(EResult.UpdateVersionError);
-                }
-            });
-        }
-
-        private void UpdateVersionInfo()
-        {
-            ServerUrl = $"{EasyFrameworkSettings.App.DLCPlatformServerUrl}/{Config.dlcVersion}/{EDLCMode.List}";
-
-            var localVersionInfo = F.LocalStorageManager.LoadObject<DLCVersionInfo>(DLCVersionInfo.FileName, ELocalStorageType.DLC);
-            if (Config.dlcVersionUid == Version.versionUid && localVersionInfo != null)
-            {
-                UpdateHashInfos(localVersionInfo);
-                OnCompleted(EResult.Success);
-                return;
-            }
+            Version = dlcVersion;
+            if (Version.versionIndex > EasyFrameworkSettings.Instance.dlcVersionIndex)
+                return EResult.AppVersionTooLow;
             
-            var versionUrl = $"{ServerUrl}/{DLCVersionInfo.FileName}?{Guid.NewGuid()}";
-            Debug.Log(versionUrl);
-            F.HttpManager.GetString(versionUrl, (b, s) =>
-            {
-                Debug.Log($"{b}, {s}");
-                if (b)
-                {
-                    var dlcVersionInfoServer = JsonUtility.FromJson<DLCVersionInfo>(s);
-                    if (dlcVersionInfoServer == null)
-                    {
-                        OnCompleted(EResult.UpdateVersionInfoError);
-                        return;
-                    }
-                    
-                    F.LocalStorageManager.SaveString(DLCVersionInfo.FileName, s, ELocalStorageType.DLC);
-                    Config.dlcVersionUid = Version.versionUid;
-                    Config.Save();
+            Config.dlcVersion = Version.versionName;
+            Config.Save();
 
-                    if (localVersionInfo != null)
-                    {
-                        DeleteUnversionedFiles(localVersionInfo, dlcVersionInfoServer);
-                    }
+            var result = await DLCUpdater.Instance.UpdateAsync();
+            if (result != DLCUpdater.EResult.Success) return EResult.DLCUpdaterError;
 
-                    UpdateHashInfos(dlcVersionInfoServer);
-                    OnCompleted(EResult.Success);
-                }
-                else
-                {
-                    OnCompleted(EResult.UpdateVersionInfoError);
-                }
-            });
+            return EResult.Success;
         }
 
-        private void UpdateHashInfos(DLCVersionInfo versionInfo)
-        {
-            foreach (var info in versionInfo.hashFiles)
-            {
-                if (!_fileInfoHashDict.TryAdd(info.fileName, info))
-                {
-                    Debug.LogWarning($"UpdateHashFiles fileName: {info.fileName} already exists");
-                }
-                if (!_fileNameHashDict.TryAdd(info.fileName, info.hashFileName))
-                {
-                    Debug.LogWarning($"UpdateHashFiles hashFileName: {info.hashFileName} already exists");
-                }
-            }
-        }
-        
-        private void DeleteUnversionedFiles(DLCVersionInfo oldVersion, DLCVersionInfo newVersion)
-        {
-            var hashSet = newVersion.hashFiles.Select(item => item.hashFileName).ToHashSet();
-            foreach (var info in oldVersion.hashFiles)
-            {
-                if (!hashSet.Contains(info.hashFileName))
-                {
-                    F.LocalStorageManager.Delete(info.fileName, ELocalStorageType.DLC);
-                }
-            }
-        }
 
-        public string GetFileHashName(string fileName) => _fileNameHashDict.GetValueOrDefault(fileName);
-        
-        public ETask<bool> DownloadFileAsync(string fileName)
-        {
-            if (!_fileInfoHashDict.TryGetValue(fileName, out var hashFileInfo))
-                return ETask.FromResult(false);
-
-            var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
-            var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
-            return F.HttpManager.DownloadFileAsync(downloadUrl, downloadFile);
-        }
         public void DownloadFile(string fileName, Action<bool> callback = null)
         {
-            if (!_fileInfoHashDict.TryGetValue(fileName, out var hashFileInfo))
-            {
-                FDebug.Log($"DownloadFile fileName: {fileName} not found");
-                
-                callback?.Invoke(false);
-                return;
-            }
+            throw new NotImplementedException();
+        }
 
-            var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
-            var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
-            F.HttpManager.DownloadFile(downloadUrl, downloadFile, callback);
-        }
-        
-        public ETask<bool> DownloadFilesAsync(string[] fileNames)
-        {
-            HttpDownloadRequest[] requests = new HttpDownloadRequest[fileNames.Length];
-            for (int i = 0; i < fileNames.Length; i++)
-            {
-                var fileName = fileNames[i];
-                
-                if (!_fileInfoHashDict.TryGetValue(fileName, out var hashFileInfo))
-                    return ETask.FromResult(false);
-                
-                var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
-                var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
-                requests[i] = new HttpDownloadRequest(downloadUrl, downloadFile);
-            }
-            
-            return F.HttpManager.DownloadFilesAsync(requests);
-        }
         public void DownloadFiles(string[] fileNames, Action<bool> callback = null)
         {
-            HttpDownloadRequest[] requests = new HttpDownloadRequest[fileNames.Length];
-            for (int i = 0; i < fileNames.Length; i++)
-            {
-                var fileName = fileNames[i];
-                
-                if (!_fileInfoHashDict.TryGetValue(fileName, out var hashFileInfo))
-                {
-                    callback?.Invoke(false);
-                    return;
-                }
-                
-                var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
-                var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
-                requests[i] = new HttpDownloadRequest(downloadUrl, downloadFile);
-            }
-            F.HttpManager.DownloadFiles(requests, callback);
+            throw new NotImplementedException();
         }
 
-#if !UNITY_WEBGL
-
-#endif
+        public ETask<bool> DownloadFileAsync(string fileName)
+        {
+            throw new NotImplementedException();
+        }
+        // public void Enter(Action<EResult> callback = null)
+        // {
+        //     Enter(EasyFrameworkConfig.Instance.dlcVersion, callback);
+        // }
+        // public void Enter(string dlcVersion, Action<EResult> callback = null)
+        // {
+        //     if (State != EState.None || State == EState.Completed)
+        //     {
+        //         Debug.LogError($"DLCManager is busying, current state: {State}");
+        //         return;
+        //     }
+        //
+        //     _callback = callback;
+        //
+        //     if (string.IsNullOrEmpty(dlcVersion))
+        //     {
+        //         EnterState(EState.UpdateVersion);
+        //     }
+        //     else
+        //     {
+        //         Config.dlcVersion = dlcVersion;
+        //         Config.Save();
+        //             
+        //         EnterState(EState.UpdateVersionInfo);
+        //     }
+        // }
+        //
+        // private void OnCompleted(EResult result)
+        // {
+        //     State = EState.Completed;
+        //     _callback?.Invoke(result);
+        //     _callback = null;
+        // }
+        //
+        // private void EnterState(EState state)
+        // {
+        //     State = state;
+        //     switch (state)
+        //     {
+        //         case EState.UpdateVersion:
+        //             UpdateVersion();
+        //             break;
+        //         case EState.UpdateVersionInfo:
+        //             UpdateVersionInfo();
+        //             break;
+        //     }
+        // }
+        //
+        // private void UpdateVersion()
+        // {
+        //     if (EasyFrameworkSettings.App == null || string.IsNullOrEmpty(EasyFrameworkSettings.App.AppVersionFileUrl))
+        //     {
+        //         FDebug.LogError($"AppVersionFileUrl is empty");
+        //         OnCompleted(EResult.UpdateVersionError);
+        //         return;
+        //     }
+        //
+        //     // var url = $"{EasyFrameworkSettings.App.AppVersionFileUrl}?{Guid.NewGuid()}";
+        //     var url = $"{EasyFrameworkSettings.App.AppVersionFileUrl}";
+        //     Debug.Log(url);
+        //     F.HttpManager.GetString(url, (s) =>
+        //     {
+        //         Debug.Log($"{s}");
+        //         try
+        //         {
+        //             Version = JsonUtility.FromJson<DLCVersion>(s);
+        //             if (Version.versionIndex > EasyFrameworkSettings.Instance.dlcVersionIndex)
+        //             {
+        //                 OnCompleted(EResult.AppVersionTooLow);
+        //                 return;
+        //             }
+        //
+        //             Config.dlcVersion = Version.versionName;
+        //             Config.Save();
+        //             
+        //             EnterState(EState.UpdateVersionInfo);
+        //         }
+        //         catch (Exception e)
+        //         {
+        //             FDebug.LogException(e);
+        //             OnCompleted(EResult.UpdateVersionError);
+        //         }
+        //     });
+        // }
+        //
+        // private void UpdateVersionInfo()
+        // {
+        //     ServerUrl = $"{EasyFrameworkSettings.App.DLCPlatformServerUrl}/{Config.dlcVersion}/{EDLCMode.List}";
+        //
+        //     var localVersionInfo = F.LocalStorageManager.LoadObject<DLCVersionInfo>(DLCVersionInfo.FileName, ELocalStorageType.DLC);
+        //     if (Config.dlcVersionUid == Version.versionUid && localVersionInfo != null)
+        //     {
+        //         UpdateHashInfos(localVersionInfo);
+        //         OnCompleted(EResult.Success);
+        //         return;
+        //     }
+        //     
+        //     var versionUrl = $"{ServerUrl}/{DLCVersionInfo.FileName}?{Guid.NewGuid()}";
+        //     Debug.Log(versionUrl);
+        //     F.HttpManager.GetString(versionUrl, (s) =>
+        //     {
+        //         Debug.Log($"{s}");
+        //         
+        //         try
+        //         {
+        //             var dlcVersionInfoServer = JsonUtility.FromJson<DLCVersionInfo>(s);
+        //             if (dlcVersionInfoServer == null)
+        //             {
+        //                 OnCompleted(EResult.UpdateVersionInfoError);
+        //                 return;
+        //             }
+        //             
+        //             F.LocalStorageManager.SaveString(DLCVersionInfo.FileName, s, ELocalStorageType.DLC);
+        //             Config.dlcVersionUid = Version.versionUid;
+        //             Config.Save();
+        //
+        //             if (localVersionInfo != null)
+        //             {
+        //                 DeleteUnversionedFiles(localVersionInfo, dlcVersionInfoServer);
+        //             }
+        //
+        //             UpdateHashInfos(dlcVersionInfoServer);
+        //             OnCompleted(EResult.Success);
+        //         }
+        //         catch (Exception e)
+        //         {
+        //             FDebug.LogException(e);
+        //             OnCompleted(EResult.UpdateVersionInfoError);
+        //         }
+        //     });
+        // }
+        //
+        // private void UpdateHashInfos(DLCVersionInfo versionInfo)
+        // {
+        //     foreach (var info in versionInfo.hashFiles)
+        //     {
+        //         if (!_fileInfoHashDict.TryAdd(info.fileName, info))
+        //         {
+        //             Debug.LogWarning($"UpdateHashFiles fileName: {info.fileName} already exists");
+        //         }
+        //         if (!_fileNameHashDict.TryAdd(info.fileName, info.hashFileName))
+        //         {
+        //             Debug.LogWarning($"UpdateHashFiles hashFileName: {info.hashFileName} already exists");
+        //         }
+        //     }
+        // }
+        //
+        // private void DeleteUnversionedFiles(DLCVersionInfo oldVersion, DLCVersionInfo newVersion)
+        // {
+        //     var hashSet = newVersion.hashFiles.Select(item => item.hashFileName).ToHashSet();
+        //     foreach (var info in oldVersion.hashFiles)
+        //     {
+        //         if (!hashSet.Contains(info.hashFileName))
+        //         {
+        //             F.LocalStorageManager.Delete(info.fileName, ELocalStorageType.DLC);
+        //         }
+        //     }
+        // }
+        //
+        // public string GetFileHashName(string fileName) => _fileNameHashDict.GetValueOrDefault(fileName);
+        //
+        // public ETask<bool> DownloadFileAsync(string fileName)
+        // {
+        //     if (!_fileInfoHashDict.TryGetValue(fileName, out var hashFileInfo))
+        //         return ETask.FromResult(false);
+        //
+        //     var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
+        //     var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
+        //     return F.HttpManager.DownloadFileAsync(downloadUrl, downloadFile);
+        // }
+        // public void DownloadFile(string fileName, Action<bool> callback = null)
+        // {
+        //     if (!_fileInfoHashDict.TryGetValue(fileName, out var hashFileInfo))
+        //     {
+        //         FDebug.Log($"DownloadFile fileName: {fileName} not found");
+        //         
+        //         callback?.Invoke(false);
+        //         return;
+        //     }
+        //
+        //     var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
+        //     var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
+        //     F.HttpManager.DownloadFile(downloadUrl, downloadFile, callback);
+        // }
+        //
+        // public ETask<bool> DownloadFilesAsync(string[] fileNames)
+        // {
+        //     HttpDownloadRequest[] requests = new HttpDownloadRequest[fileNames.Length];
+        //     for (int i = 0; i < fileNames.Length; i++)
+        //     {
+        //         var fileName = fileNames[i];
+        //         
+        //         if (!_fileInfoHashDict.TryGetValue(fileName, out var hashFileInfo))
+        //             return ETask.FromResult(false);
+        //         
+        //         var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
+        //         var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
+        //         requests[i] = new HttpDownloadRequest(downloadUrl, downloadFile);
+        //     }
+        //     
+        //     return F.HttpManager.DownloadFilesAsync(requests);
+        // }
+        // public void DownloadFiles(string[] fileNames, Action<bool> callback = null)
+        // {
+        //     HttpDownloadRequest[] requests = new HttpDownloadRequest[fileNames.Length];
+        //     for (int i = 0; i < fileNames.Length; i++)
+        //     {
+        //         var fileName = fileNames[i];
+        //         
+        //         if (!_fileInfoHashDict.TryGetValue(fileName, out var hashFileInfo))
+        //         {
+        //             callback?.Invoke(false);
+        //             return;
+        //         }
+        //         
+        //         var downloadUrl = $"{ServerUrl}/{hashFileInfo.hashFileName}";
+        //         var downloadFile = F.LocalStorageManager.GetFilePath(hashFileInfo.fileName, ELocalStorageType.DLC);
+        //         requests[i] = new HttpDownloadRequest(downloadUrl, downloadFile);
+        //     }
+        //     F.HttpManager.DownloadFiles(requests, callback);
+        // }
     }
 }

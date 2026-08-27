@@ -89,13 +89,10 @@ namespace EasyFramework
                 {
                     case ELoadType.Dll:
                         
-                        var dllFileName = $"{assemblyName}{FileExtension}";
-                        var dllPdbFileName = $"{assemblyName}.pdb{FileExtension}";
-
-                        var dllData = F.LocalStorageManager.ReadAllBytes(dllFileName, ELocalStorageType.DLC);
-                        var dllPdbData = F.LocalStorageManager.ReadAllBytes(dllPdbFileName, ELocalStorageType.DLC);
+                        var dllDataFile = $"{EasyFrameworkSettings.Instance.DLCPath}/{assemblyName}{FileExtension}";
+                        var dllPdbDataFile = $"{EasyFrameworkSettings.Instance.DLCPath}/{assemblyName}.pdb{FileExtension}";
                         
-                        var assembly = HotUpdateHelper.LoadDll(dllData, dllPdbData);
+                        var assembly = HotUpdateHelper.LoadDll(dllDataFile, dllPdbDataFile);
                         _assemblies.Add(assembly);
                         
                         HotUpdateHelper.Enter(assembly);
@@ -105,7 +102,8 @@ namespace EasyFramework
                         var metaDataFileName = assemblyName.EndsWith(FileExtension)
                             ? assemblyName
                             : $"{assemblyName}{FileExtension}";
-                        HotUpdateHelper.LoadMetaData(F.LocalStorageManager.ReadAllBytes(metaDataFileName, ELocalStorageType.DLC));
+                        var metaDataFile = $"{EasyFrameworkSettings.Instance.DLCPath}/{metaDataFileName}";
+                        HotUpdateHelper.LoadMetaData(metaDataFile);
                         
                         break;
                 }
@@ -144,27 +142,27 @@ namespace EasyFramework
 
         private void UpdateVersion()
         {
-            if (F.LocalStorageManager.Exists(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC))
-            {
-                _versionInfo = F.LocalStorageManager.LoadObject<HybridCLRBuilderVersion>(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC);
-                EnterState(EState.Loading);
-                return;
-            }
-            
-            FDebug.Log($"更新版本：{HybridCLRBuilderVersion.FileName}");
-            F.DLCManager.DownloadFile(HybridCLRBuilderVersion.FileName, b =>
-            {
-                FDebug.Log($"更新版本：{HybridCLRBuilderVersion.FileName}, {b}");
-                if (b)
-                {
-                    _versionInfo = F.LocalStorageManager.LoadObject<HybridCLRBuilderVersion>(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC);
-                    EnterState(EState.Downloading);
-                }
-                else
-                {
-                    OnCompleted(EResult.UpdateVersionError);
-                }
-            });
+            // if (F.LocalStorageManager.Exists(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC))
+            // {
+            //     _versionInfo = F.LocalStorageManager.LoadObject<HybridCLRBuilderVersion>(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC);
+            //     EnterState(EState.Loading);
+            //     return;
+            // }
+            //
+            // FDebug.Log($"更新版本：{HybridCLRBuilderVersion.FileName}");
+            // F.DLCManager.DownloadFile(HybridCLRBuilderVersion.FileName, b =>
+            // {
+            //     FDebug.Log($"更新版本：{HybridCLRBuilderVersion.FileName}, {b}");
+            //     if (b)
+            //     {
+            //         _versionInfo = F.LocalStorageManager.LoadObject<HybridCLRBuilderVersion>(HybridCLRBuilderVersion.FileName, ELocalStorageType.DLC);
+            //         EnterState(EState.Downloading);
+            //     }
+            //     else
+            //     {
+            //         OnCompleted(EResult.UpdateVersionError);
+            //     }
+            // });
         }
 
         private void DownloadFiles()
@@ -203,42 +201,42 @@ namespace EasyFramework
 
         private void HybridCLRLoading()
         {
-            try
-            {
-                if (_versionInfo.stripDlls?.Length > 0)
-                {
-                    for (int i = 0; i < _versionInfo.stripDlls.Length; i++)
-                    {
-                        var stripDll = _versionInfo.stripDlls[i];
-                        var fileName = $"{stripDll}{FileExtension}";
-
-                        HotUpdateHelper.LoadMetaData(F.LocalStorageManager.ReadAllBytes(fileName, ELocalStorageType.DLC));
-                    }
-                }
-                if (_versionInfo.loadDlls?.Length > 0)
-                {
-                    for (int i = 0; i < _versionInfo.loadDlls.Length; i++)
-                    {
-                        var dllName = _versionInfo.loadDlls[i];
-                        var fileName = $"{dllName}{FileExtension}";
-                        var pdbFileName = $"{dllName}.pdb{FileExtension}";
-
-                        var dllData = F.LocalStorageManager.ReadAllBytes(fileName, ELocalStorageType.DLC);
-                        var dllPdbData = F.LocalStorageManager.ReadAllBytes(pdbFileName, ELocalStorageType.DLC);
-                        _assemblies.Add(HotUpdateHelper.LoadDll(dllData, dllPdbData));
-                    }
-                }
-                foreach (var assembly in _assemblies)
-                {
-                    HotUpdateHelper.Enter(assembly);
-                }
-                OnCompleted(EResult.Success);
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
-                OnCompleted(EResult.LoadError);
-            }
+            // try
+            // {
+            //     if (_versionInfo.stripDlls?.Length > 0)
+            //     {
+            //         for (int i = 0; i < _versionInfo.stripDlls.Length; i++)
+            //         {
+            //             var stripDll = _versionInfo.stripDlls[i];
+            //             var fileName = $"{stripDll}{FileExtension}";
+            //
+            //             HotUpdateHelper.LoadMetaData(F.LocalStorageManager.ReadAllBytes(fileName, ELocalStorageType.DLC));
+            //         }
+            //     }
+            //     if (_versionInfo.loadDlls?.Length > 0)
+            //     {
+            //         for (int i = 0; i < _versionInfo.loadDlls.Length; i++)
+            //         {
+            //             var dllName = _versionInfo.loadDlls[i];
+            //             var fileName = $"{dllName}{FileExtension}";
+            //             var pdbFileName = $"{dllName}.pdb{FileExtension}";
+            //
+            //             var dllData = F.LocalStorageManager.ReadAllBytes(fileName, ELocalStorageType.DLC);
+            //             var dllPdbData = F.LocalStorageManager.ReadAllBytes(pdbFileName, ELocalStorageType.DLC);
+            //             _assemblies.Add(HotUpdateHelper.LoadDll(dllData, dllPdbData));
+            //         }
+            //     }
+            //     foreach (var assembly in _assemblies)
+            //     {
+            //         HotUpdateHelper.Enter(assembly);
+            //     }
+            //     OnCompleted(EResult.Success);
+            // }
+            // catch (Exception e)
+            // {
+            //     Debug.LogException(e);
+            //     OnCompleted(EResult.LoadError);
+            // }
         }
 
 #if UNITY_EDITOR

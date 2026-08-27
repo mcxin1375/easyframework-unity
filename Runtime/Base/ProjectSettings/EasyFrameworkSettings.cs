@@ -72,6 +72,10 @@ namespace EasyFramework
         [Header("Debug Settings")]
         public EDebugLevel debugLevel = EDebugLevel.Log | EDebugLevel.LogWarning | EDebugLevel.LogError;
 
+        public string DataPath { get; private set; }
+        public string DLCPath { get; private set; }
+        public string ConfigPath { get; private set; }
+        public string DownloadPath { get; private set; }
 
         private static IAppSettings _appSettings;
         public static IAppSettings AppSettings
@@ -104,6 +108,33 @@ namespace EasyFramework
                 }
                 return _app;
             }
+        }
+
+        protected override void OnCreate()
+        {
+#if UNITY_EDITOR
+            DataPath = Application.persistentDataPath;
+#elif UNITY_IOS
+            DataPath = Application.temporaryCachePath;
+#else
+            DataPath = Application.persistentDataPath;
+#endif
+            DLCPath = $"{DataPath}/DLC";
+            ConfigPath = $"{DataPath}/Config";
+            DownloadPath = $"{DataPath}/Download";
+
+#if UNITY_EDITOR
+            if (Application.isPlaying)
+            {
+                FileHelper.CreateDirectory(DLCPath);
+                FileHelper.CreateDirectory(ConfigPath);
+                FileHelper.CreateDirectory(DownloadPath);
+            }
+#else
+            FileHelper.CreateDirectory(DLCPath);
+            FileHelper.CreateDirectory(ConfigPath);
+            FileHelper.CreateDirectory(DownloadPath);
+#endif
         }
     }
 }

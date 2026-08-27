@@ -4,16 +4,19 @@
 // describe:
 //----------------------------------------------------------------*/
 
+using System;
+
 namespace EasyFramework
 {
     public interface IDLCManager
     {
-        ETask EnterAsync();
-        ETask EnterAsync(string dlcVersion);
+        ETask UpdateAsync();
+        // ETask UpdateAsync(string dlcVersion);
 
-        ETask DownloadFileAsync(string fileName);
-        ETask DownloadFilesAsync(string[] fileNames);
-
-        string GetFileHashName(string fileName);
+        void DownloadFile(string fileName, Action<bool> callback = null);
+        void DownloadFiles(string[] fileNames, Action<bool> callback = null);
+        ETask<bool> DownloadFileAsync(string fileName);
+        // ETask<bool> DownloadFilesAsync(string[] fileNames);
+        // string GetFileHashName(string fileName);
     }
 }

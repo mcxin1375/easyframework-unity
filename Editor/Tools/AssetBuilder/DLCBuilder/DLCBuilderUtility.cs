@@ -48,16 +48,20 @@ namespace EasyFramework.Editor
 #endif
             };
             
-            if ((settings.buildOptions & EDLCMode.List) > 0)
+            if ((settings.buildOptions & EDLCMode.DLC) > 0)
             {
-                BuildModeList($"{outputDir}/{EDLCMode.List}", sourceDirs);
+                BuildDLC($"{outputDir}/{EDLCMode.DLC}", sourceDirs);
             }
             
+            var dlcVersionFile =  $"{outputDir}/{DLCVersion.FileName}";
             DLCVersion dlcVersion = new();
             dlcVersion.versionIndex = EasyFrameworkSettings.Instance.dlcVersionIndex;
             dlcVersion.versionName = versionName;
             dlcVersion.versionUid = Guid.NewGuid().ToString();
-            ConfigHelper.Save(dlcVersion, $"{outputDir}/{DLCVersion.FileName}", true);
+            ConfigHelper.Save(dlcVersion, dlcVersionFile, true);
+            
+            var lastVersionFile =  $"{outputPath}/{DLCVersion.LatestFileName}";
+            ConfigHelper.Save(dlcVersion, lastVersionFile, true);
             
             DLCBuilderVersion dlcBuilderVersion = new();
             dlcBuilderVersion.dlcVersion = dlcVersion;
@@ -68,13 +72,14 @@ namespace EasyFramework.Editor
             dlcBuilderVersion.dllBuilderVersion = HybridCLRBuilder.Instance.Version;
 #endif
             ConfigHelper.Save(dlcBuilderVersion, $"{outputDir}/{DLCBuilderVersion.FileName}", true);
+            
 
             DLCBuilderVersionList.Refresh(outputPath, settings.maxCacheNum);
             
             foreach (var extension in toolEvents) extension.OnExecuteAfter();
         }
         
-        public static void BuildModeList(string outputDir, string[] sourceDirs)
+        public static void BuildDLC(string outputDir, string[] sourceDirs)
         {
             // Debug.Log($"DLCBuilder - BuildDLCList");
             
@@ -107,8 +112,8 @@ namespace EasyFramework.Editor
                     var hashFileName = $"{md5}{Path.GetExtension(resFile)}";
                     hashFileList.Add(new HashFileInfo
                     {
-                        fileName = Path.GetFileName(resFile),
-                        hashFileName = hashFileName,
+                        resName = Path.GetFileName(resFile),
+                        fileName = hashFileName,
                         length = fi.Length,
                     });
 
@@ -126,6 +131,7 @@ namespace EasyFramework.Editor
             }
             
             DLCVersionInfo versionInfo = new();
+            versionInfo.uid = Guid.NewGuid().ToString();
             versionInfo.hashFiles = hashFileList.ToArray();
             
             ConfigHelper.Save(versionInfo, $"{outputDir}/{DLCVersionInfo.FileName}", true);
@@ -134,9 +140,9 @@ namespace EasyFramework.Editor
         private static string GetBuildVersionNameId()
         {
             var settings = DLCBuilderSettings.Instance;
-            switch (settings.versionNameRule)
+            switch (settings.buildNameType)
             {
-                case EDLCVersionNameRule.AppName:
+                case EDLCBuildNameType.AppName:
                     if (!EasyFrameworkSettings.AppSettings.AppName.IsNullOrEmpty())
                         return EasyFrameworkSettings.AppSettings.AppName;
                     break;

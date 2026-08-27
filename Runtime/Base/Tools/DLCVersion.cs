@@ -12,6 +12,7 @@ namespace EasyFramework
     public class DLCVersion
     {
         public const string FileName = "DLCVersion.json";
+        public const string LatestFileName = "LatestVersion.json";
         
         public int versionIndex;
         public string versionName;

@@ -14,7 +14,7 @@ namespace EasyFramework
         
         public static string NameToURL(string abName)
         {
-            return F.LocalStorageManager.GetFilePath(abName, ELocalStorageType.DLC);
+            return $"{EasyFrameworkSettings.Instance.DLCPath}/{abName}";
         }
 
 #if UNITY_EDITOR
