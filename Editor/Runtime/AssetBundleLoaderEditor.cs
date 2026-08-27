@@ -20,7 +20,7 @@ namespace EasyFramework.Editor
 
         public AssetBundleLoaderEditor()
         {
-            var assetBundleBuilds = AssetBundleBuilderHelper.CreateAssetBundleBuildBySettings();
+            var assetBundleBuilds = AssetBundleBuilderUtility.CreateAssetBundleBuildBySettings();
             _assetsMap = assetBundleBuilds.ToDictionary(item => item.assetBundleName.Replace(EasyFrameworkSettings.Instance.abSuffix, ""), item => item);
         }
 

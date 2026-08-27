@@ -12,12 +12,10 @@ using UnityEditor;
 
 namespace EasyFramework.Editor
 {
-    public partial class HybridCLRBuilder
+    public static class HybridCLRBuilderUtility
     {
-        public void BuildBySettings()
+        public static void BuildBySettings(string outputPath)
         {
-            var outputPath = ProjectDataPath;
-            
             FileHelper.CreateDirectory(outputPath);
             FileHelper.ClearDirectory(outputPath);
 
@@ -53,7 +51,7 @@ namespace EasyFramework.Editor
             ConfigHelper.Save(info, $"{outputPath}/{HybridCLRBuilderVersion.FileName}", true);
         }
 
-        public HybridCLRBuilderVersion CreateHybridCLRVersionInfo()
+        public static HybridCLRBuilderVersion CreateHybridCLRVersionInfo()
         {
             var info = new HybridCLRBuilderVersion();
             info.stripDlls = HybridCLRBuilderSettings.Instance.stripDlls;
@@ -64,7 +62,7 @@ namespace EasyFramework.Editor
             return info;
         }
 
-        private string[] GetHotUpdateDlls()
+        private static string[] GetHotUpdateDlls()
         {
             List<string> dllList = new List<string>();
             

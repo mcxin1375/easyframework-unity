@@ -12,9 +12,9 @@ using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    public partial class SVCCollector
+    public static class SVCCollectorUtility
     {
-        public void SaveCurrentSVC()
+        public static void SaveCurrentSVC()
         {
             var settings = SVCCollectorSettings.Instance;
             
@@ -38,7 +38,7 @@ namespace EasyFramework.Editor
         //     });
         // }
 
-        public SVCInfo CreateShaderVariantCollectionInfo()
+        public static SVCInfo CreateShaderVariantCollectionInfo()
         {
             var settings = SVCCollectorSettings.Instance;
             List<ShaderVariantCollection.ShaderVariant> tmpList = new();

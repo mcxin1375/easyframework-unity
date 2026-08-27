@@ -35,14 +35,14 @@ namespace EasyFramework.Editor
         
         public IAssetBundleBuilderSettings[] ToolSettings => ToolExtension<IAssetBundleBuilderSettings>.Instances;
 
-        protected override void OnSelfExecute() => BuildBySettings();
+        protected override void OnSelfExecute() => AssetBundleBuilderUtility.BuildBySettings(ProjectDataPath);
 
         
         [MenuItem("EasyFramework/Tools/AssetBundleBuilder - Execute", priority = ToolOrder.AssetBundleBuilder)]
         public static void MenuItem1() => Instance.Execute();
         [MenuItem("EasyFramework/Tools/AssetBundleBuilder - BuildManifestOnly", priority = ToolOrder.AssetBundleBuilder + 1)]
-        public static void MenuItem2() => Instance.BuildManifestOnly();
+        public static void MenuItem2() => AssetBundleBuilderUtility.BuildManifestOnly();
         [MenuItem("EasyFramework/Tools/AssetBundleBuilder - CheckVerifyValidity", priority = ToolOrder.AssetBundleBuilder + 1)]
-        public static void MenuItem3() => Instance.CheckVerifyValidity();
+        public static void MenuItem3() => AssetBundleBuilderUtility.CheckVerifyValidity();
     }
 }

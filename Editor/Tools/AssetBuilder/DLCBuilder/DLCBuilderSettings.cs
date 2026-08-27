@@ -4,9 +4,6 @@
 // describe:
 //----------------------------------------------------------------*/
 
-using System;
-using UnityEngine;
-
 namespace EasyFramework.Editor
 {
     // public interface IDLCBuilderSettingsExtension
@@ -26,15 +23,21 @@ namespace EasyFramework.Editor
     //     };
     // }
 
+    public enum EDLCVersionNameRule
+    {
+        AppName,
+        TooVersion
+    }
+
     [ProjectSettings(ProjectSettingsAttribute.ETag.Editor)]
     public class DLCBuilderSettings : ProjectSettings<DLCBuilderSettings>
     {
-        [Header("自定义版本Id，默认使用版本号递增")]
-        public string versionCustomId;
         /// <summary>
         /// 最大缓存版本数量，按照时间排序
         /// </summary>
         public int maxCacheNum = 10;
+        
+        public EDLCVersionNameRule versionNameRule = EDLCVersionNameRule.TooVersion;
         /// <summary>
         /// DLC 打包模式，支持多选
         /// </summary>

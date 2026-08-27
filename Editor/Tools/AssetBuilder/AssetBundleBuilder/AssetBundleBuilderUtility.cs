@@ -8,12 +8,104 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Build.Pipeline;
 using UnityEngine;
+using UnityEngine.Build.Pipeline;
 
 namespace EasyFramework.Editor
 {
-    public static class AssetBundleBuilderHelper
+    public static class AssetBundleBuilderUtility
     {
+        public static void BuildBySettings(string outputPath)
+        {
+            var settings = AssetBundleBuilderSettings.Instance;
+            if (settings.createManifestFile) BuildManifestOnly();
+            var bundleManifest = BuildAssetBundle(outputPath, settings.buildAssetBundleOptions);
+            if (bundleManifest == null) Debug.LogError("CompatibilityAssetBundleManifest is null!");
+        }
+        
+        private static CompatibilityAssetBundleManifest BuildAssetBundle(string outputPath, BuildAssetBundleOptions buildOptions)
+        {
+            var buildTarget = EditorUserBuildSettings.activeBuildTarget;
+            var assetBundleBuilds = CreateAssetBundleBuildBySettings();
+
+            FileHelper.CreateDirectory(outputPath);
+
+            var bundleManifest = CompatibilityBuildPipeline.BuildAssetBundles(outputPath, assetBundleBuilds, buildOptions, buildTarget);
+            if ((buildOptions & BuildAssetBundleOptions.DryRunBuild) != 0) return bundleManifest;
+
+            if (bundleManifest != null)
+            {
+                var buildNameList = assetBundleBuilds.Select(item => item.assetBundleName).ToHashSet();
+                string[] assetFiles = Directory.GetFiles(outputPath, $"*{EasyFrameworkSettings.Instance.abSuffix}", SearchOption.AllDirectories);
+
+                // Debug.Log("------------------------ delete unused asset");
+                foreach (string assetFile in assetFiles)
+                {
+                    string name = Path.GetFileName(assetFile);
+                    if (!buildNameList.Contains(name))
+                    {
+                        File.Delete(assetFile);
+                        Debug.Log($"[AB Delete] {name}");
+                    }
+                }
+
+                var abManifest = new AssetBundleManifest();
+                abManifest.abNames = bundleManifest.GetAllAssetBundles();
+                foreach (var bundle in abManifest.abNames)
+                {
+                    var deps = bundleManifest.GetAllDependencies(bundle);
+                    if (deps.Length == 0) continue;
+                    abManifest.depDict[bundle] = deps;
+                }
+                
+                var manifestFile = $"{outputPath}/{AssetBundleManifest.FileName}";
+                ConfigHelper.Save(abManifest, manifestFile, true);
+            }
+
+            return bundleManifest;
+        }
+        
+        public static void BuildManifestOnly()
+        {
+            var settings = AssetBundleBuilderSettings.Instance;
+            var bundleManifest = BuildAssetBundle(AssetBundleBuilder.Instance.ProjectDataPath, settings.buildAssetBundleOptions | BuildAssetBundleOptions.DryRunBuild);
+            if (bundleManifest != null)
+            {
+                FileHelper.CreateDirectory(AssetBundleBuilder.Instance.AssetsDataPath);
+                var manifestFile = $"{AssetBundleBuilder.Instance.AssetsDataPath}/{PlatformHelper.PlatformName}.asset";
+                if (File.Exists(manifestFile)) AssetDatabase.DeleteAsset(manifestFile);
+                AssetDatabase.CreateAsset(bundleManifest, manifestFile);
+                FDebug.Log($"BuildManifestOnly: {manifestFile}");
+                
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
+        }
+        
+        public static void CheckVerifyValidity()
+        {
+            var assetBundleBuilds = CreateAssetBundleBuildBySettings();
+
+            Dictionary<GUID, AssetBundleBuild> tmpDict = new Dictionary<GUID, AssetBundleBuild>();
+            foreach (AssetBundleBuild assetBundleBuild in assetBundleBuilds)
+            {
+                foreach (string assetPath in assetBundleBuild.assetNames)
+                {
+                    GUID asset = new GUID(AssetDatabase.AssetPathToGUID(assetPath));
+                    if (tmpDict.ContainsKey(asset))
+                    {
+                        var preAb = tmpDict[asset];
+                        Debug.LogError($"---------------------------- Multiple AssetBundleBuild File Repeated!");
+                        Debug.LogError($"{preAb.assetBundleName} : {assetPath}");
+                        Debug.LogError($"{assetBundleBuild.assetBundleName} : {assetPath}");
+                        continue;
+                    }
+                    tmpDict.Add(asset, assetBundleBuild);
+                }
+            }
+        }
+        
         
         public static AssetBundleBuild[] CreateAssetBundleBuildBySettings()
         {
@@ -36,10 +128,10 @@ namespace EasyFramework.Editor
                         switch (buildInfo.abResType)
                         {
                             case EAssetBundleBuildResType.Shader:
-                                buildList.Add(AssetBundleBuilderHelper.CreateShaderDirectory(buildInfo.abName, buildInfo.directories));
+                                buildList.Add(CreateShaderDirectory(buildInfo.abName, buildInfo.directories));
                                 break;
                             default:
-                                buildList.Add(AssetBundleBuilderHelper.CreateDirectory(buildInfo.abName, buildInfo.directories));
+                                buildList.Add(CreateDirectory(buildInfo.abName, buildInfo.directories));
                                 break;
                         }
                     }
@@ -52,7 +144,7 @@ namespace EasyFramework.Editor
             Dictionary<string, AssetBundleBuild> dict = new Dictionary<string, AssetBundleBuild>();
             foreach (AssetBundleBuild ab in buildList)
             {
-                if (dict.ContainsKey(ab.assetBundleName)) dict[ab.assetBundleName] = AssetBundleBuilderHelper.Merge(dict[ab.assetBundleName], ab);
+                if (dict.ContainsKey(ab.assetBundleName)) dict[ab.assetBundleName] = Merge(dict[ab.assetBundleName], ab);
                 else dict.Add(ab.assetBundleName, ab);
             }
             
@@ -112,11 +204,11 @@ namespace EasyFramework.Editor
             
             foreach (string folder in folderList)
             {
-                buildList.Add(AssetBundleBuilderHelper.CreateDirectory(Path.GetFileNameWithoutExtension(folder), folder));
+                buildList.Add(AssetBundleBuilderUtility.CreateDirectory(Path.GetFileNameWithoutExtension(folder), folder));
             }
             foreach (string file in fileList)
             {
-                buildList.Add(AssetBundleBuilderHelper.CreateFile(Path.GetFileNameWithoutExtension(file), file));
+                buildList.Add(AssetBundleBuilderUtility.CreateFile(Path.GetFileNameWithoutExtension(file), file));
             }
 
             return buildList.ToArray();

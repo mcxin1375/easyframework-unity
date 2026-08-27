@@ -18,7 +18,7 @@ namespace EasyFramework
         public string CdnURL => dlcURL;
         public string AppVersionURL => appVersionURL;
 
-        [SerializeField] private string appName = "EasyFramework";
+        [SerializeField] private string appName = "MainApp";
         [SerializeField] private string bundleIdentifier = "cn.cookie.easyframework";
         [SerializeField] private int ver1;
         [SerializeField] private int ver2;

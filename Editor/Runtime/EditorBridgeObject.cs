@@ -7,7 +7,7 @@ namespace EasyFramework.Editor
         
 #if EF_HYBRIDCLR
         // public HybridCLRBuilderVersion HybridCLRBuilderVersion { get; }
-        public HybridCLRBuilderVersion HybridCLRBuilderVersion => HybridCLRBuilder.Instance.CreateHybridCLRVersionInfo();
+        public HybridCLRBuilderVersion HybridCLRBuilderVersion => HybridCLRBuilderUtility.CreateHybridCLRVersionInfo();
 #endif
         
         public T LoadProjectSetting<T>() where T : ProjectSettings<T> => UnityEditorHelper.LoadProjectSettings<T>();

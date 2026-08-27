@@ -8,11 +8,11 @@ using UnityEditor;
 
 namespace EasyFramework.Editor
 {
-    public partial class DLCBuilder : ToolBase<DLCBuilder>, IToolEvent<AssetBuilder>
+    public class DLCBuilder : ToolBase<DLCBuilder>, IToolEvent<AssetBuilder>
     {
         public override int Order => ToolOrder.DLCBuilder;
 
-        protected override void OnSelfExecute() => BuildBySettings();
+        protected override void OnSelfExecute() => DLCBuilderUtility.BuildBySettings(ProjectDataPath);
         
         [MenuItem("EasyFramework/Tools/DLCBuilder - Execute", priority = ToolOrder.DLCBuilder)]
         public static void MenuItem1()

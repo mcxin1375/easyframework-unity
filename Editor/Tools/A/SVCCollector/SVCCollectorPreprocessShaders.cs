@@ -22,7 +22,7 @@ namespace EasyFramework.Editor
             if (SVCCollectorSettings.Instance.preprocessShaders)
             {
                 SVCCollectorPreprocessShaders.Enabled = true;
-                SVCCollectorPreprocessShaders.ShaderBuildInfo = SVCCollector.Instance.CreateShaderVariantCollectionInfo();
+                SVCCollectorPreprocessShaders.ShaderBuildInfo = SVCCollectorUtility.CreateShaderVariantCollectionInfo();
                 SVCCollectorPreprocessShaders.ShaderVariantsBuildList.Clear();
             }
         }

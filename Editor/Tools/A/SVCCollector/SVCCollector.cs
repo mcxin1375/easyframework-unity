@@ -6,12 +6,11 @@
 
 namespace EasyFramework.Editor
 {
-
-    public partial class SVCCollector : ToolBase<SVCCollector>
+    public class SVCCollector : ToolBase<SVCCollector>
     {
         protected override void OnSelfExecute()
         {
-            SaveCurrentSVC();
+            SVCCollectorUtility.SaveCurrentSVC();
         }
 
         // [MenuItem("EasyFramework/Tools/SVCCollector - SaveCurrentSVC", priority = EasyFrameworkToolsSettings.SVCCollector)]

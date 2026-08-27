@@ -11,9 +11,9 @@ using UnityEditor.Build;
 
 namespace EasyFramework.Editor
 {
-    public partial class PlayerBuilder
+    public static class PlayerBuilderUtility
     {
-        public void BuildBySettingsBefore()
+        public static void PreInitPlayerSettings()
         {
             var settings = PlayerBuilderSettings.Instance;
             if (!settings.preSettingsEnabled) return;
@@ -42,17 +42,14 @@ namespace EasyFramework.Editor
                     EditorUserBuildSettings.exportAsGoogleAndroidProject = settings.exportAsGoogleAndroidProject;
                     break;
             }
-            
-            
-            
         }
         
-        public void BuildBySettings()
+        public static void BuildBySettings()
         {
             var settings = PlayerBuilderSettings.Instance;
             if (!settings.enabled) return;
 
-            var buildSettings = ToolSettings?.FirstOrDefault();
+            var buildSettings = PlayerBuilder.Instance.ToolSettings?.FirstOrDefault();
             if (buildSettings == null)
             {
                 FDebug.LogError("BuildPlayerOptionsSettings is null");
@@ -66,11 +63,11 @@ namespace EasyFramework.Editor
             var result = BuildPipeline.BuildPlayer(options);
             FDebug.Log($"BuildPlayer: {result.summary.result}");
 
-            foreach (var ex in ToolExtensions) ex.OnBuildReport(result);
+            foreach (var ex in PlayerBuilder.Instance.ToolExtensions) ex.OnBuildReport(result);
         }
         
-        public void BuildMainRes(string dlcVersion = "")
-        {
+        // public void BuildMainRes(string dlcVersion = "")
+        // {
             // FileHelper.ClearDirectory(Application.streamingAssetsPath);
             //
             // List<string> packageList = new List<string>()
@@ -114,7 +111,7 @@ namespace EasyFramework.Editor
             // EasyFrameworkAOTSettings.Instance.SaveEx();
             //
             // AssetDatabase.Refresh();
-        }
+        // }
         //
         // [Serializable]
         // private class MainResZipInfo
