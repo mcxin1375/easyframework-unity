@@ -12,9 +12,9 @@ namespace EasyFramework
     public class AppSettings : ScriptableObject, IAppSettings
     {
         public string AppName => appName;
-        public string AppVersion => $"{ver1}.{ver2}.{ver3}";
-        public int BundleVersion => bundleVer;
+        public string BundleVersion => $"{ver1}.{ver2}.{ver3}";
         public string BundleIdentifier => bundleIdentifier;
+        public int BuildIndex => buildIndex;
         public string CdnURL => dlcURL;
         public string AppVersionURL => appVersionURL;
 
@@ -23,7 +23,7 @@ namespace EasyFramework
         [SerializeField] private int ver1;
         [SerializeField] private int ver2;
         [SerializeField] private int ver3 = 1;
-        [SerializeField] private int bundleVer;
+        [SerializeField] private int buildIndex;
         [SerializeField] private string dlcURL = "";
         [SerializeField] private string appVersionURL = "";
     }

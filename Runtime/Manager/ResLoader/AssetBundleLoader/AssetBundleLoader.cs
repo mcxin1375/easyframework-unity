@@ -30,25 +30,32 @@ namespace EasyFramework
             ETask.AddTick(this);
         }
 
-        public async ETask PreInitializeAsync()
+        public async ETask InitializeAsync()
         {
-            // if (!F.LocalStorageManager.Exists(AssetBundleManifest.FileName, ELocalStorageType.DLC))
-            // {
-            //     var result = await F.DLCDownloader.DownloadAsync(AssetBundleManifest.FileName);
-            //     if (!result)
-            //     {
-            //         FDebug.LogError($"DLCDownloader download {AssetBundleManifest.FileName} error!");
-            //         return;
-            //     }
-            // }
-            //
-            // var content = F.LocalStorageManager.ReadAllText(AssetBundleManifest.FileName, ELocalStorageType.DLC);
-            // Manifest = ConfigHelper.LoadFromText<AssetBundleManifest>(content);
-            //
-            // foreach (var kv in Manifest.depDict)
-            // {
-            //     _abDict.Add(kv.Key, new AssetBundleInfo(kv.Key, kv.Value));
-            // }
+#if UNITY_EDITOR
+            if (EasyFrameworkSettings.Instance.resLoaderEditorMode)
+            {
+                return;
+            }
+#endif
+            var manifestFile = await F.DLCManager.DownloadAndReturnFileAsync(AssetBundleManifest.FileName);
+
+            if (Manifest == null)
+            {
+                Manifest = ConfigHelper.Load<AssetBundleManifest>(manifestFile);
+                if (Manifest == null)
+                {
+                    FDebug.LogError($"manifestFile: {manifestFile}, path is not found!");
+                    return;
+                }
+
+                foreach (var abName in Manifest.abNames)
+                {
+                    var deps = Manifest.GetAllDependencies(abName);
+                    var abFile = F.DLCManager.GetResFilePath(abName);
+                    _abDict.Add(abName, new AssetBundleInfo(abName, deps, abFile));
+                }
+            }
         }
 
         bool ITickerNode.OnTick()
@@ -93,6 +100,8 @@ namespace EasyFramework
         {
             // Log.Info($"------------------------------------ LoadAsync: {abName}");
 
+            // if (Manifest == null) await InitializeAsync();
+            
             if (!_requestDict.TryGetValue(abName, out var request))
             {
                 if (!TryGetOrCreate(abName, out var mainInfo)) return null;

@@ -69,11 +69,11 @@ namespace EasyFramework.Editor
         public static void BuildManifestOnly()
         {
             var settings = AssetBundleBuilderSettings.Instance;
-            var bundleManifest = BuildAssetBundle(AssetBundleBuilder.Instance.ProjectDataPath, settings.buildAssetBundleOptions | BuildAssetBundleOptions.DryRunBuild);
+            var bundleManifest = BuildAssetBundle(AssetBundleBuilder.Instance.ProjectPlatformPath, settings.buildAssetBundleOptions | BuildAssetBundleOptions.DryRunBuild);
             if (bundleManifest != null)
             {
-                FileHelper.CreateDirectory(AssetBundleBuilder.Instance.AssetsDataPath);
-                var manifestFile = $"{AssetBundleBuilder.Instance.AssetsDataPath}/{PlatformHelper.PlatformName}.asset";
+                FileHelper.CreateDirectory(AssetBundleBuilder.Instance.AssetsPlatformPath);
+                var manifestFile = $"{AssetBundleBuilder.Instance.AssetsPlatformPath}/{PlatformHelper.PlatformName}.asset";
                 if (File.Exists(manifestFile)) AssetDatabase.DeleteAsset(manifestFile);
                 AssetDatabase.CreateAsset(bundleManifest, manifestFile);
                 FDebug.Log($"BuildManifestOnly: {manifestFile}");

@@ -17,5 +17,6 @@ namespace EasyFramework
         public int versionIndex;
         public string versionName;
         public string versionUid;
+        public string dlcVersionInfoUid;
     }
 }

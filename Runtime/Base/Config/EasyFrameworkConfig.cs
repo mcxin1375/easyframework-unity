@@ -6,8 +6,21 @@ namespace EasyFramework
     [Serializable]
     public class EasyFrameworkConfig : SingletonConfig<EasyFrameworkConfig>
     {
+        public string DLCVersionInfoUid => dlcVersion?.dlcVersionInfoUid;
+        public string DLCServerUrl { get; private set; }
+        
         public string mainResUid;
-        public string dlcVersion;
-        public string dlcVersionInfoUid;
+        public DLCVersion dlcVersion;
+
+        public void Refresh()
+        {
+            if (dlcVersion != null)
+            {
+                DLCServerUrl = DLCHelper.GetDLCServerURL(dlcVersion.versionName);
+            }
+        }
+
+        protected override void OnCreate() => Refresh();
+        protected override void OnSave() => Refresh();
     }
 }

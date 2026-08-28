@@ -6,6 +6,7 @@
 
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.Build;
 
 namespace EasyFramework.Editor
 {
@@ -21,7 +22,9 @@ namespace EasyFramework.Editor
             foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
                 if (scene.enabled) editorScenes.Add(scene.path);
 
-            string buildPlayerName = $"{EasyFrameworkSettings.AppSettings?.AppName ?? "-"}_{EasyFrameworkSettings.Instance.dlcVersionIndex}";
+            var namedTarget = NamedBuildTarget.FromBuildTargetGroup(BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget));
+            var bundleIdentifier = PlayerSettings.GetApplicationIdentifier(namedTarget);
+            var buildPlayerName = $"{bundleIdentifier}_{PlayerSettings.bundleVersion}";
              
             BuildPlayerOptions options = new BuildPlayerOptions();
             options.scenes = editorScenes.ToArray();
@@ -37,11 +40,11 @@ namespace EasyFramework.Editor
                 options.options -= BuildOptions.Development;
             }
             
-            var basePath = PlayerBuilder.Instance.ProjectDataPath;
+            var basePath = PlayerBuilder.Instance.ProjectPlatformPath;
             switch (EditorUserBuildSettings.activeBuildTarget)
             {
                 case BuildTarget.Android:
-                    options.locationPathName = $"{basePath}/{buildPlayerName}.apk";
+                    options.locationPathName = $"{basePath}/{buildPlayerName}({PlayerSettings.Android.bundleVersionCode}).apk";
                     break;
                 case BuildTarget.StandaloneWindows:
                     options.locationPathName = $"{basePath}/{buildPlayerName}/{buildPlayerName}.exe";
@@ -58,7 +61,7 @@ namespace EasyFramework.Editor
                 case BuildTarget.Android:
                     if (settings.exportAsGoogleAndroidProject)
                     {
-                        options.locationPathName = $"{PlayerBuilder.Instance.ProjectDataPath}/Project_{buildPlayerName}";
+                        options.locationPathName = $"{PlayerBuilder.Instance.ProjectPlatformPath}/Project_{buildPlayerName}";
                     }
                     break;
             }

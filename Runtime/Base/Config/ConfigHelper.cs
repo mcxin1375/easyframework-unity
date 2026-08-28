@@ -43,12 +43,14 @@ namespace EasyFramework
         }
         public static T LoadFromText<T>(string content, EConfigType type, EConfigEncrypt encrypt, string key)
         {
+            content = DecryptContent(content, encrypt, key);
+            // FDebug.Log(content);
             switch (type)
             {
                 case EConfigType.Unity:
-                    return JsonUtility.FromJson<T>(DecryptContent(content, encrypt, key));
+                    return JsonUtility.FromJson<T>(content);
                 default:
-                    return JsonConvert.DeserializeObject<T>(DecryptContent(content, encrypt, key));
+                    return JsonConvert.DeserializeObject<T>(content);
             }
         }
 

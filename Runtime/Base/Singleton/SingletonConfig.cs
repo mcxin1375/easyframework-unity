@@ -21,12 +21,24 @@ namespace EasyFramework
                     var filePath = $"{EasyFrameworkSettings.Instance.ConfigPath}/{typeof(T).Name}.json";
                     _instance = ConfigHelper.LoadOrCreate<T>(filePath);
                     _instance.FilePath = filePath;
+                    _instance.OnCreate();
                 }
 
                 return _instance;
             }
         }
 
-        public void Save() => ConfigHelper.Save(this, FilePath);
+        public void Save()
+        {
+            ConfigHelper.Save(this, FilePath);
+            OnSave();
+        }
+
+        protected virtual void OnCreate()
+        {
+            
+        }
+        
+        protected virtual void OnSave() { }
     }
 }

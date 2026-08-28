@@ -11,6 +11,8 @@ namespace EasyFramework
     [Serializable]
     public class ToolVersion
     {
+        public const string FileName = "Version.json";
+        
         public string DateTimeStr => DateTime.ToString("yyyy_MMd_HHmm");
         public DateTime DateTime => DateTime.FromFileTime(dateTime);
         

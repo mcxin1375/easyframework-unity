@@ -10,11 +10,11 @@ using UnityEditor;
 
 namespace EasyFramework.Editor
 {
-    public partial class HybridCLRBuilder : ToolBase<HybridCLRBuilder>, IToolEvent<AssetBuilder>
+    public class HybridCLRBuilder : ToolBase<HybridCLRBuilder>, IToolEvent<AssetBuilder>
     {
         public override int Order => ToolOrder.HybridCLRBuilder;
         
-        protected override void OnSelfExecute() => HybridCLRBuilderUtility.BuildBySettings(ProjectDataPath);
+        protected override void OnSelfExecute() => HybridCLRBuilderUtility.BuildBySettings(ProjectPlatformPath);
 
         
         [MenuItem("EasyFramework/Tools/HybridCLRBuilder - Execute", priority = ToolOrder.HybridCLRBuilder)]

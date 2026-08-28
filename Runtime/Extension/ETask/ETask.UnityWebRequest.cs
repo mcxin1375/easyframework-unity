@@ -20,6 +20,7 @@ namespace EasyFramework
         
         public static ETask<UnityWebRequest> UnityWebRequestDownload(string url, string file, IHttpReceiver httpReceiver = null, CancellationToken cancellationToken = default, int requestIndex = -1)
         {
+            FDebug.Log($"{url} -> {file}");
             return new ETask<UnityWebRequest>(UnityWebRequestDownloadTask.Create(url, file, out var token, httpReceiver, cancellationToken, requestIndex), token);
         }
 
@@ -158,8 +159,7 @@ namespace EasyFramework
                             bool isSuccess = _unityWebRequest.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
                             if (isSuccess)
                             {
-                                FileHelper.DeleteFile(_file);
-                                File.Move(_tempFile, _file);
+                                MoveDownloadedFile();
                                 _state = EState.Success;
                             }
                             else
@@ -177,12 +177,23 @@ namespace EasyFramework
             {
                 _errorRetry = 0;
                 _state = EState.None;
-                _tempFile = _file + ".download";
-                
-                string dir = Path.GetDirectoryName(_file);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                string tempDirectory = EasyFrameworkSettings.Instance.DownloadTempPath;
+                FileHelper.CreateDirectory(tempDirectory);
+                _tempFile = Path.Combine(tempDirectory, $"{Token:N}.download");
 
                 StartRequest();
+            }
+
+            private void MoveDownloadedFile()
+            {
+                // DownloadHandlerFile keeps the temporary file open until it is disposed.
+                _unityWebRequest.downloadHandler?.Dispose();
+
+                string directory = Path.GetDirectoryName(_file);
+                if (!string.IsNullOrEmpty(directory)) FileHelper.CreateDirectory(directory);
+
+                FileHelper.DeleteFile(_file);
+                File.Move(_tempFile, _file);
             }
 
             private void StartRetry()
@@ -220,14 +231,14 @@ namespace EasyFramework
 
             protected override void OnTaskResult(ETaskStatus status)
             {
+                _unityWebRequest?.Dispose();
+                _unityWebRequest = null;
                 FileHelper.DeleteFile(_tempFile);
                 _url = string.Empty;
                 _file = string.Empty;
                 _tempFile = string.Empty;
                 _httpReceiver = null;
                 _requestIndex = -1;
-                _unityWebRequest?.Dispose();
-                _unityWebRequest = null;
                 
                 ObjectPool<UnityWebRequestDownloadTask>.Shared.Return(this);
             }

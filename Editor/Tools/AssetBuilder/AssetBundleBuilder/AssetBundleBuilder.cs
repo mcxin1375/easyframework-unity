@@ -35,7 +35,7 @@ namespace EasyFramework.Editor
         
         public IAssetBundleBuilderSettings[] ToolSettings => ToolExtension<IAssetBundleBuilderSettings>.Instances;
 
-        protected override void OnSelfExecute() => AssetBundleBuilderUtility.BuildBySettings(ProjectDataPath);
+        protected override void OnSelfExecute() => AssetBundleBuilderUtility.BuildBySettings(ProjectPlatformPath);
 
         
         [MenuItem("EasyFramework/Tools/AssetBundleBuilder - Execute", priority = ToolOrder.AssetBundleBuilder)]

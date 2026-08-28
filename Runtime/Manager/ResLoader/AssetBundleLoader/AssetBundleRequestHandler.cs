@@ -81,19 +81,24 @@ namespace EasyFramework
             return ab;
         }
 
-        public ETask<AssetBundle> LoadAsync(IResRequest handler = null)
+        public async ETask<AssetBundle> LoadAsync(IResRequest handler = null)
         {
             AliveTime = Time.time + EasyFrameworkSettings.Instance.resRequestAliveTime;
             AddRefer(handler);
-
+            
             if (MainInfo.Dependencies?.Length > 0)
             {
-                foreach (var depInfo in MainInfo.Dependencies) depInfo.LoadAsync();
+                foreach (var depInfo in MainInfo.Dependencies)
+                {
+                    await F.DLCManager.DownloadAsync(depInfo.FileName);
+                    depInfo.LoadAsync();
+                }
             }
-
+            await F.DLCManager.DownloadAsync(MainInfo.FileName);
             MainInfo.LoadAsync();
 
-            return new ETask<AssetBundle>(Task.Create(MainInfo, Task.State.Loading, out var token), token);
+            return await new ETask<AssetBundle>(Task.Create(MainInfo, Task.State.Loading, out var token), token);
+            // return new ETask<AssetBundle>(Task.Create(MainInfo, Task.State.Loading, out var token), token);
         }
 
         public bool Unload(IResRequest handler, bool unloadAllLoadedObjects)

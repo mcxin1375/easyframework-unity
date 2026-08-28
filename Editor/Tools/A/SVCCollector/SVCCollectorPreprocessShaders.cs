@@ -58,8 +58,8 @@ namespace EasyFramework.Editor
             sb.AppendLine("---------------------------------- ShaderVariantsBuildList");
             foreach (string s in SVCCollectorPreprocessShaders.ShaderVariantsBuildList) sb.AppendLine(s);
 
-            FileHelper.CreateDirectory(AssetBundleBuilder.Instance.DebugPath);
-            string debugFile = $"{AssetBundleBuilder.Instance.DebugPath}/ShaderVariantsBuildDebug.txt";
+            FileHelper.CreateDirectory(AssetBundleBuilder.Instance.DebugPlatformPath);
+            string debugFile = $"{AssetBundleBuilder.Instance.DebugPlatformPath}/ShaderVariantsBuildDebug.txt";
             File.WriteAllText(debugFile, sb.ToString());
         }
     }

@@ -10,34 +10,24 @@ using UnityEngine;
 
 namespace EasyFramework.Editor
 {
-    // [Flags]
-    // public enum EStreamingAssetsMode
-    // {
-    //     None = 0,
-    //     AssetBundleBuilder = 1,
-    //     HybridCLRBuilder = 2
-    // }
-
     [ProjectSettings(ProjectSettingsAttribute.ETag.Editor)]
     public class PlayerBuilderSettings : ProjectSettings<PlayerBuilderSettings>
     {
-        [Header("Pre Settings")]
-        public bool preSettingsEnabled = true;
+        [Header("Base Settings")]
         public string companyName;
         public string productName;
         
+        [Header("Pre Settings")]
+        public bool preSettingsEnabled = true;
+        
         [Header("Build Player")]
-        public bool enabled;
+        public bool enabled = true;
         public bool exportAsGoogleAndroidProject;
         public bool developmentBuild;
         
         [Header("Cleanup: *_DoNotShip")]
         public bool cleanupTempDir = true;
         
-        // [Header("StreamingAssets")] 
-        // public bool streamingAssetsEnabled;
-        // public EStreamingAssetsMode streamingAssetsMode = EStreamingAssetsMode.None;
-        //
         // [Header("DLCRes Settings")]
         // public bool dlcResEnabled;
         // public string dlcVersion;

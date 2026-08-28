@@ -45,7 +45,9 @@ namespace EasyFramework
         public void AddRequest(string url, string file, long length = 0)
         {
             if (_currentRequestBytes != null) throw new InvalidOperationException("Cannot add a request after download started.");
-            _requests.Add(new Request(url, file, length));
+
+            var request = new Request(url, file, length);
+            _requests.Add(request);
             if (length > 0) TotalBytes += length;
             else _allLengthsValid = false;
         }

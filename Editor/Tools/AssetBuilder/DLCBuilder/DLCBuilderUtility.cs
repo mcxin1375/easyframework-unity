@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -17,13 +18,13 @@ namespace EasyFramework.Editor
     {
         public static DLCBuilderVersion GetNewestBuilderVersion()
         {
-            var file = $"{DLCBuilder.Instance.ProjectDataPath}/{DLCBuilderVersionList.FileName}";
+            var file = $"{DLCBuilder.Instance.ProjectPlatformPath}/{DLCBuilderVersionList.FileName}";
             var versionList = ConfigHelper.LoadOrCreate<DLCBuilderVersionList>(file);
             return versionList.versions?.Length > 0 ? versionList.versions[0] : null;
         }
         public static string GetDLCVersionFilePath(string dlcVersion)
         {
-            return $"{DLCBuilder.Instance.ProjectDataPath}/{dlcVersion}/{DLCVersion.FileName}";
+            return $"{DLCBuilder.Instance.ProjectPlatformPath}/{dlcVersion}/{DLCVersion.FileName}";
         }
         public static string GetDLCVersionFilePath(string dlcVersion, Platform platform)
         {
@@ -41,23 +42,23 @@ namespace EasyFramework.Editor
             var outputDir = $"{outputPath}/{versionName}";
             var sourceDirs = new string[]
             {
-                AssetBundleBuilder.Instance.ProjectDataPath,
+                AssetBundleBuilder.Instance.ProjectPlatformPath,
                 
 #if EF_HYBRIDCLR
-                HybridCLRBuilder.Instance.ProjectDataPath
+                HybridCLRBuilder.Instance.ProjectPlatformPath
 #endif
             };
-            
-            if ((settings.buildOptions & EDLCMode.DLC) > 0)
-            {
-                BuildDLC($"{outputDir}/{EDLCMode.DLC}", sourceDirs);
-            }
             
             var dlcVersionFile =  $"{outputDir}/{DLCVersion.FileName}";
             DLCVersion dlcVersion = new();
             dlcVersion.versionIndex = EasyFrameworkSettings.Instance.dlcVersionIndex;
             dlcVersion.versionName = versionName;
             dlcVersion.versionUid = Guid.NewGuid().ToString();
+            
+            if ((settings.buildOptions & EDLCMode.DLC) > 0)
+            {
+                BuildDLC($"{outputDir}/{EDLCMode.DLC}", sourceDirs, out dlcVersion.dlcVersionInfoUid);
+            }
             ConfigHelper.Save(dlcVersion, dlcVersionFile, true);
             
             var lastVersionFile =  $"{outputPath}/{DLCVersion.LatestFileName}";
@@ -79,14 +80,15 @@ namespace EasyFramework.Editor
             foreach (var extension in toolEvents) extension.OnExecuteAfter();
         }
         
-        public static void BuildDLC(string outputDir, string[] sourceDirs)
+        public static void BuildDLC(string outputDir, string[] sourceDirs, out string uid)
         {
             // Debug.Log($"DLCBuilder - BuildDLCList");
             
+            uid = Guid.NewGuid().ToString();
             FileHelper.CreateDirectory(outputDir);
             FileHelper.ClearDirectory(outputDir);
 
-            List<string> fileList = new();
+            HashSet<string> sourcesHashSet = new();
             if (sourceDirs?.Length > 0)
             {
                 foreach (var sourceDir in sourceDirs)
@@ -94,7 +96,7 @@ namespace EasyFramework.Editor
                     if (!Directory.Exists(sourceDir)) continue;
                     
                     var files = Directory.GetFiles(sourceDir);
-                    if (files.Length > 0) fileList.AddRange(files);
+                    foreach (var file in files) sourcesHashSet.Add(file);
                 }
             }
 
@@ -102,10 +104,10 @@ namespace EasyFramework.Editor
             List<HashFileInfo> hashFileList = new();
             try
             {
-                foreach (var resFile in fileList)
+                foreach (var resFile in sourcesHashSet)
                 {
                     index++;
-                    EditorUtility.DisplayProgressBar($"DLCBuilder - BuildModeList", $"({index}/{fileList.Count}) {resFile}", index / (float)fileList.Count);
+                    EditorUtility.DisplayProgressBar($"DLCBuilder - BuildModeList", $"({index}/{sourcesHashSet.Count}) {resFile}", index / (float)sourcesHashSet.Count);
 
                     var fi = new FileInfo(resFile);
                     var md5 = MD5Helper.MD5File(resFile);
@@ -118,7 +120,7 @@ namespace EasyFramework.Editor
                     });
 
                     var toFile = $"{outputDir}/{hashFileName}";
-                    File.Copy(resFile, toFile);
+                    File.Copy(resFile, toFile, true);
                 }
             }
             catch (Exception e)
@@ -129,9 +131,8 @@ namespace EasyFramework.Editor
             {
                 EditorUtility.ClearProgressBar();
             }
-            
             DLCVersionInfo versionInfo = new();
-            versionInfo.uid = Guid.NewGuid().ToString();
+            versionInfo.uid = uid;
             versionInfo.hashFiles = hashFileList.ToArray();
             
             ConfigHelper.Save(versionInfo, $"{outputDir}/{DLCVersionInfo.FileName}", true);

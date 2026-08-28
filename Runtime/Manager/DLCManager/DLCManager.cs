@@ -12,16 +12,8 @@ using UnityEngine.Networking;
 
 namespace EasyFramework
 {
-    public class DLCManager : Singleton<DLCManager>, IDLCManager
+    internal class DLCManager : Singleton<DLCManager>, IDLCManager
     {
-        public enum EResult
-        {
-            Success,
-            Error,
-            AppVersionTooLow,
-            DLCUpdaterError,
-            
-        }
         public enum EState
         {
             None,
@@ -31,55 +23,71 @@ namespace EasyFramework
         }
 
         public EState State { get; private set; }
-
-        public string ServerUrl { get; private set; }
-        public DLCVersion Version { get; private set; }
-        public DLCVersionInfo DLCVersionInfo { get; private set; }
+        public bool Initialized { get; private set; }
+        
+        public DLCVersionInfo DLCVersionInfo => DLCUpdater.Instance.VersionInfo;
 
         private EasyFrameworkConfig Config => EasyFrameworkConfig.Instance;
-        private readonly Dictionary<string, string> _fileNameHashDict = new();
-        private readonly Dictionary<string, HashFileInfo> _fileInfoHashDict = new();
 
+        public async ETask InitializeAsync()
+        {
+#if UNITY_EDITOR
+            if (EasyFrameworkSettings.Instance.resLoaderEditorMode)
+            {
+                return;
+            }
+#endif
+            var result = await IndexVersionAsync();
+        }
 
-        public async ETask UpdateAsync()
+        public async ETask<IDLCManager.EResult> UpdateAsync()
+        {
+            var indexResult = await IndexVersionAsync();
+            if (!indexResult) return IDLCManager.EResult.IndexVersionError;
+            
+            var updateResult = await DLCUpdater.Instance.UpdateAsync();
+            if (updateResult != DLCUpdater.EResult.Success) return IDLCManager.EResult.DLCUpdaterError;
+            
+            return IDLCManager.EResult.Success;
+        }
+        
+        public async ETask<bool> IndexVersionAsync(string versionName = null)
         {
             var versionUrl = EasyFrameworkSettings.AppSettings.AppVersionURL;
             var webRequest = await ETask.UnityWebRequest(versionUrl);
             if (webRequest.result != UnityWebRequest.Result.Success)
             {
                 FDebug.LogError($"AppVersionUrl: {versionUrl}\nresult: {webRequest.result}");
-                return;
+                return false;
             }
             FDebug.Log($"AppVersionUrl: {versionUrl}\n{webRequest.downloadHandler.text}");
+            
             var dlcVersion = ConfigHelper.LoadFromText<DLCVersion>(webRequest.downloadHandler.text);
-            await UpdateAsync(dlcVersion);
-        }
-        // public async ETask UpdateAsync(string dlcVersion)
-        // {
-        //     var versionUrl = $"{EasyFrameworkSettings.AppSettings.CdnURL}/{dlcVersion}";
-        //     
-        // }
-        private async ETask<EResult> UpdateAsync(DLCVersion dlcVersion)
-        {
             if (dlcVersion == null)
             {
-                FDebug.LogError($"dlcVersion is null");
-                return EResult.Error;
+                FDebug.LogError($"DLCManager init dlcVersion is null");
+                return false;
             }
 
-            Version = dlcVersion;
-            if (Version.versionIndex > EasyFrameworkSettings.Instance.dlcVersionIndex)
-                return EResult.AppVersionTooLow;
+            var localIndex = EasyFrameworkSettings.Instance.dlcVersionIndex;
+            if (dlcVersion.versionIndex > localIndex)
+            {
+                FDebug.LogError($"DLCManager init failed because version too low. {localIndex} - {dlcVersion.versionIndex}");
+                return false;
+            }
             
-            Config.dlcVersion = Version.versionName;
+            Config.dlcVersion = dlcVersion;
             Config.Save();
+            
+            await DLCUpdater.Instance.InitializeAsync();
 
-            var result = await DLCUpdater.Instance.UpdateAsync();
-            if (result != DLCUpdater.EResult.Success) return EResult.DLCUpdaterError;
-
-            return EResult.Success;
+            return true;
         }
 
+        public string GetResFilePath(string resName) => DLCUpdater.Instance.GetResFilePath(resName);
+
+        public ETask<bool> DownloadAsync(string resName) => DLCUpdater.Instance.DownloadAsync(resName);
+        public ETask<string> DownloadAndReturnFileAsync(string resName) => DLCUpdater.Instance.DownloadAndReturnFileAsync(resName);
 
         public void DownloadFile(string fileName, Action<bool> callback = null)
         {

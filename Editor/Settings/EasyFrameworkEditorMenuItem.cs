@@ -19,9 +19,15 @@ namespace EasyFramework.Editor
         [MenuItem("EasyFramework/Preferences...", priority = 0)]
         public static void OpenPreferences() => SettingsService.OpenUserPreferences(EasyFrameworkPreferences.SettingPath);
         
-        [MenuItem("EasyFramework/Open ServerUrl", priority = 0)]
-        public static void OpenServerUrl() => Application.OpenURL(EasyFrameworkPreferences.ServerUrl);
+        // [MenuItem("EasyFramework/Open ServerUrl", priority = 0)]
+        // public static void OpenServerUrl() => Application.OpenURL(EasyFrameworkPreferences.ServerUrl);
 
+        [MenuItem("EasyFramework/Editor/ProjectDataPath(Show in Explorer)", priority = Priority + 100)]
+        private static void OpenProjectDataPath()
+        {
+            System.Diagnostics.Process.Start(EasyFrameworkPreferences.ProjectDataPath);
+        }
+        
         [MenuItem("EasyFramework/Editor/PersistentDataPath(Show in Explorer)", priority = Priority + 200)]
         private static void PersistentDataPath()
         {
@@ -32,6 +38,7 @@ namespace EasyFramework.Editor
         {
             FileHelper.ClearDirectory(Application.persistentDataPath);
         }
+        
         [MenuItem("EasyFramework/Editor/PlayerPrefs-DeleteAll", false, priority = Priority + 300)]
         public static void PlayerPrefsDeleteAll()
         {

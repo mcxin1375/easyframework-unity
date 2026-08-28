@@ -44,13 +44,13 @@ namespace EasyFramework
         
         public static async ETask<bool> DownloadAsync(this HttpClient httpClient, string url, string file, int requestIndex = -1, IHttpReceiver httpReceiver = null, CancellationToken token = default)
         {
-            string directory = Path.GetDirectoryName(file);
-            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
-            if (File.Exists(file)) File.Delete(file);
-            
             byte[] buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
             try
             {
+                string directory = Path.GetDirectoryName(file);
+                if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+                if (File.Exists(file)) File.Delete(file);
+                
                 var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
                 response.EnsureSuccessStatusCode();
                 var contentLength = response.Content.Headers.ContentLength ?? 0;
@@ -73,6 +73,7 @@ namespace EasyFramework
             catch (Exception ex)
             {
                 FDebug.LogException(ex);
+                FDebug.LogError($"DownloadAsync Error: \n{url}\n{file}");
             }
             finally
             {

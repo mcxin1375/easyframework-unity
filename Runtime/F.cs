@@ -50,26 +50,51 @@ namespace EasyFramework
 #if EF_HYBRIDCLR
         public static HybridCLRManager HybridCLRManager => HybridCLRManager.Instance;
 #endif
-
-        private static bool _initialized;
+        
+        private enum EState
+        {
+            None,
+            Initializing,
+            Initialized,
+        }
+        private static EState _state = EState.None;
+        
         public static void Initialize()
         {
-            if (_initialized) return;
-            _initialized = true;
-            
-            EasyFrameworkSettings.CreateInstance();
-            FDebug.Debugger = UnityDebugger.Instance;
-            FDebug.DebugLevel = EasyFrameworkSettings.Instance.debugLevel;
-            
-            Behaviour = FBehaviour.Instance;
-
-            EasyFramework.WindowManager.CreateInstance();
-            EasyFramework.SpriteLoader.CreateInstance();
-            EasyFramework.ShaderLoader.CreateInstance();
-            EasyFramework.SceneLoader.CreateInstance();
-            EasyFramework.AudioPlayer.CreateInstance();
+            _ = InitializeAsync();
         }
-        
+        public static async ETask InitializeAsync()
+        {
+            switch (_state)
+            {
+                case EState.None:
+                    
+                    _state = EState.Initializing;
+            
+                    EasyFrameworkSettings.CreateInstance();
+                    FDebug.Debugger = UnityDebugger.Instance;
+                    FDebug.DebugLevel = EasyFrameworkSettings.Instance.debugLevel;
+            
+                    Behaviour = FBehaviour.Instance;
+
+                    EasyFramework.WindowManager.CreateInstance();
+                    EasyFramework.SpriteLoader.CreateInstance();
+                    EasyFramework.ShaderLoader.CreateInstance();
+                    EasyFramework.SceneLoader.CreateInstance();
+                    EasyFramework.AudioPlayer.CreateInstance();
+                    
+                    await EasyFramework.DLCManager.Instance.InitializeAsync();
+                    await EasyFramework.AssetBundleLoader.Instance.InitializeAsync();
+            
+                    _state =  EState.Initialized;
+                    
+                    break;
+                case EState.Initializing:
+                    await ETask.WaitUntil(() => _state == EState.Initialized);
+                    break;
+            }
+        }
+
         [RuntimeInitializeOnLoadMethod]
         private static void InitOnLoadMethod()
         {

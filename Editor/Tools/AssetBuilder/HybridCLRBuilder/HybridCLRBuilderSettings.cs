@@ -19,6 +19,21 @@ namespace EasyFramework.Editor
         public string[] customLoadDlls;
         [Header("元数据补充程序集")]
         public string[] stripDlls;
+        
+        [Header("PlayerBuilder Pre")]
+        public bool hybridClrGenerateAll = true;
+    }
+
+    public class HybridCLRBuilderSettingsExtensions : IToolEvent<PlayerBuilder>
+    {
+        void IToolEvent<PlayerBuilder>.OnExecuteBefore()
+        {
+            if (HybridCLRBuilderSettings.Instance.hybridClrGenerateAll &&
+                HybridCLR.Editor.SettingsUtil.Enable)
+            {
+                HybridCLR.Editor.Commands.PrebuildCommand.GenerateAll();
+            }
+        }
     }
 }
 

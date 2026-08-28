@@ -47,13 +47,13 @@ namespace EasyFramework
         public AssetBundle Bundle { get; private set; }
         private AssetBundleCreateRequest _assetBundleCreateRequest;
         private AssetBundleUnloadOperation _assetBundleUnloadOperation;
-        private bool _downloading;
 
-        public AssetBundleInfo(string abName, string[] abDepNames)
+        public AssetBundleInfo(string abName, string[] abDepNames, string filePath)
         {
             FileName = abName;
             DepNames = abDepNames;
-            FilePath = AssetBundleHelper.NameToURL(FileName);
+            FilePath = filePath;
+            // FilePath = AssetBundleHelper.NameToURL(FileName);
         }
 
         bool ITickerNode.OnTick()
@@ -141,11 +141,7 @@ namespace EasyFramework
             
             if (!File.Exists(FilePath))
             {
-                if (!_downloading)
-                {
-                    State = AssetBundleState.Loading;
-                    _ = DownloadAsync();
-                }
+                FDebug.LogError($"AssetBundle[{FileName}] not exists: {FilePath}");
                 return;
             }
             
@@ -154,32 +150,6 @@ namespace EasyFramework
 
             if (State == AssetBundleState.Loading)
                 ETask.AddTick(this);
-        }
-
-        private async ETask DownloadAsync()
-        {
-            if (_downloading) return;
-            _downloading = true;
-
-            await F.DLCDownloader.DownloadAsync(FileName);
-            
-            _downloading = false;
-
-            if (!File.Exists(FilePath))
-            {
-                FDebug.LogError($"AssetBundle[{FileName}] download failed!");
-                if (State == AssetBundleState.Loading) State = AssetBundleState.None;
-                return;
-            }
-            
-            if (State == AssetBundleState.Loading)
-            {
-                _assetBundleCreateRequest = AssetBundle.LoadFromFileAsync(FilePath);
-                State = _assetBundleCreateRequest != null ? AssetBundleState.Loading : AssetBundleState.None;
-
-                if (State == AssetBundleState.Loading)
-                    ETask.AddTick(this);
-            }
         }
 
         internal void Unload(bool unloadAllLoadedObjects)

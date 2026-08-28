@@ -17,15 +17,15 @@ namespace EasyFramework.Editor
         {
             var settings = PlayerBuilderSettings.Instance;
             if (!settings.preSettingsEnabled) return;
-            
+
             var appSettings = EasyFrameworkSettings.AppSettings;
             
             if (!settings.companyName.IsNullOrEmpty())
                 PlayerSettings.companyName = settings.companyName;
             if (!settings.productName.IsNullOrEmpty())
                 PlayerSettings.productName = settings.productName;
-            if (!appSettings.AppVersion.IsNullOrEmpty())
-                PlayerSettings.bundleVersion = appSettings.AppVersion;
+            if (!appSettings.BundleVersion.IsNullOrEmpty())
+                PlayerSettings.bundleVersion = appSettings.BundleVersion;
             if (!appSettings.BundleIdentifier.IsNullOrEmpty())
             {
                 var namedTarget = NamedBuildTarget.FromBuildTargetGroup(BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget));
@@ -35,10 +35,16 @@ namespace EasyFramework.Editor
             switch (EditorUserBuildSettings.activeBuildTarget)
             {
                 case BuildTarget.Android:
-                    var ver = appSettings.BundleVersion > 0
-                        ? appSettings.BundleVersion
+                    var bundleVersionCode = appSettings.BuildIndex > 0
+                        ? appSettings.BuildIndex
                         : PlayerBuilder.Instance.Version.buildIndex;
-                    PlayerSettings.Android.bundleVersionCode = 0;
+                    if (bundleVersionCode < 1)
+                    {
+                        FDebug.LogError($"bundleVersionCode {bundleVersionCode} is less than 1.");
+                        bundleVersionCode = 1;
+                    }
+
+                    PlayerSettings.Android.bundleVersionCode = bundleVersionCode;
                     EditorUserBuildSettings.exportAsGoogleAndroidProject = settings.exportAsGoogleAndroidProject;
                     break;
             }
@@ -60,10 +66,13 @@ namespace EasyFramework.Editor
             var locationDirectory = Path.GetDirectoryName(options.locationPathName);
             FileHelper.CreateDirectory(locationDirectory);
 
+            FDebug.Log($"BuildPlayer Start: {options.locationPathName}");
             var result = BuildPipeline.BuildPlayer(options);
-            FDebug.Log($"BuildPlayer: {result.summary.result}");
+            FDebug.Log($"BuildPlayer End: {result.summary.result}");
 
             foreach (var ex in PlayerBuilder.Instance.ToolExtensions) ex.OnBuildReport(result);
+
+            if (Directory.Exists(locationDirectory)) System.Diagnostics.Process.Start(locationDirectory);
         }
         
         // public void BuildMainRes(string dlcVersion = "")

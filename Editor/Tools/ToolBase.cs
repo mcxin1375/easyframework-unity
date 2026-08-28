@@ -15,10 +15,16 @@ namespace EasyFramework.Editor
     {
         public virtual int Order => 0;
 
-        public readonly string ProjectDataPath;
-        public readonly string AssetsDataPath;
+        public readonly string ProjectPath;
+        public readonly string AssetsPath;
+        public readonly string ToolsPath;
         public readonly string DebugPath;
-        private readonly string VersionFilePath;
+        public readonly string ProjectPlatformPath;
+        public readonly string AssetsPlatformPath;
+        public readonly string ToolsPlatformPath;
+        public readonly string DebugPlatformPath;
+        
+        private string VersionFilePath => $"{ToolsPlatformPath}/{ToolVersion.FileName}";
 
         public ToolVersion Version { get; private set; }
         public IToolEvent<T>[] ToolEvents => ToolExtension<IToolEvent<T>>.Instances;
@@ -26,10 +32,16 @@ namespace EasyFramework.Editor
 
         protected ToolBase()
         {
-            ProjectDataPath = $"{EasyFrameworkPreferences.ProjectDataPath}/{typeof(T).Name}/{PlatformHelper.PlatformName}";
-            AssetsDataPath = $"{EasyFrameworkPreferences.AssetsDataPath}/{typeof(T).Name}/{PlatformHelper.PlatformName}";
-            DebugPath = $"{EasyFrameworkPreferences.ProjectDataPath}/.ToolsDebug/{typeof(T).Name}/{PlatformHelper.PlatformName}";
-            VersionFilePath = $"{EasyFrameworkPreferences.ProjectDataPath}/.ToolsVersion/{PlatformHelper.PlatformName}/{typeof(T).Name}.json";
+            ProjectPath = $"{EasyFrameworkPreferences.ProjectDataPath}/{typeof(T).Name}";
+            AssetsPath = $"{EasyFrameworkPreferences.AssetsDataPath}/{typeof(T).Name}";
+            ToolsPath = $"{EasyFrameworkPreferences.AssetsDataPath}/.Tools/{typeof(T).Name}";
+            DebugPath = $"{EasyFrameworkPreferences.AssetsDataPath}/.Debug/{typeof(T).Name}";
+            
+            ProjectPlatformPath = $"{ProjectPath}/{PlatformHelper.PlatformName}";
+            AssetsPlatformPath = $"{AssetsPath}/{PlatformHelper.PlatformName}";
+            ToolsPlatformPath = $"{ToolsPath}/{PlatformHelper.PlatformName}";
+            DebugPlatformPath = $"{DebugPath}/{PlatformHelper.PlatformName}";
+            
             Version = ConfigHelper.LoadOrCreate<ToolVersion>(VersionFilePath);
         }
         
@@ -44,7 +56,7 @@ namespace EasyFramework.Editor
         public string[] GetBuildFiles() => GetBuildFiles(EditorUserBuildSettings.activeBuildTarget.ToPlatform());
         public string[] GetBuildFiles(Platform platform)
         {
-            var path = $"{Instance.ProjectDataPath}/{platform}";
+            var path = $"{Instance.ProjectPlatformPath}/{platform}";
             return Directory.Exists(path) ? Directory.GetFiles(path, "*", SearchOption.AllDirectories) : null;
         }
 

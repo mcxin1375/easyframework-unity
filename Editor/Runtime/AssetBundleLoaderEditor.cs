@@ -24,7 +24,6 @@ namespace EasyFramework.Editor
             _assetsMap = assetBundleBuilds.ToDictionary(item => item.assetBundleName.Replace(EasyFrameworkSettings.Instance.abSuffix, ""), item => item);
         }
 
-        public ETask PreInitializeAsync() => ETask.CompletedTask;
         public string GetFilePath(string abName)
         {
             if (_assetsMap.TryGetValue(abName, out var info)) return info.assetNames[0];

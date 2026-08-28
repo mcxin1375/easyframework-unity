@@ -76,6 +76,7 @@ namespace EasyFramework
         public string DLCPath { get; private set; }
         public string ConfigPath { get; private set; }
         public string DownloadPath { get; private set; }
+        public string DownloadTempPath { get; private set; }
 
         private static IAppSettings _appSettings;
         public static IAppSettings AppSettings
@@ -122,6 +123,7 @@ namespace EasyFramework
             DLCPath = $"{DataPath}/DLC";
             ConfigPath = $"{DataPath}/Config";
             DownloadPath = $"{DataPath}/Download";
+            DownloadTempPath = $"{DataPath}/DownloadTemp";
 
 #if UNITY_EDITOR
             if (Application.isPlaying)
@@ -129,11 +131,13 @@ namespace EasyFramework
                 FileHelper.CreateDirectory(DLCPath);
                 FileHelper.CreateDirectory(ConfigPath);
                 FileHelper.CreateDirectory(DownloadPath);
+                FileHelper.CreateDirectory(DownloadTempPath);
             }
 #else
             FileHelper.CreateDirectory(DLCPath);
             FileHelper.CreateDirectory(ConfigPath);
             FileHelper.CreateDirectory(DownloadPath);
+            FileHelper.CreateDirectory(DownloadTempPath);
 #endif
         }
     }

@@ -5,8 +5,6 @@ namespace EasyFramework
 {
     public interface IResLoader
     {
-        ETask PreInitializeAsync();
-        
         AssetBundle Load(string abName, IResRequest request = null);
         ETask<AssetBundle> LoadAsync(string abName, IResRequest request = null);
         void Unload(string abName, IResRequest request = null);

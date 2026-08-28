@@ -19,7 +19,7 @@ namespace EasyFramework.Editor
         BuildPlayerOptions BuildPlayerOptions { get; }
     }
 
-    public partial class PlayerBuilder : ToolBase<PlayerBuilder>
+    public class PlayerBuilder : ToolBase<PlayerBuilder>
     {
         public override int Order => ToolOrder.PlayerBuilder;
 
