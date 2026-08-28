@@ -5,9 +5,7 @@
 //----------------------------------------------------------------*/
 
 using System;
-using System.IO;
 using UnityEditor;
-using UnityEngine;
 
 namespace EasyFramework.Editor
 {
@@ -53,22 +51,6 @@ namespace EasyFramework.Editor
             Version.dateTime = DateTime.Now.ToFileTime();
             // SVNCommand.TryGetRevision(EasyFrameworkPreferences.ProjectFullPath, out Version.revision);
             ConfigHelper.Save(Version, VersionFilePath, true);
-        }
-
-        public string[] GetBuildFiles() => GetBuildFiles(EditorUserBuildSettings.activeBuildTarget.ToPlatform());
-        public string[] GetBuildFiles(Platform platform)
-        {
-            var path = $"{Instance.ProjectPlatformPath}/{platform}";
-            return Directory.Exists(path) ? Directory.GetFiles(path, "*", SearchOption.AllDirectories) : null;
-        }
-
-        public string GetProjectDataPath(Platform platform)
-        {
-            return $"{EasyFrameworkPreferences.ProjectDataPath}/{typeof(T).Name}/{platform.ToPlatformName()}";
-        }
-        public string GetAssetsDataPath(Platform platform)
-        {
-            return $"{EasyFrameworkPreferences.AssetsDataPath}/{typeof(T).Name}/{platform.ToPlatformName()}";
         }
 
         public void Execute()
