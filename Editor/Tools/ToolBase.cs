@@ -15,12 +15,13 @@ namespace EasyFramework.Editor
     {
         public virtual int Order => 0;
 
-        public readonly string ProjectPath;
         public readonly string AssetsPath;
+        public readonly string AssetsPlatformPath;
+        
+        public readonly string ProjectPath;
         public readonly string ToolsPath;
         public readonly string DebugPath;
         public readonly string ProjectPlatformPath;
-        public readonly string AssetsPlatformPath;
         public readonly string ToolsPlatformPath;
         public readonly string DebugPlatformPath;
         
@@ -32,10 +33,11 @@ namespace EasyFramework.Editor
 
         protected ToolBase()
         {
-            ProjectPath = $"{EasyFrameworkPreferences.ProjectDataPath}/{typeof(T).Name}";
             AssetsPath = $"{EasyFrameworkPreferences.AssetsDataPath}/{typeof(T).Name}";
-            ToolsPath = $"{EasyFrameworkPreferences.AssetsDataPath}/.Tools/{typeof(T).Name}";
-            DebugPath = $"{EasyFrameworkPreferences.AssetsDataPath}/.Debug/{typeof(T).Name}";
+            
+            ProjectPath = $"{EasyFrameworkPreferences.ProjectDataPath}/{typeof(T).Name}";
+            ToolsPath = $"{EasyFrameworkPreferences.ProjectDataPath}/.Tools/{typeof(T).Name}";
+            DebugPath = $"{EasyFrameworkPreferences.ProjectDataPath}/.Debug/{typeof(T).Name}";
             
             ProjectPlatformPath = $"{ProjectPath}/{PlatformHelper.PlatformName}";
             AssetsPlatformPath = $"{AssetsPath}/{PlatformHelper.PlatformName}";
