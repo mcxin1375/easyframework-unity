@@ -16,6 +16,9 @@ namespace EasyFramework.Editor
     {
         public static void BuildBySettings(string outputPath)
         {
+            if (!HybridCLR.Editor.SettingsUtil.Enable) return;
+            HybridCLR.Editor.Commands.PrebuildCommand.GenerateAll();
+
             FileHelper.CreateDirectory(outputPath);
             FileHelper.ClearDirectory(outputPath);
 

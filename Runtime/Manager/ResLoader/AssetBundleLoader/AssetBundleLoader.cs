@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
@@ -17,12 +18,12 @@ namespace EasyFramework
         public AssetBundleManifest Manifest { get; private set; }
 
         internal IReadOnlyDictionary<string, AssetBundleInfo> AbDict => _abDict;
-        internal IReadOnlyDictionary<string, AssetBundleRequestHandler> RequestDict => _requestDict;
+        internal IReadOnlyDictionary<string, AssetBundleRequest> RequestDict => _requestDict;
         
         private readonly Dictionary<string, AssetBundleInfo> _keyDict = new();
         private readonly Dictionary<string, AssetBundleInfo> _abDict = new();
-        private readonly Dictionary<string, AssetBundleRequestHandler> _requestDict = new();
-        private readonly Queue<AssetBundleRequestHandler> _unloadQueue = new();
+        private readonly Dictionary<string, AssetBundleRequest> _requestDict = new();
+        private readonly Queue<AssetBundleRequest> _unloadQueue = new();
         private readonly List<AssetBundleInfo> _tmpList = new();
 
         public AssetBundleLoader()
@@ -38,24 +39,66 @@ namespace EasyFramework
                 return;
             }
 #endif
-            var manifestFile = await F.DLCManager.DownloadAndReturnFileAsync(AssetBundleManifest.FileName);
-
+            if (Manifest != null) return;
+            
+            var content = await LoadTextAsync(AssetBundleManifest.FileName);
+            Manifest = !content.IsNullOrWhiteSpace() ? ConfigHelper.LoadFromText<AssetBundleManifest>(content) : null;
             if (Manifest == null)
             {
-                Manifest = ConfigHelper.Load<AssetBundleManifest>(manifestFile);
-                if (Manifest == null)
+                FDebug.LogError($"LoadTextAsync: {AssetBundleManifest.FileName}, content is null or empty!");
+                return;
+            }
+            
+            // var manifestFile = await F.DLCManager.DownloadAndReturnFileAsync(AssetBundleManifest.FileName);
+            // Manifest = ConfigHelper.Load<AssetBundleManifest>(manifestFile);
+            // if (Manifest == null)
+            // {
+            //     FDebug.LogError($"manifestFile: {manifestFile}, path is not found!");
+            //     return;
+            // }
+
+            foreach (var abName in Manifest.abNames)
+            {
+                var deps = Manifest.GetAllDependencies(abName);
+                var abFile = string.Empty;
+                var fileName = F.DLCManager.GetFileName(abName);
+                switch (EasyFrameworkSettings.Instance.resLoaderMode)
                 {
-                    FDebug.LogError($"manifestFile: {manifestFile}, path is not found!");
-                    return;
+                    case EResLoaderMode.DLC_CDN:
+                        abFile = $"{EasyFrameworkSettings.Instance.DLCPath}/{fileName}";
+                        break;
+                    case EResLoaderMode.DLC_StreamingAssets:
+                        abFile = $"{EasyFrameworkSettings.Instance.StreamingAssetsDLCPath}/{fileName}";
+                        break;
                 }
 
-                foreach (var abName in Manifest.abNames)
-                {
-                    var deps = Manifest.GetAllDependencies(abName);
-                    var abFile = F.DLCManager.GetResFilePath(abName);
-                    _abDict.Add(abName, new AssetBundleInfo(abName, deps, abFile));
-                }
+                _abDict.Add(abName, new AssetBundleInfo(abName, deps, abFile));
             }
+        }
+
+        public async ETask<string> LoadTextAsync(string resName)
+        {
+            var fileName = F.DLCManager.GetFileName(resName);
+            if (fileName.IsNullOrWhiteSpace())
+            {
+                FDebug.LogError($"LoadTextAsync: {resName} failed, fileName is null or empty!");
+                return string.Empty;
+            }
+
+            switch (EasyFrameworkSettings.Instance.resLoaderMode)
+            {
+                case EResLoaderMode.DLC_StreamingAssets:
+                    var file = $"{EasyFrameworkSettings.Instance.StreamingAssetsDLCPath}/{fileName}";
+                    FDebug.Log(file);
+                    var uwr = await ETask.UnityWebRequest(file);
+                    return uwr.downloadHandler.text;
+                case EResLoaderMode.DLC_CDN:
+                    var dlcFile = await F.DLCManager.DownloadAndReturnFileAsync(fileName);
+                    FDebug.Log(dlcFile);
+                    return File.ReadAllText(dlcFile);
+            }
+
+            return string.Empty;
         }
 
         bool ITickerNode.OnTick()
@@ -73,7 +116,7 @@ namespace EasyFramework
                     _requestDict.Remove(request.AbName);
                     
                     request.UnloadForce(false);
-                    ObjectPool<AssetBundleRequestHandler>.Shared.Return(request);
+                    ObjectPool<AssetBundleRequest>.Shared.Return(request);
                 }
             }
 
@@ -88,7 +131,7 @@ namespace EasyFramework
             {
                 if (!TryGetOrCreate(abName, out var mainInfo)) return null;
                 
-                request = ObjectPool<AssetBundleRequestHandler>.Shared.Rent();
+                request = ObjectPool<AssetBundleRequest>.Shared.Rent();
                 request.InitInfo(abName, mainInfo);
                 _requestDict.Add(abName, request);
             }
@@ -106,9 +149,17 @@ namespace EasyFramework
             {
                 if (!TryGetOrCreate(abName, out var mainInfo)) return null;
                 
-                request = ObjectPool<AssetBundleRequestHandler>.Shared.Rent();
+                request = ObjectPool<AssetBundleRequest>.Shared.Rent();
                 request.InitInfo(abName, mainInfo);
                 _requestDict.Add(abName, request);
+            }
+
+            switch (EasyFrameworkSettings.Instance.resLoaderMode)
+            {
+                case EResLoaderMode.DLC_CDN:
+                    var result = await request.DownloadAsync();
+                    if (!result) return null;
+                    break;
             }
             
             return await request.LoadAsync(handler);
@@ -120,7 +171,7 @@ namespace EasyFramework
             if (request.Unload(handler, false))
             {
                 _requestDict.Remove(abName);
-                ObjectPool<AssetBundleRequestHandler>.Shared.Return(request);
+                ObjectPool<AssetBundleRequest>.Shared.Return(request);
             }
         }
         
@@ -129,7 +180,7 @@ namespace EasyFramework
             if (!_requestDict.TryGetValue(abName, out var request)) return;
             request.UnloadForce(unloadAllLoadedObjects);
             _requestDict.Remove(abName);
-            ObjectPool<AssetBundleRequestHandler>.Shared.Return(request);
+            ObjectPool<AssetBundleRequest>.Shared.Return(request);
         }
 
         public void UnloadAllForce(bool unloadAllLoadedObjects = false)
@@ -137,7 +188,7 @@ namespace EasyFramework
             foreach (var request in _requestDict.Values)
             {
                 request.UnloadForce(unloadAllLoadedObjects);
-                ObjectPool<AssetBundleRequestHandler>.Shared.Return(request);
+                ObjectPool<AssetBundleRequest>.Shared.Return(request);
             }
             _requestDict.Clear();
         }
@@ -189,8 +240,7 @@ namespace EasyFramework
         }
 
         public string[] GetAllDependencies(string abName) => Manifest?.GetAllDependencies(abName);
-        
-        
+
         public T LoadAsset<T>(string abName, IResRequest request = null) where T : Object
         {
             var ab = Load(abName, request);

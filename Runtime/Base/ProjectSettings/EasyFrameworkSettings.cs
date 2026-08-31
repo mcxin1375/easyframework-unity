@@ -66,18 +66,19 @@ namespace EasyFramework
         public string enterType = "HotUpdate";
         public string enterMethod = "Enter";
 
-        [Header("发布时动态更新")]
-        public StreamingAssetsResZipInfo streamingAssetsResZipInfo = new();
+        // [Header("发布时动态更新")]
+        // public StreamingAssetsResZipInfo streamingAssetsResZipInfo = new();
         
         [Header("Debug Settings")]
         public EDebugLevel debugLevel = EDebugLevel.Log | EDebugLevel.LogWarning | EDebugLevel.LogError;
 
+        public readonly string StreamingAssetsDLCPath = $"{Application.streamingAssetsPath}/DLC";
         public string DataPath { get; private set; }
         public string DLCPath { get; private set; }
         public string ConfigPath { get; private set; }
         public string DownloadPath { get; private set; }
         public string DownloadTempPath { get; private set; }
-
+        
         private static IAppSettings _appSettings;
         public static IAppSettings AppSettings
         {
@@ -86,28 +87,6 @@ namespace EasyFramework
                 if (Instance.appSettings != null) return Instance.appSettings;
                 _appSettings ??= EasyFrameworkReflection.CreateInstance<IAppSettings>();
                 return _appSettings;
-            }
-        }
-
-        private static IApp _app;
-        public static IApp App
-        {
-            get
-            {
-                if (_app == null)
-                {
-                    // var type = System.Type.GetType(Instance.appFullType);
-                    // if (type != null)
-                    // {
-                    //     _app = Activator.CreateInstance(type) as IApp;
-                    // }
-                    // else
-                    // {
-                    //     _app = ReflectionHelper.CreateInstance<IApp>();
-                    // }
-                    _app = EasyFrameworkReflection.CreateInstance<IApp>();
-                }
-                return _app;
             }
         }
 

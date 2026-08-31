@@ -13,7 +13,7 @@ namespace EasyFramework.Editor
 {
     public static class PlayerBuilderUtility
     {
-        public static void PreInitPlayerSettings()
+        public static void PreInitSettings()
         {
             var settings = PlayerBuilderSettings.Instance;
             if (!settings.preSettingsEnabled) return;
@@ -55,6 +55,8 @@ namespace EasyFramework.Editor
             var settings = PlayerBuilderSettings.Instance;
             if (!settings.enabled) return;
 
+            PreInitSettings();
+            
             var buildSettings = PlayerBuilder.Instance.ToolSettings?.FirstOrDefault();
             if (buildSettings == null)
             {

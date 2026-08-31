@@ -4,8 +4,6 @@
 // describe:
 //----------------------------------------------------------------*/
 
-using System;
-
 namespace EasyFramework
 {
     public interface IDLCManager
@@ -13,20 +11,17 @@ namespace EasyFramework
         ETask<EResult> UpdateAsync();
         // ETask UpdateAsync(string dlcVersion);
 
-        string GetResFilePath(string resName);
+        string GetFileName(string resName);
+        string GetFilePath(string resName);
+        bool Exists(string resName);
         ETask<bool> DownloadAsync(string resName);
+        ETask<bool> DownloadAsync(string resName, out string filePath);
         ETask<string> DownloadAndReturnFileAsync(string resName);
-        
-        void DownloadFile(string fileName, Action<bool> callback = null);
-        void DownloadFiles(string[] fileNames, Action<bool> callback = null);
-        ETask<bool> DownloadFileAsync(string fileName);
-        // ETask<bool> DownloadFilesAsync(string[] fileNames);
-        // string GetFileHashName(string fileName);
         
         public enum EResult
         {
             Success,
-            IndexVersionError,
+            InitVersionError,
             DLCUpdaterError,
         }
     }

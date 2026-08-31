@@ -13,14 +13,14 @@ namespace EasyFramework
 {
     public readonly partial struct ETask
     {
-        public static ETask<UnityEngine.Object> AssetBundleRequestAsync(AssetBundleRequest assetBundleRequest, CancellationToken cancellationToken = default)
+        public static ETask<UnityEngine.Object> AssetBundleRequestAsync(UnityEngine.AssetBundleRequest assetBundleRequest, CancellationToken cancellationToken = default)
         {
             return new ETask<UnityEngine.Object>(AssetBundleRequestTask.Create(assetBundleRequest, cancellationToken, out var token), token);
         }
 
         private sealed class AssetBundleRequestTask : TaskAwaiter<UnityEngine.Object>
         {
-            private AssetBundleRequest _assetBundleRequest;
+            private UnityEngine.AssetBundleRequest _assetBundleRequest;
             private CancellationToken _cancellationToken;
 
             protected override bool OnTaskTick()
@@ -49,7 +49,7 @@ namespace EasyFramework
                 ObjectPool<AssetBundleRequestTask>.Shared.Return(this);
             }
 
-            public static AssetBundleRequestTask Create(AssetBundleRequest assetBundleRequest, CancellationToken cancellationToken, out Guid token)
+            public static AssetBundleRequestTask Create(UnityEngine.AssetBundleRequest assetBundleRequest, CancellationToken cancellationToken, out Guid token)
             {
                 var task = ObjectPool<AssetBundleRequestTask>.Shared.Rent();
                 task._assetBundleRequest = assetBundleRequest;
@@ -62,7 +62,7 @@ namespace EasyFramework
 
     public static class AssetBundleRequestAwaiterExtensions
     {
-        public static ETask<UnityEngine.Object>.Awaiter GetAwaiter(this AssetBundleRequest assetBundleRequest)
+        public static ETask<UnityEngine.Object>.Awaiter GetAwaiter(this UnityEngine.AssetBundleRequest assetBundleRequest)
         {
             return ETask.AssetBundleRequestAsync(assetBundleRequest).GetAwaiter();
         }

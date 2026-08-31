@@ -13,7 +13,7 @@ namespace EasyFramework
         void Awake()
         {
             transform.name = "[EasyFramework]";
-            FDebug.Log($"[{transform.name}] OnAwake");
+            FDebug.Log($"{transform.name} OnAwake");
             
             Object.DontDestroyOnLoad(gameObject);
         }

@@ -100,11 +100,11 @@ namespace EasyFramework
             
             if (Bundle != null) return Bundle;
 
-            if (!File.Exists(FilePath))
-            {
-                FDebug.LogError($"AssetBundle[{FileName}] not exists: {FilePath}");
-                return null;
-            }
+            // if (!File.Exists(FilePath))
+            // {
+            //     FDebug.LogError($"AssetBundle[{FileName}] not exists: {FilePath}");
+            //     return null;
+            // }
 
             switch (State)
             {
@@ -121,6 +121,7 @@ namespace EasyFramework
                     break;
             }
             State = AssetBundleState.None;
+            FDebug.Log($"AssetBundle.LoadFromFile: {FilePath}");
             Bundle = AssetBundle.LoadFromFile(FilePath);
             return Bundle;
         }
@@ -139,12 +140,13 @@ namespace EasyFramework
                     break;
             }
             
-            if (!File.Exists(FilePath))
-            {
-                FDebug.LogError($"AssetBundle[{FileName}] not exists: {FilePath}");
-                return;
-            }
+            // if (!File.Exists(FilePath))
+            // {
+            //     FDebug.LogError($"AssetBundle[{FileName}] not exists: {FilePath}");
+            //     return;
+            // }
             
+            FDebug.Log($"AssetBundle.LoadFromFileAsync: {FilePath}");
             _assetBundleCreateRequest = AssetBundle.LoadFromFileAsync(FilePath);
             State = _assetBundleCreateRequest != null ? AssetBundleState.Loading : AssetBundleState.None;
 

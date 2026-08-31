@@ -82,32 +82,32 @@ namespace EasyFramework
             return assemblyEditor;
 #endif
             
-            var result = await F.DLCManager.DownloadFileAsync(assemblyName);
-            if (result)
-            {
-                switch (loadType)
-                {
-                    case ELoadType.Dll:
-                        
-                        var dllDataFile = $"{EasyFrameworkSettings.Instance.DLCPath}/{assemblyName}{FileExtension}";
-                        var dllPdbDataFile = $"{EasyFrameworkSettings.Instance.DLCPath}/{assemblyName}.pdb{FileExtension}";
-                        
-                        var assembly = HotUpdateHelper.LoadDll(dllDataFile, dllPdbDataFile);
-                        _assemblies.Add(assembly);
-                        
-                        HotUpdateHelper.Enter(assembly);
-
-                        return assembly;
-                    case ELoadType.MetaData:
-                        var metaDataFileName = assemblyName.EndsWith(FileExtension)
-                            ? assemblyName
-                            : $"{assemblyName}{FileExtension}";
-                        var metaDataFile = $"{EasyFrameworkSettings.Instance.DLCPath}/{metaDataFileName}";
-                        HotUpdateHelper.LoadMetaData(metaDataFile);
-                        
-                        break;
-                }
-            }
+            // var result = await F.DLCManager.DownloadFileAsync(assemblyName);
+            // if (result)
+            // {
+            //     switch (loadType)
+            //     {
+            //         case ELoadType.Dll:
+            //             
+            //             var dllDataFile = $"{EasyFrameworkSettings.Instance.DLCPath}/{assemblyName}{FileExtension}";
+            //             var dllPdbDataFile = $"{EasyFrameworkSettings.Instance.DLCPath}/{assemblyName}.pdb{FileExtension}";
+            //             
+            //             var assembly = HotUpdateHelper.LoadDll(dllDataFile, dllPdbDataFile);
+            //             _assemblies.Add(assembly);
+            //             
+            //             HotUpdateHelper.Enter(assembly);
+            //
+            //             return assembly;
+            //         case ELoadType.MetaData:
+            //             var metaDataFileName = assemblyName.EndsWith(FileExtension)
+            //                 ? assemblyName
+            //                 : $"{assemblyName}{FileExtension}";
+            //             var metaDataFile = $"{EasyFrameworkSettings.Instance.DLCPath}/{metaDataFileName}";
+            //             HotUpdateHelper.LoadMetaData(metaDataFile);
+            //             
+            //             break;
+            //     }
+            // }
             return null;
         }
 
@@ -186,17 +186,17 @@ namespace EasyFramework
                     tmpList.Add(pdbFileName);
                 }
             }
-            F.DLCManager.DownloadFiles(tmpList.ToArray(), b =>
-            {
-                if (b)
-                {
-                    EnterState(EState.Loading);
-                }
-                else
-                {
-                    OnCompleted(EResult.DownloadError);
-                }
-            });
+            // F.DLCManager.DownloadFiles(tmpList.ToArray(), b =>
+            // {
+            //     if (b)
+            //     {
+            //         EnterState(EState.Loading);
+            //     }
+            //     else
+            //     {
+            //         OnCompleted(EResult.DownloadError);
+            //     }
+            // });
         }
 
         private void HybridCLRLoading()

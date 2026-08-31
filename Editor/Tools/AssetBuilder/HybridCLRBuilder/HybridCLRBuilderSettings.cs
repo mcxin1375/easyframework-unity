@@ -28,8 +28,9 @@ namespace EasyFramework.Editor
     {
         void IToolEvent<PlayerBuilder>.OnExecuteBefore()
         {
-            if (HybridCLRBuilderSettings.Instance.hybridClrGenerateAll &&
-                HybridCLR.Editor.SettingsUtil.Enable)
+            if (!HybridCLR.Editor.SettingsUtil.Enable) return;
+            
+            if (HybridCLRBuilderSettings.Instance.hybridClrGenerateAll) return;
             {
                 HybridCLR.Editor.Commands.PrebuildCommand.GenerateAll();
             }

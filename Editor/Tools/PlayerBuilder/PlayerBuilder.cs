@@ -26,7 +26,6 @@ namespace EasyFramework.Editor
         public IPlayerBuilderExtension[] ToolExtensions => ToolExtension<IPlayerBuilderExtension>.Instances;
         public IPlayerBuilderSettings[] ToolSettings => ToolExtension<IPlayerBuilderSettings>.Instances;
 
-        protected override void OnSelfExecuteBefore() => PlayerBuilderUtility.PreInitPlayerSettings();
         protected override void OnSelfExecute() => PlayerBuilderUtility.BuildBySettings();
 
         [MenuItem("EasyFramework/Tools/PlayerBuilder - Execute", priority = ToolOrder.PlayerBuilder)]

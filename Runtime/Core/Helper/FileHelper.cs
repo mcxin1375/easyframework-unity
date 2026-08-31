@@ -72,6 +72,11 @@ namespace EasyFramework
                 CopyDirectory(sourceDirectory, destinationDirectory, compareDifferent, deleteNotExists, copyAction);
             }, token);
         }
+
+        public static void CopyDirectory(string sourceDirectory, string destinationDirectory)
+        {
+            CopyDirectory(sourceDirectory, destinationDirectory, true, true);
+        }
         public static void CopyDirectory(string sourceDirectory, string destinationDirectory, bool compareDifferent, bool deleteNotExists, Action<string, int, int> copyAction = null)
         {
             if (!Directory.Exists(sourceDirectory)) return;

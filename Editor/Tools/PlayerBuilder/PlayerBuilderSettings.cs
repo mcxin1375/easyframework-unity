@@ -4,8 +4,6 @@
 // describe:
 //----------------------------------------------------------------*/
 
-using System;
-using UnityEditor;
 using UnityEngine;
 
 namespace EasyFramework.Editor
@@ -20,6 +18,10 @@ namespace EasyFramework.Editor
         [Header("Pre Settings")]
         public bool preSettingsEnabled = true;
         
+        [Header("StreamingAssets Settings")]
+        public EStreamingAssetsOptions streamingAssetsOptions = EStreamingAssetsOptions.None;
+        public string dlcVersion;
+        
         [Header("Build Player")]
         public bool enabled = true;
         public bool exportAsGoogleAndroidProject;
@@ -33,5 +35,11 @@ namespace EasyFramework.Editor
         // public string dlcVersion;
         // public int maxZipSizeMb = 1024;
         // public string[] dlcPackages;
+    }
+
+    public enum EStreamingAssetsOptions
+    {
+        None,
+        DLCList,
     }
 }

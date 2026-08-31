@@ -14,7 +14,7 @@ namespace EasyFramework
         bool IsUnloading(string abName);
         float GetLoadingProgress(string abName);
         string[] GetAllDependencies(string abName);
-        
+
         T LoadAsset<T>(string abName, IResRequest request = null) where T : UnityEngine.Object;
         T[] LoadAllAssets<T>(string abName, IResRequest request = null) where T : UnityEngine.Object;
         ETask<T> LoadAssetAsync<T>(string abName, IResRequest request = null) where T : UnityEngine.Object;

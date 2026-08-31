@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace EasyFramework
 {
-    internal class AssetBundleRequestHandler : IObjectPoolEvent
+    internal class AssetBundleRequest : IObjectPoolEvent
     {
         
         public bool Alive
@@ -23,7 +23,7 @@ namespace EasyFramework
 
         public string AbName;
         public AssetBundleInfo MainInfo;
-        internal HashSet<IResRequest> ReferList;
+        internal readonly HashSet<IResRequest> ReferList = new();
 
         public void OnRent()
         {
@@ -31,13 +31,7 @@ namespace EasyFramework
         }
         public void OnReturn()
         {
-            if (ReferList != null)
-            {
-                ReferList.Clear();
-                ObjectPool<HashSet<IResRequest>>.Shared.Return(ReferList);
-                ReferList = null;
-            }
-
+            ReferList.Clear();
             MainInfo = null;
             AliveTime = 0;
             AbName = string.Empty;
@@ -57,7 +51,6 @@ namespace EasyFramework
         private void AddRefer(IResRequest handler)
         {
             if (handler == null) return;
-            if (ReferList == null) ReferList = ObjectPool<HashSet<IResRequest>>.Shared.Rent();
             ReferList.Add(handler);
         }
 
@@ -90,15 +83,28 @@ namespace EasyFramework
             {
                 foreach (var depInfo in MainInfo.Dependencies)
                 {
-                    await F.DLCManager.DownloadAsync(depInfo.FileName);
+                    // await F.DLCManager.DownloadAsync(depInfo.FileName);
                     depInfo.LoadAsync();
                 }
             }
-            await F.DLCManager.DownloadAsync(MainInfo.FileName);
+            // await F.DLCManager.DownloadAsync(MainInfo.FileName);
             MainInfo.LoadAsync();
 
             return await new ETask<AssetBundle>(Task.Create(MainInfo, Task.State.Loading, out var token), token);
             // return new ETask<AssetBundle>(Task.Create(MainInfo, Task.State.Loading, out var token), token);
+        }
+
+        public async ETask<bool> DownloadAsync()
+        {
+            if (MainInfo.Dependencies?.Length > 0)
+            {
+                foreach (var depInfo in MainInfo.Dependencies)
+                {
+                    var result = await F.DLCManager.DownloadAsync(depInfo.FileName);
+                    if (!result) return false;
+                }
+            }
+            return await F.DLCManager.DownloadAsync(MainInfo.FileName);
         }
 
         public bool Unload(IResRequest handler, bool unloadAllLoadedObjects)

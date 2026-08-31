@@ -27,7 +27,7 @@ namespace EasyFramework.Editor
 
         public ToolVersion Version { get; private set; }
         public IToolEvent<T>[] ToolEvents => ToolExtension<IToolEvent<T>>.Instances;
-        public IToolExtension[] Extension => ToolExtension<IToolEvent<T>>.Instances;
+        // public IToolExtension[] Extension => ToolExtension<IToolEvent<T>>.Instances;
 
         protected ToolBase()
         {

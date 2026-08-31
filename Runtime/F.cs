@@ -17,13 +17,11 @@ namespace EasyFramework
         public static FBehaviour Behaviour { get; private set; }
         
         public static Event Event => Event.Instance;
-        // public static LocalStorageManager LocalStorageManager => LocalStorageManager.Instance;
-        public static MainResManager MainResManager => MainResManager.Instance;
+        // public static MainResManager MainResManager => MainResManager.Instance;
         public static IDLCManager DLCManager => EasyFramework.DLCManager.Instance;
         public static IHttpManager HttpManager => EasyFramework.HttpManager.Instance;
         public static IWindowManager WindowManager => EasyFramework.WindowManager.Instance;
         
-        public static DLCDownloader DLCDownloader => EasyFramework.DLCDownloader.Instance;
         public static ISpriteLoader SpriteLoader => EasyFramework.SpriteLoader.Instance;
         public static IShaderLoader ShaderLoader => EasyFramework.ShaderLoader.Instance;
         public static ISceneLoader SceneLoader => EasyFramework.SceneLoader.Instance;

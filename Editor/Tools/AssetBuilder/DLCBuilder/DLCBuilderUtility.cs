@@ -23,6 +23,12 @@ namespace EasyFramework.Editor
             return versionList.versions?.Length > 0 ? versionList.versions[0] : null;
         }
         
+        public static DLCVersion GetLatestVersion()
+        {
+            var file = $"{DLCBuilder.Instance.ProjectPlatformPath}/{DLCVersion.LatestFileName}";
+            return ConfigHelper.LoadOrCreate<DLCVersion>(file);
+        }
+        
         public static void BuildBySettings(string outputPath)
         {
             var toolEvents = DLCBuilder.Instance.ToolEvents;
