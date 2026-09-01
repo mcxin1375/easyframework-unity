@@ -2,25 +2,68 @@
 
 EasyFramework 是一个面向 Unity 项目的轻量级 C# 开发框架，提供异步任务、事件、状态机、轻量 ECS、对象池、资源与场景加载、UI 窗口、网络和编辑器构建工具。
 
-本目录是 EasyFramework 的核心开源子仓库。当前 package 版本为 `0.0.1`，API 仍可能变化，文档以当前源码为准。
-
 ## 快速开始
 
-1. 包名为 `com.cookie.easyframework`，当前版本为 `0.0.1`。将本目录作为 Unity Package Manager 的本地包，或通过 Git URL 安装；Git 安装时使用包含 `package.json` 的仓库路径。
-2. 确认项目包含以下依赖：Newtonsoft Json `3.2.2` 与 Scriptable Build Pipeline `1.21.25`。
-3. 安装后确认 Console 没有包解析错误，并能引用 `EasyFramework`。编辑器菜单出现 `EasyFramework/Settings...` 与 `EasyFramework/Preferences...`，说明 Editor 程序集已加载。运行时代码只能引用运行时程序集，编辑器扩展应放在 Editor 程序集或 Editor 目录中。
-4. 在游戏进入业务状态前调用一次并等待：
+安装包后确认项目包含依赖 Newtonsoft Json `3.2.2` 和 Scriptable Build Pipeline `1.21.25`，Console 没有包解析错误，并能引用 `EasyFramework`。编辑器菜单出现 `EasyFramework/Settings...` 与 `EasyFramework/Preferences...`，说明 Editor 程序集已加载。
+
+### 1. 资源打包及加载配置
+
+打开 `Project Settings > EasyFramework Tools > AssetBundleBuilder`，在 `Build Directories` 中配置 AssetBundle 的基础目录。默认目录为：
+
+`Assets/Res_DLC`
+
+AssetBundleBuilder 会遍历所有配置的基础目录，并按以下规则生成 Bundle：
+
+- 遇到以 `.ab` 结尾的目录时，将该目录下的全部资源打包成一个 Bundle；例如 `Cube.ab` 目录生成 `Cube.ab`。
+- 其他资源按文件分别打包，每个资源单独生成一个 Bundle；例如 `Cube.prefab` 生成 `Cube.ab`。
+- 遍历时跳过 `Editor` 目录和 `.meta` 文件，并应用 `ignoreFileNames`、`ignoreFileExes` 过滤配置。
+- 所有配置对象提供的 `Build Directories` 会自动合并；同名 Bundle 的资源列表会合并并去重。
+
+打包过程会生成 Bundle Manifest、依赖关系和 DLC 文件名映射，因此业务代码不需要维护 AssetBundle 文件名、哈希文件名或物理下载路径。资源加载只需要传入资源名，资源名应与打包资源的名称一致：
 
 ```csharp
 using EasyFramework;
+using UnityEngine;
 
 public sealed class Bootstrap
 {
-    public async ETask StartAsync() => await F.InitializeAsync();
+    public async ETask StartAsync()
+    {
+        await F.InitializeAsync();
+        GameObject cube = await F.ResLoader.CreateObjAsync("Cube");
+    }
 }
 ```
 
-`F.Initialize()` 只发起初始化而不等待；需要使用资源、窗口或 DLC 时必须等待 `F.InitializeAsync()`。详见 [F 总览](Documentation/Runtime/F.md)。
+`F.InitializeAsync()` 只需在进入业务状态前调用一次并等待完成。使用完资源后，可通过 `F.ResLoader.Unload("Cube")` 释放对应资源；有请求对象时，应将同一个请求传给加载和释放接口。具体接口见 [F.ResLoader](Documentation/Runtime/ResLoader.md) 和 [AssetBundleBuilder](Documentation/Editor.Tools/AssetBundleBuilder.md)。
+
+### 2. 发布配置
+
+在 Project 窗口右键选择 `Create > EasyFramework > AppSettings` 创建 `AppSettings` 对象，配置应用发布信息：
+
+| 配置 | 说明 |
+| --- | --- |
+| `App Name` | 应用名称，也可用于 DLC 版本目录名 |
+| `Bundle Identifier` | 应用包标识 |
+| `Ver 1`、`Ver 2`、`Ver 3` | 应用版本号，组合为 `Ver1.Ver2.Ver3` |
+| `Build Index` | 应用构建索引 |
+| `Dlc URL` | DLC 文件服务地址 |
+| `App Version URL` | 应用版本信息地址，支持 `{Platform}` 占位符 |
+
+然后打开 `Project Settings > EasyFramework`，将创建的对象设置到 `App Settings` 字段。运行时和 Editor 工具通过 `EasyFrameworkSettings.AppSettings` 读取这份配置。
+
+### 3. 最终发布
+
+在确认 AssetBundleBuilder、DLCBuilder 和 PlayerBuilder 配置完成后，按顺序执行资源版本构建和 Player 发布：
+
+```csharp
+using EasyFramework.Editor;
+
+AssetBuilder.Instance.Execute();
+PlayerBuilder.Instance.Execute();
+```
+
+`AssetBuilder.Execute()` 会按顺序触发 HybridCLRBuilder（启用时）、AssetBundleBuilder 和 DLCBuilder，生成资源、版本信息及 DLC 输出。资源构建完成后再执行 `PlayerBuilder.Execute()`，将应用设置、场景和 StreamingAssets 等内容发布为目标平台 Player。也可以使用 Unity 菜单 `EasyFramework/Tools/AssetBuilder - Execute` 和 `EasyFramework/Tools/PlayerBuilder - Execute` 执行相同流程。
 
 ## Runtime
 
