@@ -18,13 +18,13 @@ namespace EasyFramework
         public string CdnURL => dlcURL;
         public string AppVersionURL => appVersionURL.Replace("{Platform}", PlatformHelper.PlatformName);
 
-        [SerializeField] private string appName = "MainApp";
-        [SerializeField] private string bundleIdentifier = "cn.cookie.easyframework";
-        [SerializeField] private int ver1;
-        [SerializeField] private int ver2;
-        [SerializeField] private int ver3 = 1;
-        [SerializeField] private int buildIndex;
-        [SerializeField] private string dlcURL = "";
-        [SerializeField] private string appVersionURL = "";
+        public string appName = "MainApp";
+        public string bundleIdentifier = "cn.cookie.easyframework";
+        public int ver1;
+        public int ver2;
+        public int ver3 = 1;
+        public int buildIndex;
+        public string dlcURL = "";
+        public string appVersionURL = "";
     }
 }
