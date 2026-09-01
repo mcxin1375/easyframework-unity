@@ -10,8 +10,8 @@ namespace EasyFramework.Editor
     {
         int Order => 0;
         ToolVersion Version { get; }
-        IToolExtension[] Extension => null;
-        
+        IToolExtension[] Extension { get; }
+
         void Refresh();
         void Execute();
     }

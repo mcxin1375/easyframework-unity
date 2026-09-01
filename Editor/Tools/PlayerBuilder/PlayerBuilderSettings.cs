@@ -16,7 +16,7 @@ namespace EasyFramework.Editor
         public string productName;
         
         [Header("Pre Settings")]
-        public bool preSettingsEnabled = true;
+        public bool preSettingsEnabled;
         
         [Header("StreamingAssets Settings")]
         public EStreamingAssetsOptions streamingAssetsOptions = EStreamingAssetsOptions.None;
