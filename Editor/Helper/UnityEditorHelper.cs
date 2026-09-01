@@ -48,6 +48,20 @@ namespace EasyFramework.Editor
             return tempList.ToArray();
         }
         
+        public static T FindAsset<T>(string name, string[] searchInFolders = null) where T : UnityEngine.Object
+        {
+            string[] guids = searchInFolders == null
+                ? AssetDatabase.FindAssets($"t:{typeof(T).Name}")
+                : AssetDatabase.FindAssets($"t:{typeof(T).Name}", searchInFolders);
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                T asset = AssetDatabase.LoadAssetAtPath<T>(path);
+                if (asset != null) return asset;
+            }
+            return null;
+        }
+        
         public static Object[] FindAssetsByType(Type type, string[] searchInFolders = null)
         {
             List<Object> tempList = new List<Object>();
