@@ -12,7 +12,7 @@ using UnityEngine.Networking;
 
 namespace EasyFramework
 {
-    public class DownloadTask : ETask.TaskAwaiter<bool>, IHttpReceiver
+    public class DLCDownloader : ETask.TaskAwaiter<bool>, IHttpReceiver
     {
         private readonly List<Request> _requests = new();
         private readonly List<int> _pendingIndexes = new();

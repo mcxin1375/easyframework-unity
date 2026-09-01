@@ -17,7 +17,6 @@ namespace EasyFramework
         public static FBehaviour Behaviour { get; private set; }
         
         public static Event Event => Event.Instance;
-        // public static MainResManager MainResManager => MainResManager.Instance;
         public static IDLCManager DLCManager => EasyFramework.DLCManager.Instance;
         public static IHttpManager HttpManager => EasyFramework.HttpManager.Instance;
         public static IWindowManager WindowManager => EasyFramework.WindowManager.Instance;

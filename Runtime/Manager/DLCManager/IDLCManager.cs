@@ -9,7 +9,7 @@ namespace EasyFramework
     public interface IDLCManager
     {
         ETask<EResult> UpdateAsync();
-        // ETask UpdateAsync(string dlcVersion);
+        ETask<EResult> UpdateAsync(string dlcVersion);
 
         string GetFileName(string resName);
         string GetFilePath(string resName);

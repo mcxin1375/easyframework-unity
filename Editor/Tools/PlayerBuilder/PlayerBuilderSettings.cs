@@ -20,7 +20,8 @@ namespace EasyFramework.Editor
         
         [Header("StreamingAssets Settings")]
         public EStreamingAssetsOptions streamingAssetsOptions = EStreamingAssetsOptions.None;
-        public string dlcVersion;
+        [Header("指定DLC版本发布，为空自动选择最近一次打包")]
+        public string releaseVersion;
         
         [Header("Build Player")]
         public bool enabled = true;

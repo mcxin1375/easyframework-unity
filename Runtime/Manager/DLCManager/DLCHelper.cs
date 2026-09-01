@@ -11,7 +11,13 @@ namespace EasyFramework
 
         public static readonly string DLCBuilderPlatformPath = $"{EasyFrameworkSettings.AppSettings.CdnURL}/{PlatformHelper.PlatformName}";
 
-        public static string GetDLCServerURL(string versionName)
+        
+        public static string GetDLCVersionURL(string versionName)
+        {
+            return $"{DLCBuilderPlatformPath}/{versionName}/{DLCVersion.FileName}";
+        }
+        
+        public static string GetDLCResListURL(string versionName)
         {
             return $"{DLCBuilderPlatformPath}/{versionName}/{EDLCMode.DLC}";
         }

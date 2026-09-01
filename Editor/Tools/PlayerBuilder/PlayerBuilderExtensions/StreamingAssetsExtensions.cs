@@ -16,7 +16,7 @@ namespace EasyFramework.Editor
             switch (PlayerBuilderSettings.Instance.streamingAssetsOptions)
             {
                 case EStreamingAssetsOptions.DLCList:
-                    BuildDLCList(PlayerBuilderSettings.Instance.dlcVersion);
+                    BuildDLCList(PlayerBuilderSettings.Instance.releaseVersion);
                     break;
             }
             
@@ -25,7 +25,7 @@ namespace EasyFramework.Editor
         [MenuItem("EasyFramework/Tools/PlayerBuilder - BuildDLCList", priority = ToolOrder.PlayerBuilder + 1)]
         public static void BuildDLCList()
         {
-            BuildDLCList(PlayerBuilderSettings.Instance.dlcVersion);
+            BuildDLCList(PlayerBuilderSettings.Instance.releaseVersion);
             AssetDatabase.Refresh();
         }
         public static void BuildDLCList(string dlcVersion)

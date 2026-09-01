@@ -24,7 +24,7 @@ namespace EasyFramework
         public string DLCVersionInfoLocalFile => $"{EasyFrameworkSettings.Instance.DLCPath}/{DLCVersionInfo.FileName}";
         public DLCVersionInfo VersionInfo { get; private set; }
         
-        private DownloadTask _downloadTask;
+        private DLCDownloader _dlcDownloader;
         private readonly Dictionary<string, string> _fileDict = new();
 
         public async ETask<EResult> UpdateAsync()
@@ -32,7 +32,7 @@ namespace EasyFramework
             await InitializeAsync();
             if (VersionInfo == null) return EResult.VersionError;
 
-            _downloadTask = new();
+            _dlcDownloader = new();
             foreach (var info in VersionInfo.hashFiles)
             {
                 // FDebug.Log($"{info.resName}, {info.fileName}");
@@ -40,11 +40,11 @@ namespace EasyFramework
                 if (File.Exists(downloadFile)) continue;
 
                 var downloadUrl = $"{EasyFrameworkConfig.Instance.DLCServerUrl}/{info.fileName}";
-                _downloadTask.AddRequest(downloadUrl, downloadFile, info.length);
+                _dlcDownloader.AddRequest(downloadUrl, downloadFile, info.length);
             }
 
             FDebug.Log("Download Task Start");
-            var result = await _downloadTask.StartAsync();
+            var result = await _dlcDownloader.StartAsync();
             FDebug.Log("Download Task End: " + result);
             
             if (!result) return EResult.DownloadError;

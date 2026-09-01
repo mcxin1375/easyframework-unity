@@ -1,9 +1,13 @@
-﻿using System;
+﻿/*----------------------------------------------------------------
+// author:Cookie(mcx)
+// date:2023/11/7
+// describe:
+//----------------------------------------------------------------*/
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace EasyFramework
 {
@@ -15,7 +19,7 @@ namespace EasyFramework
             List<string> result = new List<string>();
             foreach (string file in files)
             {
-                if (file.IndexOf(filterStr) > 0) continue;
+                if (file.IndexOf(filterStr, StringComparison.Ordinal) > 0) continue;
                 result.Add(file);
             }
             return result.ToArray();
@@ -23,22 +27,38 @@ namespace EasyFramework
         
         public static void DeleteDirectory(string directory)
         {
-            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            try
+            {
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
+            catch (Exception e) { FDebug.LogException(e); }
         }
         public static void DeleteFile(string file)
         {
-            if (File.Exists(file)) File.Delete(file);
+            try
+            {
+                if (File.Exists(file)) File.Delete(file);
+            }
+            catch (Exception e) { FDebug.LogException(e); }
         }
         public static void DeleteFiles(string[] files)
         {
-            foreach (string file in files) DeleteFile(file);
+            try
+            {
+                foreach (var file in files) if (File.Exists(file)) File.Delete(file);
+            }
+            catch (Exception e) { FDebug.LogException(e); }
         }
         public static void DeleteDirectoryOrFile(string path)
         {
-            if (Directory.Exists(path)) Directory.Delete(path, true);
-            if (File.Exists(path)) File.Delete(path);
+            try
+            {
+                if (Directory.Exists(path)) Directory.Delete(path, true);
+                if (File.Exists(path)) File.Delete(path);
+            }
+            catch (Exception e) { FDebug.LogException(e); }
         }
-        public static long GetFileSize(string file)
+        public static long GetFileLength(string file)
         {
             return File.Exists(file) ? new FileInfo(file).Length : 0;
         }
@@ -51,11 +71,15 @@ namespace EasyFramework
         {
             if (!Directory.Exists(directory)) return;
 
-            string[] files = Directory.GetFiles(directory, "*", SearchOption.AllDirectories);
-            foreach (string file in files) File.Delete(file);
+            try
+            {
+                string[] files = Directory.GetFiles(directory, "*", SearchOption.AllDirectories);
+                foreach (string file in files) File.Delete(file);
 
-            string[] directories = Directory.GetDirectories(directory);
-            foreach (string d in directories) Directory.Delete(d, true);
+                string[] directories = Directory.GetDirectories(directory);
+                foreach (string d in directories) Directory.Delete(d, true);
+            }
+            catch (Exception e) { FDebug.LogException(e); }
         }
 
         public static bool CompareFileLengthAndLastWriteTime(string file1, string file2)
@@ -64,13 +88,6 @@ namespace EasyFramework
             FileInfo fileInfo = new FileInfo(file1);
             FileInfo fileInfoTo = new FileInfo(file2);
             return fileInfo.Length != fileInfoTo.Length || fileInfo.LastWriteTime != fileInfoTo.LastWriteTime;
-        }
-
-        public static async Task CopyDirectoryAsync(string sourceDirectory, string destinationDirectory, bool compareDifferent, bool deleteNotExists, Action<string, int, int> copyAction, CancellationToken token = default)
-        {
-            await Task.Run(() => {
-                CopyDirectory(sourceDirectory, destinationDirectory, compareDifferent, deleteNotExists, copyAction);
-            }, token);
         }
 
         public static void CopyDirectory(string sourceDirectory, string destinationDirectory)

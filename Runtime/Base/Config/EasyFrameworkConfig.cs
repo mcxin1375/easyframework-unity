@@ -16,7 +16,7 @@ namespace EasyFramework
         {
             if (dlcVersion != null)
             {
-                DLCServerUrl = DLCHelper.GetDLCServerURL(dlcVersion.versionName);
+                DLCServerUrl = DLCHelper.GetDLCResListURL(dlcVersion.versionName);
             }
         }
 

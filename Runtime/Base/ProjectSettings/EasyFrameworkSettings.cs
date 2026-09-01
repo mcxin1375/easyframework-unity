@@ -32,7 +32,7 @@ namespace EasyFramework
     public class EasyFrameworkSettings : ProjectSettings<EasyFrameworkSettings>
     {
         [Header("Framework Settings")] 
-        public bool autoInitialize = true;
+        public bool autoInitialize;
         
         [Header("App Settings")]
         public AppSettings appSettings;
@@ -57,7 +57,7 @@ namespace EasyFramework
         public int maxRetryCount = 3;
         public int retryDelayMs = 1000;
         
-        [Header("HttpManager")] 
+        [Header("WindowManager")] 
         public GameObject uiRoot;
         public Vector2 resolution = new Vector2(1920, 1080);
         public EUIRenderMode uiRenderMode = EUIRenderMode.UICamera;

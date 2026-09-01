@@ -44,7 +44,8 @@ namespace EasyFramework
                         break;
                     case EResLoaderMode.DLC_CDN:
                     
-                        await InitVersionAsync();
+                        var versionUrl = EasyFrameworkSettings.AppSettings.AppVersionURL;
+                        await InitVersionAsync(versionUrl);
                         await DLCUpdater.Instance.InitializeAsync();
                     
                         break;
@@ -56,20 +57,29 @@ namespace EasyFramework
             }
         }
 
-        public async ETask<IDLCManager.EResult> UpdateAsync()
+        public ETask<IDLCManager.EResult> UpdateAsync()
         {
-            var indexResult = await InitVersionAsync();
-            if (!indexResult) return IDLCManager.EResult.InitVersionError;
+            var versionUrl = EasyFrameworkSettings.AppSettings.AppVersionURL;
+            return EnterAsync(versionUrl);
+        }
+        public ETask<IDLCManager.EResult> UpdateAsync(string dlcVersion)
+        {
+            var versionUrl = DLCHelper.GetDLCVersionURL(dlcVersion);
+            return EnterAsync(versionUrl);
+        }
+        public async ETask<IDLCManager.EResult> EnterAsync(string dlcVersionUrl)
+        {
+            var initResult = await InitVersionAsync(dlcVersionUrl);
+            if (!initResult) return IDLCManager.EResult.InitVersionError;
             
             var updateResult = await DLCUpdater.Instance.UpdateAsync();
             if (updateResult != DLCUpdater.EResult.Success) return IDLCManager.EResult.DLCUpdaterError;
             
             return IDLCManager.EResult.Success;
         }
-        
-        public async ETask<bool> InitVersionAsync(string versionName = null)
+
+        public async ETask<bool> InitVersionAsync(string versionUrl)
         {
-            var versionUrl = EasyFrameworkSettings.AppSettings.AppVersionURL;
             var webRequest = await ETask.UnityWebRequest(versionUrl);
             if (webRequest.result != UnityWebRequest.Result.Success)
             {
@@ -94,6 +104,8 @@ namespace EasyFramework
             
             Config.dlcVersion = dlcVersion;
             Config.Save();
+            
+            FDebug.Log($"DLCVersion index to: {dlcVersion.versionName}, {dlcVersion.versionUid}");
 
             return true;
         }
