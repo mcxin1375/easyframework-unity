@@ -7,56 +7,16 @@
 using System.IO;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.Build;
 
 namespace EasyFramework.Editor
 {
     public static class PlayerBuilderUtility
     {
-        public static void PreInitSettings()
-        {
-            var settings = PlayerBuilderSettings.Instance;
-            if (!settings.preSettingsEnabled) return;
-
-            var appSettings = EasyFrameworkSettings.AppSettings;
-            
-            if (!settings.companyName.IsNullOrEmpty())
-                PlayerSettings.companyName = settings.companyName;
-            if (!settings.productName.IsNullOrEmpty())
-                PlayerSettings.productName = settings.productName;
-            if (!appSettings.BundleVersion.IsNullOrEmpty())
-                PlayerSettings.bundleVersion = appSettings.BundleVersion;
-            if (!appSettings.BundleIdentifier.IsNullOrEmpty())
-            {
-                var namedTarget = NamedBuildTarget.FromBuildTargetGroup(BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget));
-                PlayerSettings.SetApplicationIdentifier(namedTarget, appSettings.BundleIdentifier);
-            }
-            
-            switch (EditorUserBuildSettings.activeBuildTarget)
-            {
-                case BuildTarget.Android:
-                    var bundleVersionCode = appSettings.BuildIndex > 0
-                        ? appSettings.BuildIndex
-                        : PlayerBuilder.Instance.Version.buildIndex;
-                    if (bundleVersionCode < 1)
-                    {
-                        FDebug.LogError($"bundleVersionCode {bundleVersionCode} is less than 1.");
-                        bundleVersionCode = 1;
-                    }
-
-                    PlayerSettings.Android.bundleVersionCode = bundleVersionCode;
-                    EditorUserBuildSettings.exportAsGoogleAndroidProject = settings.exportAsGoogleAndroidProject;
-                    break;
-            }
-        }
-        
         public static void BuildBySettings()
         {
             var settings = PlayerBuilderSettings.Instance;
             if (!settings.enabled) return;
 
-            PreInitSettings();
-            
             var buildSettings = PlayerBuilder.Instance.ToolSettings?.FirstOrDefault();
             if (buildSettings == null)
             {

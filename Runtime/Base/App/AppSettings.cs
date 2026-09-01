@@ -11,20 +11,78 @@ namespace EasyFramework
     [CreateAssetMenu(menuName = "EasyFramework/AppSettings", fileName = "AppSettings.asset")]
     public class AppSettings : ScriptableObject, IAppSettings
     {
-        public string AppName => appName;
-        public string BundleVersion => $"{ver1}.{ver2}.{ver3}";
-        public string BundleIdentifier => bundleIdentifier;
-        public int BuildIndex => buildIndex;
-        public string CdnURL => dlcURL;
-        public string AppVersionURL => appVersionURL.Replace("{Platform}", PlatformHelper.PlatformName);
+        public string CompanyName
+        {
+            get => companyName;
+#if UNITY_EDITOR
+            set => companyName = value;
+#endif
+        }
+        public string ProductName
+        {
+            get => productName;
+#if UNITY_EDITOR
+            set => productName = value;
+#endif
+        }
+        public string AppName
+        {
+            get => appName;
+#if UNITY_EDITOR
+            set => appName = value;
+#endif
+        }
+        public string BundleVersion
+        {
+            get => $"{ver1}.{ver2}.{ver3}";
+#if UNITY_EDITOR
+            set
+            {
+                var arr = value.Split('.');
+                ver1 = int.Parse(arr[0]);
+                ver2 = int.Parse(arr[1]);
+                ver3 = int.Parse(arr[2]);
+            }
+#endif
+        }
+        public string BundleIdentifier
+        {
+            get => bundleIdentifier;
+#if UNITY_EDITOR
+            set => bundleIdentifier = value;
+#endif
+        }
+        public int BuildIndex
+        {
+            get => buildIndex;
+#if UNITY_EDITOR
+            set => buildIndex = value;
+#endif
+        }
+        public string CdnURL
+        {
+            get => dlcURL;
+#if UNITY_EDITOR
+            set => dlcURL = value;
+#endif
+        }
+        public string AppVersionURL
+        {
+            get => appVersionURL.Replace("{Platform}", PlatformHelper.PlatformName);
+#if UNITY_EDITOR
+            set => appVersionURL = value;
+#endif
+        }
 
-        public string appName = "MainApp";
-        public string bundleIdentifier = "cn.cookie.easyframework";
-        public int ver1;
-        public int ver2;
-        public int ver3 = 1;
-        public int buildIndex;
-        public string dlcURL = "";
-        public string appVersionURL = "";
+        [SerializeField] private string companyName = "companyName";
+        [SerializeField] private string productName = "productName";
+        [SerializeField] private string appName = "appName";
+        [SerializeField] private string bundleIdentifier = "com.companyName.productName";
+        [SerializeField] private int ver1;
+        [SerializeField] private int ver2;
+        [SerializeField] private int ver3 = 1;
+        [SerializeField] private int buildIndex;
+        [SerializeField] private string dlcURL = "";
+        [SerializeField] private string appVersionURL = "";
     }
 }

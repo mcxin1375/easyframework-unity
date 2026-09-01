@@ -8,6 +8,8 @@ namespace EasyFramework
 {
     public interface IAppSettings
     {
+        string CompanyName { get; }
+        string ProductName { get; }
         string AppName { get; }
         string BundleVersion { get; }
         string BundleIdentifier { get; }
