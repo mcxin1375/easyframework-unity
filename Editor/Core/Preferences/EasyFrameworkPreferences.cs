@@ -7,6 +7,7 @@ namespace EasyFramework.Editor
     public class EasyFrameworkPreferences
     {
         public const string SettingPath = "Preferences/Easy Framework";
+        public const string GithubURL = @"https://github.com/mcxin1375/easyframework-unity";
 
         private static Settings _settings;
         internal static Settings s_Settings

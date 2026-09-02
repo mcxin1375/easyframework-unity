@@ -4,8 +4,6 @@ EasyFramework 是一个面向 Unity 项目的轻量级 C# 开发框架，提供�
 
 ## 快速开始
 
-安装包后确认项目包含依赖 Newtonsoft Json `3.2.2` 和 Scriptable Build Pipeline `1.21.25`，Console 没有包解析错误，并能引用 `EasyFramework`。编辑器菜单出现 `EasyFramework/Settings...` 与 `EasyFramework/Preferences...`，说明 Editor 程序集已加载。
-
 ### 1. 资源打包及加载配置
 
 打开 `Project Settings > EasyFramework Tools > AssetBundleBuilder`，在 `Build Directories` 中配置 AssetBundle 的基础目录。默认目录为：
@@ -41,14 +39,14 @@ public sealed class Bootstrap
 
 在 Project 窗口右键选择 `Create > EasyFramework > AppSettings` 创建 `AppSettings` 对象，配置应用发布信息：
 
-| 配置 | 说明 |
-| --- | --- |
-| `App Name` | 应用名称，也可用于 DLC 版本目录名 |
-| `Bundle Identifier` | 应用包标识 |
-| `Ver 1`、`Ver 2`、`Ver 3` | 应用版本号，组合为 `Ver1.Ver2.Ver3` |
-| `Build Index` | 应用构建索引 |
-| `Dlc URL` | DLC 文件服务地址 |
-| `App Version URL` | 应用版本信息地址，支持 `{Platform}` 占位符 |
+| 配置                      | 说明                           |
+| ----------------------- | ---------------------------- |
+| `App Name`              | 应用名称，也可用于 DLC 版本目录名          |
+| `Bundle Identifier`     | 应用包标识                        |
+| `Ver 1`、`Ver 2`、`Ver 3` | 应用版本号，组合为 `Ver1.Ver2.Ver3`   |
+| `Build Index`           | 应用构建索引                       |
+| `Dlc URL`               | DLC 文件服务地址                   |
+| `App Version URL`       | 应用版本信息地址，支持 `{Platform}` 占位符 |
 
 然后打开 `Project Settings > EasyFramework`，将创建的对象设置到 `App Settings` 字段。运行时和 Editor 工具通过 `EasyFrameworkSettings.AppSettings` 读取这份配置。
 
@@ -71,17 +69,17 @@ Runtime 程序集名称为 `EasyFramework`。业务代码以 `F.xxx` 访问运�
 
 ### F 入口
 
-| 入口 | 职责 |
-| --- | --- |
-| `F.WorldManager` / `F.ControllerManager` | World、Entity、System 与 Controller 生命周期 |
-| `F.Event` | 泛型事件注册和派发 |
-| `F.ResLoader` / `F.DLCManager` | AssetBundle 资源、版本和下载 |
-| `F.WindowManager` | UI 窗口与层级 |
-| `F.SceneLoader` / `F.SpriteLoader` / `F.ShaderLoader` | 场景、Sprite 和 Shader |
-| `F.HttpManager` | HTTP 文本请求和文件下载 |
-| `F.InputManager` / `F.PoolManager` / `F.AudioPlayer` | 输入、对象池和音频 |
-| `F.Settings` / `F.Behaviour` | 配置与 Unity 生命周期宿主 |
-| `F.HybridCLRManager` | 可选 HybridCLR 集成 |
+| 入口                                                    | 职责                                    |
+| ----------------------------------------------------- | ------------------------------------- |
+| `F.WorldManager` / `F.ControllerManager`              | World、Entity、System 与 Controller 生命周期 |
+| `F.Event`                                             | 泛型事件注册和派发                             |
+| `F.ResLoader` / `F.DLCManager`                        | AssetBundle 资源、版本和下载                  |
+| `F.WindowManager`                                     | UI 窗口与层级                              |
+| `F.SceneLoader` / `F.SpriteLoader` / `F.ShaderLoader` | 场景、Sprite 和 Shader                    |
+| `F.HttpManager`                                       | HTTP 文本请求和文件下载                        |
+| `F.InputManager` / `F.PoolManager` / `F.AudioPlayer`  | 输入、对象池和音频                             |
+| `F.Settings` / `F.Behaviour`                          | 配置与 Unity 生命周期宿主                      |
+| `F.HybridCLRManager`                                  | 可选 HybridCLR 集成                       |
 
 ### 文档
 
@@ -110,34 +108,34 @@ Editor 程序集名称为 `EasyFramework.Editor`，只在 Unity Editor 中使用
 
 ### 工具入口
 
-| 菜单 | 职责 |
-| --- | --- |
-| `EasyFramework/Settings...` | 框架项目设置 |
-| `EasyFramework/Preferences...` | 用户偏好设置 |
-| `EasyFramework/Tools/AssetCreator - Execute` | 执行资源创建工具 |
-| `EasyFramework/Tools/AssetImporter - Execute` | 执行资源导入工具 |
-| `EasyFramework/Tools/AssetBuilder - Execute` | 按顺序触发资源构建工具 |
-| `EasyFramework/Tools/AssetBundleBuilder - Execute` | 执行 AssetBundle 构建 |
-| `EasyFramework/Tools/AssetBundleBuilder - BuildManifestOnly` | 只生成 Manifest |
+| 菜单                                                             | 职责                  |
+| -------------------------------------------------------------- | ------------------- |
+| `EasyFramework/Settings...`                                    | 框架项目设置              |
+| `EasyFramework/Preferences...`                                 | 用户偏好设置              |
+| `EasyFramework/Tools/AssetCreator - Execute`                   | 执行资源创建工具            |
+| `EasyFramework/Tools/AssetImporter - Execute`                  | 执行资源导入工具            |
+| `EasyFramework/Tools/AssetBuilder - Execute`                   | 按顺序触发资源构建工具         |
+| `EasyFramework/Tools/AssetBundleBuilder - Execute`             | 执行 AssetBundle 构建   |
+| `EasyFramework/Tools/AssetBundleBuilder - BuildManifestOnly`   | 只生成 Manifest        |
 | `EasyFramework/Tools/AssetBundleBuilder - CheckVerifyValidity` | 检查资源是否重复进入多个 Bundle |
-| `EasyFramework/Tools/DLCBuilder - Execute` | 执行 DLC 构建 |
-| `EasyFramework/Tools/HybridCLRBuilder - Execute` | 执行 HybridCLR 构建 |
-| `EasyFramework/Tools/PlayerBuilder - Execute` | 执行 Player 构建 |
+| `EasyFramework/Tools/DLCBuilder - Execute`                     | 执行 DLC 构建           |
+| `EasyFramework/Tools/HybridCLRBuilder - Execute`               | 执行 HybridCLR 构建     |
+| `EasyFramework/Tools/PlayerBuilder - Execute`                  | 执行 Player 构建        |
 
 ### Editor.Tools
 
 Editor 工具的通用执行模型、扩展接口和各工具的配置方式见以下文档：
 
-| 文档 | 工具职责 |
-| --- | --- |
-| [ToolBase](Documentation/Editor.Tools/ToolBase.md) | 工具基类、执行生命周期和扩展发现 |
-| [AssetImporter](Documentation/Editor.Tools/AssetImporter.md) | 资源目录导入与同步 |
-| [AssetCreator](Documentation/Editor.Tools/AssetCreator.md) | 资源生成流程扩展入口 |
-| [AssetBuilder](Documentation/Editor.Tools/AssetBuilder.md) | 统一触发资源构建工具 |
-| [HybridCLRBuilder](Documentation/Editor.Tools/HybridCLRBuilder.md) | HybridCLR 热更新程序集构建 |
+| 文档                                                                     | 工具职责                        |
+| ---------------------------------------------------------------------- | --------------------------- |
+| [ToolBase](Documentation/Editor.Tools/ToolBase.md)                     | 工具基类、执行生命周期和扩展发现            |
+| [AssetImporter](Documentation/Editor.Tools/AssetImporter.md)           | 资源目录导入与同步                   |
+| [AssetCreator](Documentation/Editor.Tools/AssetCreator.md)             | 资源生成流程扩展入口                  |
+| [AssetBuilder](Documentation/Editor.Tools/AssetBuilder.md)             | 统一触发资源构建工具                  |
+| [HybridCLRBuilder](Documentation/Editor.Tools/HybridCLRBuilder.md)     | HybridCLR 热更新程序集构建          |
 | [AssetBundleBuilder](Documentation/Editor.Tools/AssetBundleBuilder.md) | AssetBundle 构建与 Manifest 检查 |
-| [DLCBuilder](Documentation/Editor.Tools/DLCBuilder.md) | 版本化 DLC 资源打包 |
-| [PlayerBuilder](Documentation/Editor.Tools/PlayerBuilder.md) | Unity Player 发布构建 |
+| [DLCBuilder](Documentation/Editor.Tools/DLCBuilder.md)                 | 版本化 DLC 资源打包                |
+| [PlayerBuilder](Documentation/Editor.Tools/PlayerBuilder.md)           | Unity Player 发布构建           |
 
 ### Editor 扩展约定
 

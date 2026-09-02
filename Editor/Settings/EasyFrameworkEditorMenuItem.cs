@@ -19,8 +19,8 @@ namespace EasyFramework.Editor
         [MenuItem("EasyFramework/Preferences...", priority = 0)]
         public static void OpenPreferences() => SettingsService.OpenUserPreferences(EasyFrameworkPreferences.SettingPath);
         
-        // [MenuItem("EasyFramework/Open ServerUrl", priority = 0)]
-        // public static void OpenServerUrl() => Application.OpenURL(EasyFrameworkPreferences.ServerUrl);
+        [MenuItem("EasyFramework/Github", priority = 0)]
+        public static void OpenServerUrl() => Application.OpenURL(EasyFrameworkPreferences.GithubURL);
 
         [MenuItem("EasyFramework/Editor/ProjectDataPath(Show in Explorer)", priority = Priority + 100)]
         private static void OpenProjectDataPath()
