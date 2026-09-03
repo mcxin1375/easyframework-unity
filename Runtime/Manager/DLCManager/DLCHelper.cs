@@ -19,7 +19,7 @@ namespace EasyFramework
         
         public static string GetDLCResListURL(string versionName)
         {
-            return $"{DLCBuilderPlatformPath}/{versionName}/{EDLCMode.DLC}";
+            return $"{DLCBuilderPlatformPath}/{versionName}/{EDLCModeOptions.DLC}";
         }
     }
 }

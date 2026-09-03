@@ -85,7 +85,7 @@ namespace EasyFramework
             get
             {
                 if (Instance.appSettings != null) return Instance.appSettings;
-                _appSettings ??= EasyFrameworkReflection.CreateInstance<IAppSettings>();
+                _appSettings ??= ReflectionUtility.CreateInstance<IAppSettings>();
                 return _appSettings;
             }
         }

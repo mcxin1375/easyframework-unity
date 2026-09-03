@@ -10,6 +10,7 @@ namespace EasyFramework
 {
     public static class F
     {
+        public static FWorld MainWorld => EasyFramework.WorldManager.Instance?.Main;
         public static WorldManager WorldManager => EasyFramework.WorldManager.Instance;
         public static IControllerManager ControllerManager => EasyFramework.ControllerManager.Instance;
         

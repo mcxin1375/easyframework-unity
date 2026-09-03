@@ -30,7 +30,7 @@ namespace EasyFramework
             return _instance;
 #endif
 
-            var attribute = EasyFrameworkReflection.GetCustomAttribute<ProjectSettingsAttribute>(typeof(T));
+            var attribute = ReflectionUtility.GetCustomAttribute<ProjectSettingsAttribute>(typeof(T));
             if (attribute != null)
             {
                 switch (attribute.Tag)

@@ -1,3 +1,9 @@
+/*----------------------------------------------------------------
+// author:Cookie(mcx)
+// date:2023/6/23
+// describe:
+//----------------------------------------------------------------*/
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,11 +11,15 @@ using System.Reflection;
 
 namespace EasyFramework
 {
-    public static class EasyFrameworkReflection
+    public static class ReflectionUtility
     {
         public const BindingFlags DefaultBindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
         public const BindingFlags DefaultBindingFlagsStatic = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static;
 
+        public static readonly Assembly[] TagAssemblies = AppDomain.CurrentDomain
+            .GetAssemblies()
+            .Where(assembly => assembly.GetCustomAttribute<EasyFrameworkReflectionAttribute>() != null)
+            .ToArray();
 
         public static T FindFieldOrProperty<T>(object obj) where T : class => FindFieldOrProperty<T>(obj.GetType(), obj);
         public static T FindFieldOrProperty<T>(this Type type, object obj = null) where T : class
@@ -92,11 +102,11 @@ namespace EasyFramework
             if (types.Length == 0) return default;
 
             Type createType = types[0];
-            int createOrder = createType.GetCustomAttribute<EasyFrameworkReflectionOrderAttribute>()?.Order ?? 0;
+            int createOrder = createType.GetCustomAttribute<ReflectionOrderAttribute>()?.Order ?? 0;
             for (int i = 1; i < types.Length; i++)
             {
                 var type = types[i];
-                var order = type.GetCustomAttribute<EasyFrameworkReflectionOrderAttribute>()?.Order ?? 0;
+                var order = type.GetCustomAttribute<ReflectionOrderAttribute>()?.Order ?? 0;
                 if (order > createOrder)
                 {
                     createType = type;

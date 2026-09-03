@@ -36,7 +36,7 @@ namespace EasyFramework.Editor
 
         private void OnEnable()
         {
-            _excelViewer = EasyFrameworkReflection.CreateInstance<IExcelViewer>();
+            _excelViewer = ReflectionUtility.CreateInstance<IExcelViewer>();
             if (_excelViewer == null) return;
             CacheArrayFields();
         }

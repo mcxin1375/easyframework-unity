@@ -13,7 +13,7 @@ namespace EasyFramework.Editor
         private static ITool[] _tools;
         public static ITool[] Tools => _tools ??= InitTools();
 
-        private static ITool[] InitTools() => EasyFrameworkReflection.FindInstanceTypes<ITool>()
+        private static ITool[] InitTools() => ReflectionUtility.FindInstanceTypes<ITool>()
                 .Select(type => type.FindFieldOrProperty<ITool>())
                 .OrderBy(tool => tool.Order)
                 .ToArray();

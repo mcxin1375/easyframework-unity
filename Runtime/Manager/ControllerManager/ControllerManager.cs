@@ -146,7 +146,7 @@ namespace EasyFramework
 
         public void Create(Assembly assembly)
         {
-            var types = EasyFrameworkReflection.FindInstanceTypes<IController>(assembly);
+            var types = ReflectionUtility.FindInstanceTypes<IController>(assembly);
             foreach (var type in types) if (!_controllerDict.ContainsKey(type)) Create(type);
         }
 

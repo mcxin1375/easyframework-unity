@@ -11,7 +11,7 @@ namespace EasyFramework
     public class WorldManager : Singleton<WorldManager>
     {
         private FWorld _mainWorld;
-        public FWorld MainWorld
+        public FWorld Main
         {
             get
             {

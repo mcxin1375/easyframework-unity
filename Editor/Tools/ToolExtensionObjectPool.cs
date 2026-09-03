@@ -12,7 +12,7 @@ namespace EasyFramework.Editor
 {
     public static class ToolExtensionObjectPool
     {
-        public static readonly Type[] AllTypes = EasyFrameworkReflection.FindInstanceTypes<IToolExtension>();
+        public static readonly Type[] AllTypes = ReflectionUtility.FindInstanceTypes<IToolExtension>();
 
         private static readonly Dictionary<Type, object[]> InstanceDict = new();
         private static readonly Dictionary<Type, object[]> ScriptableDict = new();
@@ -31,7 +31,7 @@ namespace EasyFramework.Editor
 
                     if (typeof(ITool).IsAssignableFrom(targetType))
                     {
-                        var instance = EasyFrameworkReflection.FindFieldOrProperty<ITool>(targetType);
+                        var instance = ReflectionUtility.FindFieldOrProperty<ITool>(targetType);
                         if (instance != null)
                         {
                             TMPList.Add(instance);
@@ -41,7 +41,7 @@ namespace EasyFramework.Editor
 
                     if (!typeof(ScriptableObject).IsAssignableFrom(targetType))
                     {
-                        TMPList.Add(EasyFrameworkReflection.CreateObject(targetType));
+                        TMPList.Add(ReflectionUtility.CreateObject(targetType));
                     }
                 }
 

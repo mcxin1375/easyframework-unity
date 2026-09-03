@@ -4,9 +4,35 @@
 // describe:
 //----------------------------------------------------------------*/
 
+using System;
+
 namespace EasyFramework
 {
-    public interface IAppSettings
+    public class TestApp1 : IAppSettings
+    {
+        public string CompanyName { get; }
+        public string ProductName { get; }
+        public string AppName { get; }
+        public string BundleVersion { get; }
+        public string BundleIdentifier { get; }
+        public int BuildIndex { get; }
+        public string CdnURL { get; }
+        public string AppVersionURL { get; }
+    }
+    public class TestApp2 : IAppSettings
+    {
+        public string CompanyName { get; }
+        public string ProductName { get; }
+        public string AppName { get; }
+        public string BundleVersion { get; }
+        public string BundleIdentifier { get; }
+        public int BuildIndex { get; }
+        public string CdnURL { get; }
+        public string AppVersionURL { get; }
+    }
+
+    [Reflection(ReflectionMode.Attribute)]
+    public partial interface IAppSettings
     {
         string CompanyName { get; }
         string ProductName { get; }
@@ -17,4 +43,14 @@ namespace EasyFramework
         string CdnURL { get; }
         string AppVersionURL { get; }
     }
+
+    // // 自动生成
+    // public partial interface IAppSettings
+    // {
+    //     static Type[] Types = new Type[]
+    //     {
+    //         typeof(TestApp1),
+    //         typeof(TestApp2),
+    //     };
+    // }
 }

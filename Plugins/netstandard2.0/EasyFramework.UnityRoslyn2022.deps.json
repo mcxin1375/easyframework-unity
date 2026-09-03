@@ -7,12 +7,12 @@
   "targets": {
     ".NETStandard,Version=v2.0": {},
     ".NETStandard,Version=v2.0/": {
-      "EasyFramework.UnityRoslyn/1.0.0": {
+      "EasyFramework.UnityRoslyn2022/1.0.0": {
         "dependencies": {
           "Microsoft.CodeAnalysis.CSharp": "3.8.0"
         },
         "runtime": {
-          "EasyFramework.UnityRoslyn.dll": {}
+          "EasyFramework.UnityRoslyn2022.dll": {}
         }
       },
       "Microsoft.CodeAnalysis.Common/3.8.0": {
@@ -208,7 +208,7 @@
     }
   },
   "libraries": {
-    "EasyFramework.UnityRoslyn/1.0.0": {
+    "EasyFramework.UnityRoslyn2022/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

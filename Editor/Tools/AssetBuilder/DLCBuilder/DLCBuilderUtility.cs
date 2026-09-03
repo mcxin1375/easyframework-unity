@@ -53,9 +53,9 @@ namespace EasyFramework.Editor
             dlcVersion.versionName = versionName;
             dlcVersion.versionUid = Guid.NewGuid().ToString();
             
-            if ((settings.buildOptions & EDLCMode.DLC) > 0)
+            if ((settings.buildMode & EDLCModeOptions.DLC) > 0)
             {
-                BuildDLC($"{outputDir}/{EDLCMode.DLC}", sourceDirs, out dlcVersion.dlcVersionInfoUid);
+                BuildDLC($"{outputDir}/{EDLCModeOptions.DLC}", sourceDirs, out dlcVersion.dlcVersionInfoUid);
             }
             ConfigHelper.Save(dlcVersion, dlcVersionFile, true);
             
@@ -139,9 +139,9 @@ namespace EasyFramework.Editor
         private static string GetBuildVersionNameId()
         {
             var settings = DLCBuilderSettings.Instance;
-            switch (settings.buildNameType)
+            switch (settings.buildName)
             {
-                case EDLCBuildNameType.AppName:
+                case EDLCNameOptions.AppName:
                     if (!EasyFrameworkSettings.AppSettings.AppName.IsNullOrEmpty())
                         return EasyFrameworkSettings.AppSettings.AppName;
                     break;

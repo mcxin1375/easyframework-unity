@@ -35,7 +35,7 @@ namespace EasyFramework
         {
             if (DebugEnabled) FDebug.Log($"{Type.Name} - Create()");
             
-            _components = EasyFrameworkReflection.FindFieldsAndProperties<IControllerComponent>(this);
+            _components = ReflectionUtility.FindFieldsAndProperties<IControllerComponent>(this);
             
             OnCreate();
             if (this is IControllerLoading loadingHandler) Loading.Add(loadingHandler);

@@ -48,7 +48,7 @@ namespace EasyFramework
             WindowObject.AddComponentEx<UIButtonBinding>().BindAction(ButtonClick);
             
             _componentList.Clear();
-            var arr = EasyFrameworkReflection.FindFieldsAndProperties<IWindowComponent>(this);
+            var arr = ReflectionUtility.FindFieldsAndProperties<IWindowComponent>(this);
             foreach (var ex in arr) RegisterComponent(ex);
             var comps = WindowObject.GetComponentsInChildren<IWindowComponent>();
             foreach (var comp in comps) RegisterComponent(comp);

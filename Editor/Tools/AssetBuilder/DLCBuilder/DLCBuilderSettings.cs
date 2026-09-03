@@ -23,7 +23,7 @@ namespace EasyFramework.Editor
     //     };
     // }
 
-    public enum EDLCBuildNameType
+    public enum EDLCNameOptions
     {
         AppName,
         ToolVersion
@@ -37,11 +37,11 @@ namespace EasyFramework.Editor
         /// </summary>
         public int maxCacheNum = 10;
         
-        public EDLCBuildNameType buildNameType = EDLCBuildNameType.ToolVersion;
+        public EDLCNameOptions buildName = EDLCNameOptions.ToolVersion;
         /// <summary>
         /// DLC 打包模式，支持多选
         /// </summary>
-        public EDLCMode buildOptions = EDLCMode.DLC;
+        public EDLCModeOptions buildMode = EDLCModeOptions.DLC;
         
         // [Header("DLC Packages Per Subdirectory")]
         // public string[] dlcRootDirectories = new []

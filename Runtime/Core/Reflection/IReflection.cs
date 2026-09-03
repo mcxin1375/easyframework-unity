@@ -1,6 +1,6 @@
 /*----------------------------------------------------------------
 // author:Cookie(mcx)
-// date:2024/5/8
+// date:2023/6/23
 // describe:
 //----------------------------------------------------------------*/
 
@@ -8,16 +8,9 @@ using System;
 
 namespace EasyFramework
 {
-    [Flags]
-    public enum EDLCMode
+    public interface IReflection
     {
-        None = 0,
-        
-        /// <summary>
-        /// 基础模式
-        /// </summary>
-        DLC = 1,
-        
-        // DLCZip = 2,
+        Type[] Types { get; }
+        Type[] InstanceTypes { get; }
     }
 }

@@ -99,7 +99,7 @@ namespace EasyFramework
         public void CreateSystems(Assembly assembly)
         {
             if (!Alive) return;
-            var types = EasyFrameworkReflection.FindInstanceTypes(typeof(ISystem), assembly);
+            var types = ReflectionUtility.FindInstanceTypes(typeof(ISystem), assembly);
 
             List<ISystem> tmpList = new();
             

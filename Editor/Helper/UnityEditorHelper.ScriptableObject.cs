@@ -53,7 +53,7 @@ namespace EasyFramework.Editor
         
         public static T LoadProjectSettings<T>() where T : ProjectSettings<T>
         {
-            var attribute = EasyFrameworkReflection.GetCustomAttribute<ProjectSettingsAttribute>(typeof(T));
+            var attribute = ReflectionUtility.GetCustomAttribute<ProjectSettingsAttribute>(typeof(T));
             if (attribute == null) return null;
             switch (attribute.Tag)
             {
@@ -71,7 +71,7 @@ namespace EasyFramework.Editor
 
         public static string GetProjectSettingsFilePath(Type type)
         {
-            var attribute = EasyFrameworkReflection.GetCustomAttribute<ProjectSettingsAttribute>(type);
+            var attribute = ReflectionUtility.GetCustomAttribute<ProjectSettingsAttribute>(type);
             if (attribute == null) return null;
             switch (attribute.Tag)
             {

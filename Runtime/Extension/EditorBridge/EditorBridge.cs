@@ -29,7 +29,7 @@ namespace EasyFramework
         
         public static T LoadProjectSetting<T>() where T : ProjectSettings<T> => Instance.LoadProjectSetting<T>();
         
-        private static readonly IEditorBridgeObject Instance = EasyFrameworkReflection.CreateInstance<IEditorBridgeObject>();
+        private static readonly IEditorBridgeObject Instance = ReflectionUtility.CreateInstance<IEditorBridgeObject>();
     }
 }
 
