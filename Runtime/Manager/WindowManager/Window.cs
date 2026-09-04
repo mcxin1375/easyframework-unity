@@ -34,7 +34,7 @@ namespace EasyFramework
         {
             Type = GetType();
         }
-        private void RegisterComponent(IWindowComponent component)
+        protected void RegisterComponent(IWindowComponent component)
         {
             if (component == null) return;
             _componentList.Add(component);

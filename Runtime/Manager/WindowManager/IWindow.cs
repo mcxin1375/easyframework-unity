@@ -47,7 +47,7 @@ namespace EasyFramework
     {
         void InitializeUI(GameObject uiObject);
     }
-    public interface IWindowUI<out T> : IWindowUI where T : class, new()
+    public interface IWindowUI<out T> : IWindowUI where T : class, IWindowComponent, new()
     {
         public T UI { get; }
     }

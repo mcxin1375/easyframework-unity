@@ -58,6 +58,7 @@ namespace EasyFramework
         {
             _behaviour = behaviour;
             _gridBehaviour = _behaviour.Grid;
+            _gridBehaviour.UIScrollRectList = this;
         }
 
         public void Refresh(List<TData> list)
