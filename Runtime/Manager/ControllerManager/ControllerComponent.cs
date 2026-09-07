@@ -19,7 +19,7 @@ namespace EasyFramework
     }
     public abstract class ControllerComponent : IControllerComponent
     {
-        public ControllerBase Controller { get; private set; }
+        public Controller Controller { get; private set; }
         public readonly Type Type;
         
         protected ControllerComponent()
@@ -28,7 +28,7 @@ namespace EasyFramework
         }
         public virtual void Create(IController controller)
         {
-            Controller = controller as ControllerBase;
+            Controller = controller as Controller;
             
             OnCreate();
         }

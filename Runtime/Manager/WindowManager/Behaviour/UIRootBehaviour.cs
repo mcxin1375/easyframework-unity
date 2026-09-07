@@ -21,6 +21,8 @@ namespace EasyFramework
     }
     internal class UIRootBehaviour : UIBaseBehaviour
     {
+        public const string UIName = "[EasyFramework-UI]";
+        
         private static UIRootBehaviour _instance;
         public static UIRootBehaviour Instance
         {
@@ -65,7 +67,7 @@ namespace EasyFramework
             Object.DontDestroyOnLoad(gameObject);
 
             // transform.position = Vector3.up * 2000;
-            transform.name = "[UIRoot]";
+            transform.name = UIName;
             foreach (var uiLayerBehaviour in uiLayers)
             {
                 uiLayerBehaviour.SetResolution(Resolution);

@@ -8,7 +8,7 @@ using System;
 
 namespace EasyFramework
 {
-    public abstract class ControllerBase : IController, ITimerObject
+    public abstract class Controller : IController, ITimerObject
     {
         public event Action OnEnterAction;
         public event Action OnExitAction;
@@ -27,7 +27,7 @@ namespace EasyFramework
         
         private IControllerComponent[] _components;
 
-        protected ControllerBase()
+        protected Controller()
         {
             Type = GetType();
         }
@@ -162,4 +162,20 @@ namespace EasyFramework
         protected virtual void OnDestroy() { }
         protected virtual void OnStartLoading() { }
     }
+
+    // public abstract class Controller<T> : Controller where T : Controller<T>, new()
+    // {
+    //     public ETask EnterAsync(EControllerEnter mode = EControllerEnter.Additive) => F.ControllerManager.EnterAsync<T>(mode);
+    //     ETask EnterAsync<T, TK1>(in TK1 tk1, EControllerEnter mode = EControllerEnter.Additive) where T : class, IController, ITParams<TK1>, new();
+    //     ETask EnterAsync<T, TK1, TK2>(in TK1 tk1, in TK2 tk2, EControllerEnter mode = EControllerEnter.Additive) where T : class, IController, ITParams<TK1, TK2>, new();
+    //     ETask EnterAsync<T, TK1, TK2, TK3>(in TK1 tk1, in TK2 tk2, in TK3 tk3, EControllerEnter mode = EControllerEnter.Additive) where T : class, IController, ITParams<TK1, TK2, TK3>, new();
+    //     ETask EnterAsync(Type type, EControllerEnter mode = EControllerEnter.Additive);
+    //     ETask EnterAsync(IController controller, EControllerEnter mode = EControllerEnter.Additive);
+    //
+    //     ETask SetActiveAsync<T>(bool isActive) where T : class, IController, new();
+    //     
+    //     ETask ExitAsync<T>() where T : class, IController, new();
+    //     ETask ExitAsync(Type type);
+    //     ETask ExitAllAsync();
+    // }
 }

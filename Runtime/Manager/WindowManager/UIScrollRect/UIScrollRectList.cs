@@ -21,7 +21,7 @@ namespace EasyFramework
         void OnItemButtonClick(Button button, int index);
     }
 
-    public class UIScrollRectList<TItem, TData> : WindowComponent, IUIScrollRectList where TItem : UIGridItemBehaviour<TData>
+    public class UIScrollRectList<TItem, TData> : IUIScrollRectList where TItem : UIGridItemBehaviour<TData>
     {
         public Action<TItem> OnItemSelected;
         public Action<TItem> OnItemPress;
@@ -41,8 +41,17 @@ namespace EasyFramework
 
         private UIScrollRectBehaviour _behaviour;
         private UIGridBehaviour _gridBehaviour;
+        
+        public void Initialize(UIScrollRectBehaviour behaviour)
+        {
+            Clear();
+            
+            _behaviour = behaviour;
+            _gridBehaviour = _behaviour.Grid;
+            _gridBehaviour.UIScrollRectList = this;
+        }
 
-        protected override void OnDestroy()
+        public void Clear()
         {
             foreach (var item in _itemDict.Values) item.Destroy();
             foreach (var item in _itemPool) item.Destroy();
@@ -51,14 +60,6 @@ namespace EasyFramework
             _itemPool.Clear();
             _recycleList.Clear();
             _dataList.Clear();
-            _dataList = null;
-        }
-        
-        public void Initialize(UIScrollRectBehaviour behaviour)
-        {
-            _behaviour = behaviour;
-            _gridBehaviour = _behaviour.Grid;
-            _gridBehaviour.UIScrollRectList = this;
         }
 
         public void Refresh(List<TData> list)

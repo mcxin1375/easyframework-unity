@@ -53,7 +53,10 @@ namespace EasyFramework
         internal void Destroy()
         {
             OnDestroyEx();
-            GameObject.Destroy(gameObject);
+            if (gameObject != null)
+            {
+                GameObject.Destroy(gameObject);
+            }
         }
 
         internal void SetSelect(bool selected)

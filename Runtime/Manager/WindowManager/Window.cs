@@ -14,9 +14,8 @@ namespace EasyFramework
 {
     public abstract class Window : IWindow, ITimerObject, IResRequest
     {
-        public bool Alive => IsTimerAlive;
+        public bool Alive => !IsOpen && _closedTime > 0 && Time.time > _closedTime + KeepAliveTime;
         public bool IsTimerAlive => IsOpen;
-        public virtual bool NeedDestroy => !IsOpen && _destroyTime > 0 && Time.time > _destroyTime;
         public bool IsOpen { get; private set; }
         public bool IsActive { get; private set; }
         public Type Type { get; }
@@ -27,7 +26,7 @@ namespace EasyFramework
         public GraphicRaycaster GraphicRaycaster { get; private set; }
 
         protected virtual float KeepAliveTime => 60;
-        private float _destroyTime;
+        private float _closedTime;
         private readonly List<IWindowComponent> _componentList = new();
         
         protected Window()
@@ -36,7 +35,7 @@ namespace EasyFramework
         }
         protected void RegisterComponent(IWindowComponent component)
         {
-            if (component == null) return;
+            if (component == null || _componentList.Contains(component)) return;
             _componentList.Add(component);
         }
         private void InitWindowObject()
@@ -108,7 +107,7 @@ namespace EasyFramework
         
             if (!IsOpen)
             {
-                _destroyTime = 0;
+                _closedTime = 0;
                 IsOpen = true;
                 OnAddListeners();
                 if (_componentList.Count > 0) foreach (var ex in _componentList) ex.AddListeners();
@@ -133,7 +132,7 @@ namespace EasyFramework
         {
             if (!IsOpen) return;
             IsOpen = false;
-            _destroyTime = Time.time + KeepAliveTime;
+            _closedTime = Time.time;
 
             OnRemoveListeners();
             if (_componentList.Count > 0) foreach (var ex in _componentList) ex.RemoveListeners();
