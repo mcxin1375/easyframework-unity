@@ -56,6 +56,14 @@ namespace EasyFramework
         }
         
         public UILayerBehaviour GetLayerData(UILayer uiLayer) => _uiRootBehaviour.GetLayerData(uiLayer);
+        public IWindow GetTopWindow(UILayer uiLayer)
+        {
+            if (_uiLayerWindowDict.TryGetValue(uiLayer, out var windowList))
+            {
+                return windowList.Count > 0 ? windowList[^1] : null;
+            }
+            return null;
+        }
         public IWindow[] GetWindows(UILayer uiLayer)
         {
             _windowTempList.Clear();

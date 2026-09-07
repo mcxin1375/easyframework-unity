@@ -19,20 +19,20 @@ namespace EasyFramework
         }
         void Update()
         {
-            WorldManager.Instance.Update();
             ControllerManager.Instance.Update();
+            WorldManager.Instance.Update();
         }
         void LateUpdate()
         {
-            WorldManager.Instance.LateUpdate();
             ControllerManager.Instance.LateUpdate();
+            WorldManager.Instance.LateUpdate();
         }
         private void OnDestroy()
         {
             FDebug.Log($"[{transform.name}] OnDestroy");
             
-            WorldManager.Instance.Destroy();
             ControllerManager.Instance.Destroy();
+            WorldManager.Instance.Destroy();
         }
     }
 }

@@ -194,10 +194,6 @@ namespace EasyFramework
         public Canvas GetCanvas(UILayer uiLayer) => UIRootBehaviour.GetCanvas(uiLayer);
         
         public bool IsOpen<T>() where T : class, IWindow => GetWindow(typeof(T))?.IsOpen ?? false;
-        public IWindow GetTopWindow(UILayer uiLayer)
-        {
-            var windows = GetWindows(uiLayer);
-            return windows.Length > 0 ? windows[^1] : null;
-        }
+        public IWindow GetTopWindow(UILayer uiLayer) => UIWindowBehaviour.GetTopWindow(uiLayer);
     }
 }
