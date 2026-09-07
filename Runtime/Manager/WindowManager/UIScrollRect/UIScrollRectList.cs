@@ -52,8 +52,10 @@ namespace EasyFramework
 
         public void Clear()
         {
-            foreach (var item in _itemDict.Values) item.Destroy();
-            foreach (var item in _itemPool) item.Destroy();
+            foreach (var item in _itemDict.Values)
+                if (item != null) item.Destroy();
+            foreach (var item in _itemPool) 
+                if (item != null) item.Destroy();
             
             _itemDict.Clear();
             _itemPool.Clear();
