@@ -33,8 +33,7 @@ namespace EasyFramework
         public int SelectIndex { get; private set; } = -1;
         public int ItemNumber => _dataList?.Count ?? 0;
         public IReadOnlyList<TData> DataList => _dataList;
-        private List<TData> _dataList;
-
+        private readonly List<TData> _dataList;
         private readonly Dictionary<int, TItem> _itemDict = new();
         private readonly Queue<TItem> _itemPool = new();
         private readonly Queue<int> _recycleList = new();
@@ -62,27 +61,21 @@ namespace EasyFramework
             _dataList.Clear();
         }
 
-        public void Refresh(List<TData> list)
+        public void Refresh(List<TData> list, int selectIndex = -1)
         {
-            _dataList = list;
+            _dataList.Clear();
+            _dataList.AddRange(list);
             Refresh();
+            
+            if (selectIndex >= 0) SelectAt(selectIndex);
         }
-        public void Refresh(List<TData> list, int selectIndex)
+        public void Refresh(TData[] array, int selectIndex = -1)
         {
-            Refresh(list);
-            SelectAt(selectIndex);
-        }
-        public void Refresh(TData[] array)
-        {
-            _dataList ??= new();
             _dataList.Clear();
             _dataList.AddRange(array);
             Refresh();
-        }
-        public void Refresh(TData[] array, int selectIndex)
-        {
-            Refresh(array);
-            SelectAt(selectIndex);
+            
+            if (selectIndex >= 0) SelectAt(selectIndex);
         }
 
         public void UnSelectAll() => SelectAt(-1);
