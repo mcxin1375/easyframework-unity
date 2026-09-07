@@ -33,7 +33,7 @@ namespace EasyFramework
         public int SelectIndex { get; private set; } = -1;
         public int ItemNumber => _dataList?.Count ?? 0;
         public IReadOnlyList<TData> DataList => _dataList;
-        private readonly List<TData> _dataList;
+        private readonly List<TData> _dataList = new();
         private readonly Dictionary<int, TItem> _itemDict = new();
         private readonly Queue<TItem> _itemPool = new();
         private readonly Queue<int> _recycleList = new();
