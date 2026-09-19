@@ -15,12 +15,7 @@ namespace EasyFramework.Editor
         int IToolExtension.Order => PlayerBuilder.Instance.Order - 100;
         public void OnExecuteBefore()
         {
-            switch (EasyFrameworkSettings.Instance.resLoaderMode)
-            {
-                case EResLoaderMode.DLC_StreamingAssets:
-                    BuildDLC_StreamingAssets(PlayerBuilderSettings.Instance.releaseVersion);
-                    break;
-            }
+            
         }
 
         void IToolEvent<PlayerBuilder>.OnExecute()
@@ -56,32 +51,6 @@ namespace EasyFramework.Editor
                     EditorUserBuildSettings.exportAsGoogleAndroidProject = settings.exportAsGoogleAndroidProject;
                     break;
             }
-        }
-        
-        public static void BuildDLC_StreamingAssets(string dlcVersion)
-        {
-            FileHelper.ClearDirectory(EasyFrameworkSettings.Instance.StreamingAssetsDLCPath);
-
-            dlcVersion = dlcVersion.IsNullOrWhiteSpace()
-                ? DLCBuilder.Instance.LatestVersion?.versionName
-                : dlcVersion;
-
-            var versionPath = $"{DLCBuilder.Instance.ProjectPlatformPath}/{dlcVersion}";
-            if (!Directory.Exists(versionPath))
-            {
-                FDebug.LogError($"DLC list path {versionPath} does not exist.");
-                return;
-            }
-            
-            var files = Directory.GetFiles(versionPath,  "*.*", SearchOption.AllDirectories);
-            FileHelper.CopyFiles(files, EasyFrameworkSettings.Instance.StreamingAssetsDLCPath);
-        }
-        
-        [MenuItem("EasyFramework/Tools/PlayerBuilder - Build DLC_StreamingAssets", priority = ToolOrder.PlayerBuilder + 1)]
-        public static void BuildDLC_StreamingAssets()
-        {
-            BuildDLC_StreamingAssets(PlayerBuilderSettings.Instance.releaseVersion);
-            AssetDatabase.Refresh();
         }
     }
 }

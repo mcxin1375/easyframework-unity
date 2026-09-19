@@ -136,6 +136,25 @@ namespace EasyFramework.Editor
             ConfigHelper.Save(versionInfo, $"{outputDir}/{DLCVersionInfo.FileName}", true);
         }
         
+        public static void CopyVersionToStreamingAssets(string dlcVersion)
+        {
+            FileHelper.ClearDirectory(EasyFrameworkSettings.Instance.StreamingAssetsDLCPath);
+
+            dlcVersion = dlcVersion.IsNullOrWhiteSpace()
+                ? DLCBuilder.Instance.LatestVersion?.versionName
+                : dlcVersion;
+
+            var versionPath = $"{DLCBuilder.Instance.ProjectPlatformPath}/{dlcVersion}";
+            if (!Directory.Exists(versionPath))
+            {
+                FDebug.LogError($"DLC list path {versionPath} does not exist.");
+                return;
+            }
+            
+            var files = Directory.GetFiles(versionPath,  "*.*", SearchOption.AllDirectories);
+            FileHelper.CopyFiles(files, EasyFrameworkSettings.Instance.StreamingAssetsDLCPath);
+        }
+        
         private static string GetBuildVersionNameId()
         {
             var settings = DLCBuilderSettings.Instance;

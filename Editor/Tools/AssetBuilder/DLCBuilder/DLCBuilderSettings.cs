@@ -4,6 +4,8 @@
 // describe:
 //----------------------------------------------------------------*/
 
+using UnityEngine;
+
 namespace EasyFramework.Editor
 {
     // public interface IDLCBuilderSettingsExtension
@@ -42,6 +44,10 @@ namespace EasyFramework.Editor
         /// DLC 打包模式，支持多选
         /// </summary>
         public EDLCModeOptions buildMode = EDLCModeOptions.DLC;
+        
+        [Header("指定DLC版本发布，为空自动选择最近一次打包")]
+        public string releaseVersion;
+        public bool copyVersionToStreamingAssets;
         
         // [Header("DLC Packages Per Subdirectory")]
         // public string[] dlcRootDirectories = new []

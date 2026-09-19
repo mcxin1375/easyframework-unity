@@ -42,8 +42,9 @@ namespace EasyFramework
         
         [Header("ResLoader Settings")]
         public bool resLoaderEditorMode = true;
-        public EResLoaderMode resLoaderMode = EResLoaderMode.DLC_StreamingAssets;
         public int resRequestAliveTime = 60;
+        public string streamingAssetsResRelativePath = "DLC";
+        public EResLoaderMode resLoaderMode = EResLoaderMode.DLC_StreamingAssets;
         
         /// <summary>
         /// 版本索引，发布时底包会记录该值，判断一致才可热更新
@@ -72,7 +73,7 @@ namespace EasyFramework
         [Header("Debug Settings")]
         public EDebugLevel debugLevel = EDebugLevel.Log | EDebugLevel.LogWarning | EDebugLevel.LogError;
 
-        public readonly string StreamingAssetsDLCPath = $"{Application.streamingAssetsPath}/DLC";
+        public string StreamingAssetsDLCPath { get; private set; }
         public string DataPath { get; private set; }
         public string DLCPath { get; private set; }
         public string ConfigPath { get; private set; }
@@ -92,6 +93,8 @@ namespace EasyFramework
 
         protected override void OnCreate()
         {
+            StreamingAssetsDLCPath = $"{Application.streamingAssetsPath}/{streamingAssetsResRelativePath}";
+            
 #if UNITY_EDITOR
             DataPath = Application.persistentDataPath;
 #elif UNITY_IOS
