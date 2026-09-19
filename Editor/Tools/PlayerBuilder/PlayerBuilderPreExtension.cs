@@ -15,7 +15,9 @@ namespace EasyFramework.Editor
         int IToolExtension.Order => PlayerBuilder.Instance.Order - 100;
         public void OnExecuteBefore()
         {
-            
+            var settings = PlayerBuilderSettings.Instance;
+            if (settings.assetBuilder)
+                AssetBuilder.Instance.Execute();
         }
 
         void IToolEvent<PlayerBuilder>.OnExecute()
