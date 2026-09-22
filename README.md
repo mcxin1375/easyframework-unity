@@ -2,6 +2,56 @@
 
 EasyFramework 是一个面向 Unity 项目的轻量级 C# 开发框架，提供异步任务、事件、状态机、轻量 ECS、对象池、资源与场景加载、UI 窗口、网络和编辑器构建工具。
 
+## 核心功能
+
+- **ETask**
+  
+  - 0GC设计，基于对象池+结构体设计的异步任务。可轻松扩展自定义的异步任务
+
+- **资源管理**
+  
+  - 极简配置：ProjectSettings面板配置目标路径
+  
+  - 极简设计：F.ResLoader.Load<T>(resName)
+  
+  - 无路径维护成本，支持编辑器模式，无须打包
+
+- **Shader变体**
+  
+  - 编辑器自动收集、自定义配置变体列表、发布阶段裁剪等。减少打包时间，优化Shader包大小等
+
+- **UI框架**
+  
+  - 极简设计：F.WindowManager.Open<T>() 
+  
+  - 全面的生命周期：OnOpen、OnClose...
+  
+  - UI对象自动绑定，泛型传参等，基于Roslyn工程自动生成
+
+- **可选：HybridCLR热更新**
+  
+  - 导入相应插件，会自动启动相关宏编译
+
+- **通用模块：ECS、Controller、FSM、Event等**
+
+- **音频播放、图集、对象池 ObjectPool<T>等**
+
+- **Tools工具链** - 可自行编排、扩展。每个工具都提供接口触发自定义任务：OnExecuteBefore、OnExecute、OnExecuteAfter
+  
+  - AssetImporter - 资源导入
+  
+  - AssetCreator - 资源创建
+  
+  - AssetBuilder - 资源打包
+    
+    - HybridCLRBuilder
+    
+    - AssetBundleBuilder
+    
+    - DLCBuilder
+  
+  - PlayerBuilder - 发布
+
 ## 快速开始
 
 ### 1. 资源打包及加载配置
