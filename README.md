@@ -1,6 +1,6 @@
 # EasyFramework for Unity
 
-EasyFramework 是一个面向 Unity 项目的轻量级 C# 开发框架，提供异步任务、事件、状态机、轻量 ECS、对象池、资源与场景加载、UI 窗口、网络和编辑器构建工具。
+EasyFramework 是一个面向 Unity 项目的轻量级 C# 开发框架，核心思想：极简、易用。
 
 ## 核心功能
 
@@ -27,6 +27,12 @@ EasyFramework 是一个面向 Unity 项目的轻量级 C# 开发框架，提供�
   - 全面的生命周期：OnOpen、OnClose...
   
   - UI对象自动绑定，泛型传参等，基于Roslyn工程自动生成
+
+- **热更新**
+  
+  - 全量热更、边玩边下。互不干扰
+  
+  - 
 
 - **可选：HybridCLR热更新**
   
