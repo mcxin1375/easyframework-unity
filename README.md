@@ -15,6 +15,12 @@ EasyFramework 是一个面向 Unity 项目的轻量级 C# 开发框架，核心�
   - 极简设计：F.ResLoader.Load<T>(resName)
   
   - 无路径维护成本，支持编辑器模式，无须打包
+  
+  - 内存管理：框架自动会检测每个资源请求的生命状态，自行卸载关联的ab包。生命状态判定条件如下：
+    
+    - EasyFrameworkSettings.ResRequestAliveTime = 60. 每次请求调用重置
+    
+    - IResRequest 实现接口，维护IResRequest.Alive 状态
 
 - **Shader变体**
   
@@ -22,7 +28,7 @@ EasyFramework 是一个面向 Unity 项目的轻量级 C# 开发框架，核心�
 
 - **UI框架**
   
-  - 极简设计：F.WindowManager.Open<T>() 
+  - 极简设计：F.WindowManager.Open<T>() 类型名就是资源名
   
   - 全面的生命周期：OnOpen、OnClose...
   
@@ -32,7 +38,7 @@ EasyFramework 是一个面向 Unity 项目的轻量级 C# 开发框架，核心�
   
   - 全量热更、边玩边下。互不干扰
   
-  - 
+  - DLC分包独立下载（暂不可用）
 
 - **可选：HybridCLR热更新**
   
