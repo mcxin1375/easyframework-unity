@@ -85,8 +85,10 @@ namespace EasyFramework
         {
             if (_itemDict.TryGetValue(SelectIndex, out var preItem)) preItem.SetSelect(false);
             SelectIndex = index;
-            if (_itemDict.TryGetValue(SelectIndex, out var item)) item.SetSelect(true);
-            
+            if (_behaviour != null) _behaviour.ScrollTo(index);
+
+            _itemDict.TryGetValue(SelectIndex, out var item);
+            item?.SetSelect(true);
             OnItemSelected?.Invoke(item);
         }
 
