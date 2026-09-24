@@ -30,14 +30,5 @@ namespace EasyFramework.Editor
 
         [MenuItem("EasyFramework/Tools/PlayerBuilder - Execute", priority = ToolOrder.PlayerBuilder)]
         private static void MenuItem1() => Instance.Execute();
-        
-        // [MenuItem("EasyFramework/Tools/PlayerBuilder - BuildMainRes", priority = EasyFrameworkToolsSettings.PlayerBuilder + 1)]
-        // public static void MenuItem2() => PlayerBuilder.Instance.BuildMainRes();
-        //
-        // [MenuItem("EasyFramework/Tools/PlayerBuilder - BuildPlayer", priority = EasyFrameworkToolsSettings.PlayerBuilder + 1)]
-        // public static void MenuItem3() => PlayerBuilder.Instance.BuildPlayer();
-        //
-        // [MenuItem("EasyFramework/Tools/PlayerBuilder - BuildProject", priority = EasyFrameworkToolsSettings.PlayerBuilder + 1)]
-        // public static void MenuItem4() => PlayerBuilder.Instance.BuildProject();
     }
 }

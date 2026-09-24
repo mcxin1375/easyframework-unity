@@ -29,7 +29,7 @@ namespace EasyFramework.Editor
         AssetBundleBuildInfo[] BuildInfos => null;
     }
     
-    public partial class AssetBundleBuilder : ToolBase<AssetBundleBuilder>, IToolEvent<AssetBuilder>
+    public class AssetBundleBuilder : ToolBase<AssetBundleBuilder>, IToolEvent<AssetBuilder>
     {
         public override int Order => ToolOrder.AssetBundleBuilder;
         

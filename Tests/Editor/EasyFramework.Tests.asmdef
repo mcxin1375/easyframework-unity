@@ -1,0 +1,22 @@
+{
+    "name": "EasyFramework.Tests",
+    "rootNamespace": "",
+    "references": [
+        "GUID:73325a7e2bce08341b61ab53f0f987ac",
+        "GUID:f739d2667768ec241b089fc181e6bb76"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

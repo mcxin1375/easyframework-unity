@@ -85,7 +85,17 @@ namespace EasyFramework
                 return _source.GetStatus(_token);
             }
         }
-        
+
+        private async EVoid InnerForget()
+        {
+            await this;
+        }
+
+        public void Forget()
+        {
+            InnerForget().Forget();
+        }
+
         public static readonly ETask CompletedTask = new ();
         public static ETask<TResult> FromResult<TResult>(TResult result) => new (result);
     }
@@ -120,6 +130,16 @@ namespace EasyFramework
                 if (_source == null) return ETaskStatus.Succeeded;
                 return _source.GetStatus(_token);
             }
+        }
+
+        private async EVoid InnerForget()
+        {
+            await this;
+        }
+
+        public void Forget()
+        {
+            InnerForget().Forget();
         }
     }
 }
