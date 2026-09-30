@@ -6,19 +6,9 @@
 
 using System.Collections.Generic;
 using System;
-using System.Reflection;
 
 namespace EasyFramework
 {
-
-    public class FSM<T> : FSM where T : Attribute, IReflection
-    {
-        public FSM(params object[] args) : base(typeof(T).GetCustomAttribute<T>().InstanceTypes, args)
-        {
-            
-        }
-    }
-
     public class FSM
     {
         public interface IState
@@ -34,9 +24,6 @@ namespace EasyFramework
 
         private readonly Dictionary<string, IState> _stateDict = new ();
 
-        public FSM(IReflection reflection, params object[] args) : this(reflection.InstanceTypes, args)
-        {
-        }
         public FSM(Type[] types, params object[] args)
         {
             var arr = ReflectionUtility.CreateInstancesByTypes<IState>(types);
@@ -45,6 +32,12 @@ namespace EasyFramework
                 fsmState.Create(args);
                 _stateDict.Add(fsmState.Name, fsmState);
             }
+        }
+
+        public static FSM CreateByAttribute<T>(params object[] args) where T : Attribute
+        {
+            var types = ReflectionUtility.FindInstanceTypesByAttribute(typeof(T));
+            return new FSM(types, args);
         }
 
         public void Enter<T, TK1>(TK1 t1) where T : class, IState, ITParams<TK1>, new()
