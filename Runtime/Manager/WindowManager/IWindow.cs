@@ -12,7 +12,7 @@ namespace EasyFramework
     public interface IWindow
     {
         bool IsOpen { get; }
-        bool Alive { get; }
+        bool NeedDestroy { get; }
         UILayerBehaviour LayerBehaviour { get; }
         GameObject WindowObject { get; }
         ETask CreateAsync(UILayerBehaviour uiLayer);

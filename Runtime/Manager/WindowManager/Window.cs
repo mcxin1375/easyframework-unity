@@ -14,8 +14,9 @@ namespace EasyFramework
 {
     public abstract class Window : IWindow, ITimerObject, IResRequest
     {
-        public bool Alive => !IsOpen && _closedTime > 0 && Time.time > _closedTime + KeepAliveTime;
+        public bool Alive => !NeedDestroy;
         public bool IsTimerAlive => IsOpen;
+        public bool NeedDestroy => !IsOpen && _closedTime > 0 && Time.time > _closedTime + KeepAliveTime;
         public bool IsOpen { get; private set; }
         public bool IsActive { get; private set; }
         public Type Type { get; }

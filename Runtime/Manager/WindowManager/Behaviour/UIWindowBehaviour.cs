@@ -47,7 +47,7 @@ namespace EasyFramework
             {
                 var window = _closeList[i];
                 if (window.IsOpen) _closeList.RemoveAt(i);
-                else if (!window.Alive)
+                else if (window.NeedDestroy)
                 {
                     _closeList.RemoveAt(i);
                     Destroy(window);
