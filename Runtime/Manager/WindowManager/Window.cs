@@ -47,16 +47,16 @@ namespace EasyFramework
             GraphicRaycaster = WindowObject.AddComponentEx<GraphicRaycaster>();
             WindowObject.AddComponentEx<UIButtonBinding>().BindAction(ButtonClick);
             
+            if (this is IWindowUI windowUI)
+            {
+                windowUI.InitializeUI(WindowObject);
+            }
+            
             _componentList.Clear();
             var arr = ReflectionUtility.FindFieldsAndProperties<IWindowComponent>(this);
             foreach (var ex in arr) RegisterComponent(ex);
             var comps = WindowObject.GetComponentsInChildren<IWindowComponent>();
             foreach (var comp in comps) RegisterComponent(comp);
-            
-            if (this is IWindowUI windowUI)
-            {
-                windowUI.InitializeUI(WindowObject);
-            }
             
             OnCreate();
             if (_componentList.Count > 0) foreach (var ex in _componentList) ex.Create(this);

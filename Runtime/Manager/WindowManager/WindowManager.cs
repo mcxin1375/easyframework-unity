@@ -133,11 +133,15 @@ namespace EasyFramework
 
         public void Close(IWindow window)
         {
+            if (window == null) return;
+            
             Debug.Log($"F.WindowManager.Close(type:{window.GetType().Name})");
             UIWindowBehaviour.Close(window);
         }
         public async ETask CloseAsync(IWindow window)
         {
+            if (window == null) return;
+
             await window.BeforeCloseAsync();
             Close(window);
         }
@@ -173,6 +177,8 @@ namespace EasyFramework
 
         public void Destroy(IWindow window)
         {
+            if (window == null) return;
+
             Debug.Log($"F.WindowManager.Destroy(type:{window.GetType().Name})");
             UIWindowBehaviour.Destroy(window);
         }
