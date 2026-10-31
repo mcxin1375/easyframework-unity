@@ -11,6 +11,7 @@
 | `DestroyAllPool()` | 销毁全部对象池 |
 
 ```csharp
+using EasyFramework;
 using UnityEngine;
 
 sealed class PoolExample

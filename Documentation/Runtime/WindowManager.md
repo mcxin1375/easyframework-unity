@@ -107,7 +107,7 @@ public class HelloWorldWindow1 : Window
 using EasyFramework;
 using UnityEngine.UI;
 
-public class HelloWorldWindow2UI
+public class HelloWorldWindow2UI : WindowComponent
 {
     public Image TestImg;
     public Text TestText;
@@ -122,11 +122,11 @@ public partial class HelloWorldWindow2 : Window, IWindowUI<HelloWorldWindow2UI>
 }
 ```
 
-示例工程标注该 UI 代码由 Roslyn 生成。字段名必须与 UI 对象中的绑定名称和生成代码约定一致；绑定失败时不要假设 `UI` 成员已可用。
+此片段依赖包内 Roslyn 生成器，为 partial 窗口生成 UI 属性与 InitializeUI。TUI 必须实现 IWindowComponent 并有公开无参构造函数，因此这里继承 WindowComponent。字段名必须与 UI 对象绑定名称和生成约定一致；绑定失败时不要假设 UI 成员已可用。无需生成器的完整窗口见 [基础示例](../Examples.md)。
 
 ### 带参数窗口
 
-通过 `ITParams` 接收打开窗口时传入的参数。示例工程使用两个参数：
+通过 ITParams 接收参数。下面的 partial 类型依赖包内 Roslyn 生成器生成 T1、T2、SetParams 等接口成员；如果不使用生成器，需要显式实现这些成员：
 
 ```csharp
 using EasyFramework;
@@ -173,7 +173,7 @@ public class HelloWorldResourcesWindow : WindowResources
 
 ## 项目示例
 
-示例工程中的 `WindowTests.Test()` 展示了实际调用：
+业务异步方法中的调用方式如下（先在启动流程等待 F.InitializeAsync）：
 
 ```csharp
 public static async ETask Test()
@@ -187,7 +187,7 @@ public static async ETask Test()
 }
 ```
 
-业务层应等待 `OpenAsync` 完成后再访问窗口对象或继续依赖窗口资源的流程。登录流程中的 `LoginController.OnEnterAsync` 也遵循这一规则：先等待 `F.WindowManager.OpenAsync<LoginWindow>()`，再关闭旧窗口并创建资源对象。
+业务层应等待 OpenAsync 完成后再访问窗口对象。完整的可导入窗口、加载中销毁与关闭清理示例见 [基础示例](../Examples.md)。
 
 ## 源码
 

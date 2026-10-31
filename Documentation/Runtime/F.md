@@ -1,61 +1,57 @@
 # F 总览
 
-`F` 是 EasyFramework 的全局入口静态类。业务代码通过 `F.xxx` 访问框架模块，不直接依赖模块的具体实现类。
+`F` 是 EasyFramework 的全局入口。业务通过 `F.xxx` 访问运行时模块；Controller 的进入和退出由业务 Controller 实例负责。
 
 ```csharp
-await F.InitializeAsync();
+using EasyFramework;
 
-await F.WindowManager.OpenAsync<LoginWindow>();
-await F.ResLoader.CreateObjAsync("Cube");
-await F.ControllerManager.EnterAsync<LoginController>();
+public static class GameBootstrap
+{
+    public static async ETask StartAsync()
+    {
+        await F.InitializeAsync();
+        await GameController.Instance.EnterAsync();
+    }
+}
+
+public sealed class GameController : Controller<GameController>
+{
+    protected override void OnEnter() => FDebug.Log("Game entered");
+}
 ```
 
 ## 初始化
 
-框架初始化应在游戏进入业务状态前调用一次，并等待完成。当前项目的 `GameInitState` 正是在进入登录状态前执行 `await F.InitializeAsync()`；初始化完成后才进入 `GameLoginState`。
+在进入业务流程前等待 `F.InitializeAsync()`，再使用资源、窗口或 DLC。当前源码没有 `F.Initialize()`。
 
-`F.InitializeAsync()` 会按依赖顺序执行：
+初始化依次创建配置并设置日志级别，创建 Window、Sprite、Shader、Scene、Audio 模块，再等待 DLCManager 和 AssetBundleLoader 初始化。`F.Behaviour` 由使用它的模块按需创建，不是这里显式创建的独立步骤。
 
-1. 创建 `F.Settings`，配置调试器和日志级别。
-2. 创建 `F.Behaviour`，建立跨场景生命周期宿主。
-3. 创建 Window、Sprite、Shader、Scene、Audio 模块。
-4. 等待 `F.DLCManager` 初始化。
-5. 等待底层 AssetBundle 资源加载器初始化。
+`autoInitialize` 默认关闭；开启后 Unity 回调会发起初始化，业务仍应调用 `await F.InitializeAsync()` 作为等待点。初始化成功后重复调用直接完成，初始化过程中其他调用等待同一状态。
 
-因此应在启动状态、启动器或等价的生命周期节点中执行 `await F.InitializeAsync()`，完成后再访问依赖资源的模块。`F.Initialize()` 只会发起初始化而不等待，不适合作为需要立即使用资源、窗口或 DLC 的唯一调用。
-
-```csharp
-private async ETask InitializeGameAsync()
-{
-    await F.InitializeAsync();
-    // 初始化完成后再进入登录、加载主界面或创建业务资源。
-    GLogic.FSM.Enter<GameLoginState>();
-}
-```
-
-当 `Settings.autoInitialize` 为 `true` 时，框架还会通过 Unity 的运行时初始化回调自动发起初始化；业务流程仍应把 `F.InitializeAsync()` 作为等待点，避免与初始化并行产生竞态。多次并发等待会等待同一初始化状态，但业务侧仍应统一管理调用位置。
+当前异常路径没有将初始化状态复位；资源 Manifest 加载失败也可能仅记录错误后返回。初始化完成不能替代资源存在性检查，排查失败时应查看日志和发布输出，不能假设再次调用一定会重试。
 
 ## 入口索引
 
-| 入口 | 主要职责 | 详细文档 |
+| 入口 | 职责 | 文档 |
 | --- | --- | --- |
-| `F.Settings` | 项目运行参数与路径 | [EasyFrameworkSettings.md](EasyFrameworkSettings.md) |
-| `F.Behaviour` | 跨场景宿主、帧循环与销毁 | [FBehaviour.md](FBehaviour.md) |
-| `F.WorldManager` | World、Entity、System 生命周期 | [WorldManager.md](WorldManager.md) |
-| `F.ControllerManager` | Controller 进入、退出和激活 | [ControllerManager.md](ControllerManager.md) |
-| `F.Event` | 泛型事件注册与派发 | [Event.md](Event.md) |
-| `F.ResLoader` | AssetBundle 与资源对象加载 | [ResLoader.md](ResLoader.md) |
-| `F.DLCManager` | DLC 版本、文件和下载 | [DLCManager.md](DLCManager.md) |
-| `F.HttpManager` | HTTP 文本请求与文件下载 | [HttpManager.md](HttpManager.md) |
-| `F.WindowManager` | UI 窗口、层级和生命周期 | [WindowManager.md](WindowManager.md) |
-| `F.SpriteLoader` | SpriteAtlas 与 Sprite | [SpriteLoader.md](SpriteLoader.md) |
-| `F.ShaderLoader` | Shader 加载与查询 | [ShaderLoader.md](ShaderLoader.md) |
-| `F.SceneLoader` | 场景加载、卸载和激活 | [SceneLoader.md](SceneLoader.md) |
-| `F.InputManager` | 输入事件 | [InputManager.md](InputManager.md) |
-| `F.PoolManager` | GameObject 对象池 | [PoolManager.md](PoolManager.md) |
-| `F.AudioPlayer` | 音频、音乐和频道控制 | [AudioPlayer.md](AudioPlayer.md) |
-| `F.HybridCLRManager` | HybridCLR 进入与程序集加载 | [HybridCLRManager.md](HybridCLRManager.md) |
+| `F.Settings` | 参数与运行路径 | [Settings](EasyFrameworkSettings.md) |
+| `F.Behaviour` | Unity 生命周期宿主 | [Behaviour](FBehaviour.md) |
+| `F.ControllerManager` | Controller 栈与状态查询 | [ControllerManager](ControllerManager.md) |
+| `F.Event` | 泛型事件注册与派发 | [Event](Event.md) |
+| `F.ResLoader` | 资源加载与持有关系 | [ResLoader](ResLoader.md) |
+| `F.DLCManager` | 版本与文件下载 | [DLCManager](DLCManager.md) |
+| `F.HttpManager` | HTTP 文本与文件下载 | [HttpManager](HttpManager.md) |
+| `F.WindowManager` | 窗口、层级与生命周期 | [WindowManager](WindowManager.md) |
+| `F.SpriteLoader` | SpriteAtlas 与 Sprite | [SpriteLoader](SpriteLoader.md) |
+| `F.ShaderLoader` | Shader 资源 | [ShaderLoader](ShaderLoader.md) |
+| `F.SceneLoader` | 场景管理 | [SceneLoader](SceneLoader.md) |
+| `F.InputManager` | 旧版 Unity Input 输入事件 | [InputManager](InputManager.md) |
+| `F.PoolManager` | GameObject 对象池 | [PoolManager](PoolManager.md) |
+| `F.AudioPlayer` | 音效、音乐与频道 | [AudioPlayer](AudioPlayer.md) |
+| `F.HybridCLRManager` | 可选热更新接入，仅 EF_HYBRIDCLR 下存在 | [HybridCLRManager](HybridCLRManager.md) |
 
-`F.HybridCLRManager` 只有项目定义 `EF_HYBRIDCLR` 时存在；`F.MainResManager` 当前是注释代码，不属于有效入口。
+ETask 是独立类型，见 [ETask](ETask.md)。Profiler 使用独立程序集和命名空间，见 [Profiler](Profiler.md)。当前没有 `F.WorldManager`，ECS 的可用范围见 [ECS](WorldManager.md)。
+
+完整流程见 [快速开始](../GettingStarted.md)，可导入代码见 [基础示例](../Examples.md)。
 
 源码：[F.cs](../../Runtime/F.cs)。

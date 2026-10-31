@@ -6,12 +6,13 @@
 
 | 配置 | 作用 |
 | --- | --- |
-| `autoInitialize` | 是否由 Unity 运行时初始化回调自动发起框架初始化 |
+| `autoInitialize` | 是否由 Unity 回调自动发起初始化，默认 false；业务仍应 await 初始化 |
 | `appSettings` | 应用级设置来源，包含 CDN 等项目配置 |
 | `abSuffix` | AssetBundle 文件后缀，默认 `.ab` |
-| `resLoaderEditorMode` | Editor 中是否使用编辑器资源加载桥接 |
+| `resLoaderEditorMode` | Editor 中是否使用编辑器资源桥接，默认 true |
 | `resLoaderMode` | DLC 使用 StreamingAssets 或 CDN |
-| `resRequestAliveTime` | 资源请求保持时间 |
+| `resRequestAliveTime` | 无活跃持有者时的资源缓存时间，默认 60 秒；长期使用应传 IResRequest |
+| `streamingAssetsResRelativePath` | StreamingAssets 下的 DLC 相对目录，默认 DLC |
 | `dlcVersionIndex` | 底包记录的 DLC 版本索引 |
 | `downloadParallel` | DLC 下载并行数，默认 `3` |
 | `unzipParallel` | 解压并行数，默认 `3` |
@@ -20,7 +21,7 @@
 | `enterType` / `enterMethod` | HybridCLR 入口类型和方法名 |
 | `debugLevel` | 调试日志级别 |
 
-初始化时会根据 Unity 平台设置 `DataPath`、`DLCPath`、`ConfigPath`、`DownloadPath` 和 `DownloadTempPath`，并创建所需目录。业务代码应读取这些属性，不要硬编码持久化路径。
+配置创建时计算 StreamingAssetsDLCPath、DataPath、DLCPath、ConfigPath、DownloadPath 和 DownloadTempPath；运行时创建所需目录，Editor 非 Play 模式不创建这些持久目录。iOS 使用 temporaryCachePath，其他当前分支使用 persistentDataPath。业务读取属性，不硬编码路径。PlayerBuilder 和 DLCBuilder 是独立 Editor 设置，发布默认行为见对应工具文档。
 
 ## 编辑器入口
 

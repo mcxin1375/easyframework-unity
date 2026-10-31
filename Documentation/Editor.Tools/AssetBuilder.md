@@ -19,7 +19,7 @@ AssetBuilder
 
 当前内置工具的顺序由 `ToolOrder` 控制。项目还可以注册自己的 `IToolEvent<AssetBuilder>`，把资源生成或其他构建步骤接入同一条链路。
 
-需要注意：被 `AssetBuilder` 触发的工具执行的是事件阶段，不会重新进入各自完整的 `ToolBase.Execute()`，因此不会自动执行它们自己的 `Refresh`、版本升级和 AssetDatabase 刷新。需要版本记录或额外准备逻辑时，应在扩展生命周期中显式处理。
+内置子工具实现 IToolEvent<AssetBuilder>，其 OnExecute 绑定到 ToolBase 的公开 OnExecute()，会进入子工具完整 Execute()，执行各自 Refresh、版本升级、子工具事件与 AssetDatabase.Refresh。不要将它与工具对自身 IToolEvent<TSelf> 的显式实现混淆。
 
 ## 自定义构建步骤
 

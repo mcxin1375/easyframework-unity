@@ -14,6 +14,8 @@
 根据当前任务选择需要阅读的文档，不要求每次任务都读取 `Documentation` 目录下的全部文档：
 
 - 涉及整体架构或框架初始化时，阅读 `Documentation/Runtime/F.md`。
+- 涉及安装或示例时，阅读 `Documentation/GettingStarted.md` 和 `Documentation/Examples.md`；可导入代码在 `Samples~/Basics/`。
+- 涉及 Controller 或 ECS 时，先核对对应文档的当前实现限制，再选择可用入口。
 - 涉及某个 `F.xxx` 模块时，阅读对应的 Runtime 文档。
 - 涉及 Editor 工具时，先阅读 `Documentation/Editor.Tools/ToolBase.md`。
 - 涉及具体 Editor 工具时，再阅读 `Documentation/Editor.Tools/` 下对应的工具文档。
@@ -70,16 +72,15 @@ Runtime 和 Editor 工具通过 `EasyFrameworkSettings.AppSettings` 读取发布
 
 ## 最终发布
 
-资源和 Player 发布必须按顺序执行：
+默认 PlayerBuilder 会在前置阶段执行 AssetBuilder，直接运行：
 
 ```csharp
 using EasyFramework.Editor;
 
-AssetBuilder.Instance.Execute();
 PlayerBuilder.Instance.Execute();
 ```
 
-`AssetBuilder` 会依次触发启用的 `HybridCLRBuilder`、`AssetBundleBuilder` 和 `DLCBuilder`，完成资源、版本信息和 DLC 输出；资源构建完成后再执行 `PlayerBuilder` 发布目标平台 Player。
+需要分开构建时，先关闭 PlayerBuilder 设置中的 assetBuilder，再按 AssetBuilder -> PlayerBuilder 顺序执行。使用 DLC_StreamingAssets 时，在 DLCBuilder 中开启 copyVersionToStreamingAssets 或执行 CopyVersionToStreamingAssets 菜单；releaseVersion 也在 DLCBuilder 中配置。发布细节以工具文档为准。
 
 也可以使用 Unity 菜单：
 

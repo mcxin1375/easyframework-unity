@@ -91,6 +91,6 @@ internal sealed class GameAssetBundleBuildSettings : IAssetBundleBuilderSettings
 
 ## 构建链路
 
-直接执行工具会升级 `AssetBundleBuilder` 自身版本。通过 `AssetBuilder` 触发时，工具作为 `IToolEvent<AssetBuilder>` 执行 `BuildBySettings`；它的输出会被后续 `DLCBuilder` 收集。
+直接执行或由 AssetBuilder 触发时，都会通过完整 Execute() 升级 AssetBundleBuilder 版本，再在 OnSelfExecute 中调用 BuildBySettings；输出由后续 DLCBuilder 收集。
 
 源码：[AssetBundleBuilder.cs](../../Editor/Tools/AssetBuilder/AssetBundleBuilder/AssetBundleBuilder.cs)、[AssetBundleBuilderSettings.cs](../../Editor/Tools/AssetBuilder/AssetBundleBuilder/AssetBundleBuilderSettings.cs)、[AssetBundleBuildSettings.cs](../../Editor/Tools/AssetBuilder/AssetBundleBuilder/AssetBundleBuildSettings.cs)、[AssetBundleBuilderUtility.cs](../../Editor/Tools/AssetBuilder/AssetBundleBuilder/AssetBundleBuilderUtility.cs)。

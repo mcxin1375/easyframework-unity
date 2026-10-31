@@ -18,6 +18,7 @@ public interface ITool
 {
     int Order { get; }
     ToolVersion Version { get; }
+    IToolExtension[] Extension { get; }
     void Refresh();
     void Execute();
 }
@@ -48,7 +49,7 @@ public interface IToolEvent<T> : IToolExtension
 }
 ```
 
-三个方法都是可选扩展点。工具自身也实现了 `IToolEvent<T>`：接口调用会转发到 `OnSelfExecuteBefore`、`OnSelfExecute` 和 `OnSelfExecuteAfter`。
+三个方法在源码中都有默认空实现，是可选扩展点。工具自身实现 IToolEvent<T>，该接口调用转发到 OnSelfExecuteBefore、OnSelfExecute、OnSelfExecuteAfter；但工具参与其他类型的 IToolEvent<TParent> 时，OnExecute 可绑定到公开的 ToolBase.OnExecute()，该方法会执行完整 Execute()。
 
 ## 执行顺序
 
@@ -61,7 +62,7 @@ public interface IToolEvent<T> : IToolExtension
 5. 按 `Order` 顺序调用所有扩展的 `OnExecuteAfter()`。
 6. 记录耗时并调用 `AssetDatabase.Refresh()`。
 
-工具的实际工作应放在 `OnSelfExecute()`，或通过 `IToolEvent<T>` 注册扩展。直接执行某个工具时会升级该工具版本；当工具只是作为另一个工具的事件扩展被调用时，事件调用只进入其自身处理方法，不会再次执行完整的 `Execute()` 生命周期。
+工具的实际工作放在 OnSelfExecute()，或通过 IToolEvent<T> 注册扩展。直接执行工具会升级该工具版本；内置子构建工具作为 AssetBuilder 扩展时，也通过公开 OnExecute() 进入自己的 Execute() 并升级版本。具体取决于所实现接口和方法绑定。
 
 ## 路径属性
 

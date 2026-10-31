@@ -11,8 +11,8 @@
 工具继承 `ToolBase<AssetCreator>`，因此执行时会：
 
 1. 刷新 `IToolEvent<AssetCreator>` 扩展。
-2. 按 `Order` 执行扩展的前置、执行和后置阶段。
-3. 升级 `AssetCreator` 的工具版本。
+2. 按 Order 执行前置阶段。
+3. 升级工具版本，再按 Order 执行主体和后置阶段。
 4. 刷新 Unity AssetDatabase。
 
 ## 自定义资源生成

@@ -1,34 +1,54 @@
 # F.ResLoader
 
-`F.ResLoader` 的静态类型是 `IResLoader`。在 Player 中使用 AssetBundleLoader；在 Editor 中，当 `F.Settings.resLoaderEditorMode` 开启时可能使用编辑器资源桥接。因此资源名、Bundle 名和 Editor 行为要按项目配置确认。
+F.ResLoader 的静态类型是 IResLoader。Player 使用 AssetBundleLoader；Editor 默认启用 resLoaderEditorMode，使用编辑器资源桥接。调用前等待 F.InitializeAsync()。
 
-## AssetBundle API
-
-| API | 说明 |
-| --- | --- |
-| `Load` / `LoadAsync` | 同步或异步加载 AssetBundle，可传 `IResRequest` 管理持有关系 |
-| `Unload` | 按请求释放引用 |
-| `UnloadForce` | 强制释放指定 Bundle，可选择释放已加载对象 |
-| `UnloadAllForce` | 强制释放全部 Bundle |
-| `IsLoading` / `IsUnloading` | 查询状态 |
-| `GetLoadingProgress` | 查询加载进度 |
-| `GetAllDependencies` | 获取依赖 Bundle |
-
-## 资源与场景 API
+## 资源加载
 
 | API | 说明 |
 | --- | --- |
-| `LoadAsset<T>` / `LoadAssetAsync<T>` | 加载单个 Unity 对象 |
-| `LoadAllAssets<T>` / `LoadAllAssetsAsync<T>` | 加载 Bundle 内全部指定类型对象 |
-| `LoadScene` / `LoadSceneAsync` | 从资源系统加载场景 |
-| `UnloadSceneAsync` | 卸载场景并释放对应资源请求 |
+| `Load` / `LoadAsync` | 同步或异步加载 Bundle，可传 IResRequest |
+| `LoadAsset<T>` / `LoadAssetAsync<T>` | 加载单个对象 |
+| `LoadAllAssets<T>` / `LoadAllAssetsAsync<T>` | 加载包内全部指定类型对象 |
+| `CreateObj` / `CreateObjAsync` | IResLoaderEx 扩展：加载 GameObject 并实例化 |
+| `LoadScene` / `LoadSceneAsync` / `UnloadSceneAsync` | 场景资源加载与释放 |
+| `IsLoading` / `IsUnloading` / `GetLoadingProgress` | 状态查询 |
+| `GetAllDependencies` | 查询依赖 Bundle |
+
+资源名来自构建 Manifest，不需要自行拼接 .ab 或哈希文件名。资源不存在时 CreateObjAsync 会记录错误并返回 null。
+
+## 持有与释放
 
 ```csharp
+using EasyFramework;
 using UnityEngine;
 
-GameObject cube = await F.ResLoader.CreateObjAsync("Cube");
+public sealed class ResourceOwner : IResRequest
+{
+    public bool Alive { get; private set; } = true;
+    private GameObject cube;
+
+    public async ETask LoadAsync()
+    {
+        await F.InitializeAsync();
+        cube = await F.ResLoader.CreateObjAsync("Cube", request: this);
+    }
+
+    public void Release()
+    {
+        Alive = false;
+        if (cube != null) Object.Destroy(cube);
+        cube = null;
+        F.ResLoader.Unload("Cube", this);
+    }
+}
 ```
 
-`CreateObjAsync` 是 `IResLoader` 的扩展方法，内部先加载 `GameObject` 再实例化。使用完资源要调用相应的 `Unload`；不要在 Bundle 释放后继续使用未独立持有的资源对象。
+此片段展示配对关系，调用方应等待 LoadAsync 完成后再 Release；能处理加载中销毁的完整组件见 [基础示例](../Examples.md)。
 
-源码：[IResLoader.cs](../../Runtime/Manager/ResLoader/IResLoader.cs)、[IResLoaderEx.cs](../../Runtime/Manager/ResLoader/IResLoaderEx.cs)。
+长期使用资源时传入 Alive 为 true 的请求。无请求时仅按 resRequestAliveTime 保持缓存，每次加载刷新倒计时，不是无限持有或每次调用累加一个引用。释放时传相同请求；同一资源的其他活跃请求仍会阻止卸载。
+
+Unload 不负责 Destroy 已实例化的 GameObject。先停止使用并销毁实例，再释放请求。UnloadForce / UnloadAllForce 绕过持有关系，可选择卸载已加载对象，不应作为常规清理方式。
+
+当前批量 CreateObjAsync(resName, count, ...) 的 Unity 2022.3+ 分支存在等待不完整问题，基础示例使用单实例重载，详见仓库 [Review](../../REVIEW.md)。
+
+源码：[IResLoader.cs](../../Runtime/Manager/ResLoader/IResLoader.cs)、[IResLoaderEx.cs](../../Runtime/Manager/ResLoader/IResLoaderEx.cs)、[IResRequest.cs](../../Runtime/Manager/ResLoader/IResRequest.cs)、[AssetBundleRequest.cs](../../Runtime/Manager/ResLoader/AssetBundleLoader/AssetBundleRequest.cs)。

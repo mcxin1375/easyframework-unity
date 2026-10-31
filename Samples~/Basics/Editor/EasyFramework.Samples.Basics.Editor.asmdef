@@ -1,0 +1,10 @@
+{
+    "name": "EasyFramework.Samples.Basics.Editor",
+    "references": [
+        "EasyFramework",
+        "EasyFramework.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ]
+}

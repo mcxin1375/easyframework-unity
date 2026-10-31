@@ -10,7 +10,7 @@
 | `... - Execute (HybridCLR-CompileDllActiveBuildTarget)` | 先编译当前平台 DLL，再生成输出 |
 | `... - Execute (HybridCLR-GenerateAll)` | 先执行 HybridCLR `GenerateAll`，再生成输出 |
 
-直接使用菜单执行时会走 `ToolBase.Execute()`。由 `AssetBuilder` 触发时，执行 `OnSelfExecute`，调用 HybridCLR 生成并复制输出。
+直接菜单和 AssetBuilder 触发均会走完整 ToolBase.Execute()。OnSelfExecute 调用 BuildBySettings；HybridCLR 启用时该方法先执行 GenerateAll，再复制程序集输出。专用菜单可额外先执行 CompileDllActiveBuildTarget 或 GenerateAll；执行前应确认当前平台与 HybridCLR 设置。
 
 ## 配置
 

@@ -6,6 +6,13 @@
   "author": {
     "name": "Cookie"
   },
+  "samples": [
+    {
+      "displayName": "基础示例",
+      "description": "资源持有与释放、窗口、事件、Controller 生命周期和 Editor 构建入口。",
+      "path": "Samples~/Basics"
+    }
+  ],
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "3.2.2",
     "com.unity.scriptablebuildpipeline": "1.21.25"
