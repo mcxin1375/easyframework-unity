@@ -8,15 +8,13 @@ using System;
 
 namespace EasyFramework
 {
-    public abstract class Controller : IController, ITimerObject
+    public abstract class Controller : IController, ITimerObject, IBehaviourEvent
     {
         public event Action OnEnterAction;
         public event Action OnExitAction;
 
         public virtual bool IsTimerAlive => IsEnter && IsActive;
         protected virtual bool UpdateEnabled => IsEnter && IsActive;
-        protected virtual bool DebugEnabled => false;
-        protected virtual bool AfterEnterEnabled => IsActive;
         
         public Type Type { get; }
         public bool IsEnter { get; private set; }
@@ -30,79 +28,103 @@ namespace EasyFramework
         protected Controller()
         {
             Type = GetType();
+            F.Behaviour.Add(this);
         }
-        void IController.Create()
+        protected void Initialize()
         {
-            if (DebugEnabled) FDebug.Log($"{Type.Name} - Create()");
+            // FDebug.Log($"{Type.Name} - Initialize()");
             
             _components = ReflectionUtility.FindFieldsAndProperties<IControllerComponent>(this);
-            
             OnCreate();
-            if (this is IControllerLoading loadingHandler) Loading.Add(loadingHandler);
-            
-            foreach (var ex in _components)
-            {
-                ex.Create(this);
-                if (ex is IControllerLoading handler) Loading.Add(handler);
-            }
+            foreach (var ex in _components) ex.Create(this);
         }
 
-        async ETask IController.BeforeEnterAsync(EControllerEnter enter)
+        void IBehaviourEvent.OnUpdate()
         {
-            if (DebugEnabled) FDebug.Log($"{Type.Name} - BeforeEnterAsync()");
+            if (!UpdateEnabled) return;
+            
+            OnUpdate();
+            foreach (var ex in _components) ex.OnUpdate();
+        }
+        void IBehaviourEvent.OnLateUpdate()
+        {
+            if (!UpdateEnabled) return;
+            
+            OnLateUpdate();
+            foreach (var ex in _components) ex.OnLateUpdate();
+        }
+        void IBehaviourEvent.OnDestroy()
+        {
+            FDebug.Log($"{Type.Name} - OnDestroy()");
+            
+            OnDestroy();
+            foreach (var ex in _components) ex.OnDestroy();
+        }
+        
+        void IController.SetActive(bool isActive)
+        {
+            FDebug.Log($"{Type.Name} - SetActive({isActive})");
 
+            IsActive = isActive;
+            OnSetActive(isActive);
+            foreach (var ex in _components) ex.OnSetActive(isActive);
+        }
+
+        protected virtual ETask OnPreEnterAsync() => ETask.CompletedTask;
+        protected virtual void OnEnter() { }
+        protected virtual ETask OnEnterAsync() => ETask.CompletedTask;
+        protected virtual void OnAfterEnter() { }
+        protected virtual ETask OnAfterEnterAsync() => ETask.CompletedTask;
+        protected virtual void OnExit() { }
+        protected virtual ETask OnExitAsync() => ETask.CompletedTask;
+        protected virtual void OnSetActive(bool isActive) { }
+        protected virtual void OnCreate() { }
+        protected virtual void OnAddListeners() { }
+        protected virtual void OnRemoveListeners() { }
+        protected virtual void OnUpdate() { }
+        protected virtual void OnLateUpdate() { }
+        protected virtual void OnDestroy() { }
+        
+
+        public async ETask EnterAsync()
+        {
+            FDebug.Log($"{Type.Name} - EnterAsync()");
+            
             if (IsEnter) return;
             
-            OnBeforeEnter(enter);
-            await OnBeforeEnterAsync(enter);
-            foreach (var ex in _components) await ex.OnBeforeEnterAsync(enter);
-        }
-
-        async ETask IController.EnterAsync(EControllerEnter enter)
-        {
-            if (DebugEnabled) FDebug.Log($"{Type.Name} - EnterAsync()");
-
-            var isActive = enter == EControllerEnter.Single || enter == EControllerEnter.Additive;
-            if (IsEnter)
-            {
-                await (this as IController).SetActiveAsync(isActive);
-                return;
-            }
-
-            IsEnter = true;
+            await OnPreEnterAsync();
+            foreach (var ex in _components) await ex.OnPreEnterAsync();
             
+            F.ControllerManager.Enter(this);
+
             OnAddListeners();
             foreach (var ex in _components) ex.OnAddListeners();
-            
-            OnStartLoading();
-            await Loading.StartLoadingAsync();
             
             OnEnter();
             await OnEnterAsync();
             foreach (var ex in _components) await ex.OnEnterAsync();
 
-            await (this as IController).SetActiveAsync(isActive);
+            // await (this as IController).SetActiveAsync(isActive);
+
+            OnAfterEnter();
+            await OnAfterEnterAsync();
+            foreach (var ex in _components) await ex.OnAfterEnterAsync();
             
             OnEnterAction?.Invoke();
-
-            if (AfterEnterEnabled)
-            {
-                OnAfterEnter();
-                await OnAfterEnterAsync();
-                foreach (var ex in _components) await ex.OnAfterEnterAsync();
-            }
         }
-        async ETask IController.ExitAsync()
+        
+        public async ETask ExitAsync()
         {
-            if (DebugEnabled) FDebug.Log($"{Type.Name} - ExitAsync()");
+            FDebug.Log($"{Type.Name} - ExitAsync()");
 
             if (!IsEnter) return;
-            IsEnter = false;
+            
+            F.ControllerManager.Remove(this);
             
             OnRemoveListeners();
             foreach (var ex in _components) ex.OnRemoveListeners();
 
-            await (this as IController).SetActiveAsync(false);
+            // await (this as IController).SetActiveAsync(false);
             
             OnExit();
             await OnExitAsync();
@@ -111,71 +133,32 @@ namespace EasyFramework
             OnExitAction?.Invoke();
         }
 
-        async ETask IController.SetActiveAsync(bool isActive)
-        {
-            if (DebugEnabled) FDebug.Log($"{Type.Name} - SetActiveAsync({isActive})");
-
-            // if (IsActive == isActive) return;
-            IsActive = isActive;
-            
-            OnSetActive(isActive);
-            await OnSetActiveAsync(isActive);
-            foreach (var ex in _components) await ex.OnSetActiveAsync(isActive);
-        }
-        void IController.Update()
-        {
-            if (!UpdateEnabled) return;
-            
-            OnUpdate();
-            foreach (var ex in _components) ex.OnUpdate();
-        }
-        void IController.LateUpdate()
-        {
-            if (!UpdateEnabled) return;
-            
-            OnLateUpdate();
-            foreach (var ex in _components) ex.OnLateUpdate();
-        }
-        void IController.Destroy()
-        {
-            if (DebugEnabled) FDebug.Log($"{Type.Name} - Destroy()");
-            
-            OnDestroy();
-            foreach (var ex in _components) ex.OnDestroy();
-        }
-
-        protected virtual void OnBeforeEnter(EControllerEnter enter) { }
-        protected virtual ETask OnBeforeEnterAsync(EControllerEnter enter) => ETask.CompletedTask;
-        protected virtual void OnEnter() { }
-        protected virtual ETask OnEnterAsync() => ETask.CompletedTask;
-        protected virtual void OnAfterEnter() { }
-        protected virtual ETask OnAfterEnterAsync() => ETask.CompletedTask;
-        protected virtual void OnExit() { }
-        protected virtual ETask OnExitAsync() => ETask.CompletedTask;
-        protected virtual void OnSetActive(bool isActive) { }
-        protected virtual ETask OnSetActiveAsync(bool isActive) => ETask.CompletedTask;
-        protected virtual void OnCreate() { }
-        protected virtual void OnAddListeners() { }
-        protected virtual void OnRemoveListeners() { }
-        protected virtual void OnUpdate() { }
-        protected virtual void OnLateUpdate() { }
-        protected virtual void OnDestroy() { }
-        protected virtual void OnStartLoading() { }
+        // public ETask EnterAsync(EControllerEnter mode = EControllerEnter.Additive) => F.ControllerManager.EnterAsync<T>(mode);
+        // public ETask EnterAsync<TK1>(in TK1 tk1, EControllerEnter mode = EControllerEnter.Additive) => F.ControllerManager.EnterAsync(this, in tk1, mode);
+        // public ETask EnterAsync<TK1, TK2>(in TK1 tk1, in TK2 tk2, EControllerEnter mode = EControllerEnter.Additive) => F.ControllerManager.EnterAsync(this, in tk1, in tk2, mode);
+        // public ETask EnterAsync<TK1, TK2, TK3>(in TK1 tk1, in TK2 tk2, in TK3 tk3, EControllerEnter mode = EControllerEnter.Additive) => F.ControllerManager.EnterAsync(this, in tk1, in tk2, in tk3, mode);
+        // public ETask EnterAsync(Type type, EControllerEnter mode = EControllerEnter.Additive) => F.ControllerManager.EnterAsync(type, mode);
+        // public ETask EnterAsync(IController controller, EControllerEnter mode = EControllerEnter.Additive) => F.ControllerManager.EnterAsync(controller, mode);
+        // public ETask SetActiveAsync(bool isActive) => F.ControllerManager.SetActiveAsync<T>(isActive);
+        //
+        // public ETask ExitAsync() => F.ControllerManager.ExitAsync<T>();
+        // public ETask ExitAsync(Type type) => F.ControllerManager.ExitAsync(type);
+        // public ETask ExitAllAsync() => F.ControllerManager.ExitAllAsync();
     }
 
-    // public abstract class Controller<T> : Controller where T : Controller<T>, new()
-    // {
-    //     public ETask EnterAsync(EControllerEnter mode = EControllerEnter.Additive) => F.ControllerManager.EnterAsync<T>(mode);
-    //     ETask EnterAsync<T, TK1>(in TK1 tk1, EControllerEnter mode = EControllerEnter.Additive) where T : class, IController, ITParams<TK1>, new();
-    //     ETask EnterAsync<T, TK1, TK2>(in TK1 tk1, in TK2 tk2, EControllerEnter mode = EControllerEnter.Additive) where T : class, IController, ITParams<TK1, TK2>, new();
-    //     ETask EnterAsync<T, TK1, TK2, TK3>(in TK1 tk1, in TK2 tk2, in TK3 tk3, EControllerEnter mode = EControllerEnter.Additive) where T : class, IController, ITParams<TK1, TK2, TK3>, new();
-    //     ETask EnterAsync(Type type, EControllerEnter mode = EControllerEnter.Additive);
-    //     ETask EnterAsync(IController controller, EControllerEnter mode = EControllerEnter.Additive);
-    //
-    //     ETask SetActiveAsync<T>(bool isActive) where T : class, IController, new();
-    //     
-    //     ETask ExitAsync<T>() where T : class, IController, new();
-    //     ETask ExitAsync(Type type);
-    //     ETask ExitAllAsync();
-    // }
+    public abstract class Controller<T> : Controller where T : Controller<T>, new()
+    {
+        private static T _instance;
+        public static T Instance {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = new T();
+                    _instance.Initialize();
+                }
+                return _instance;
+            }
+        }
+    }
 }

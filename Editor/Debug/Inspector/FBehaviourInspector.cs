@@ -25,7 +25,7 @@ namespace EasyFramework.Editor
             EditorGUILayout.HelpBox("ControllerManager", MessageType.Info);
             foreach (var controller in ControllerManager.Instance.EnterList)
             {
-                EditorGUILayout.LabelField($"{controller.GetType().Name}", $"IsEnter: {controller.IsEnter}, IsActive: {controller.IsActive}");
+                EditorGUILayout.LabelField($"{controller.GetType().Name}", $"IsActive: {controller.IsActive}");
             }
             
             EditorGUILayout.HelpBox("SceneLoader", MessageType.Info);
