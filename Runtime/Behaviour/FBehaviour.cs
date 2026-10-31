@@ -9,42 +9,55 @@ using UnityEngine;
 
 namespace EasyFramework
 {
-    public class FBehaviour : SingletonBehaviour<FBehaviour>
+    public class FBehaviour : MonoBehaviour
     {
+        private static int _uid;
+        public const string NAME_ID = "[EasyFramework]";
+        
+        private static FBehaviour _instance;
+        public static FBehaviour Instance
+        {
+            get
+            {
+                if (_instance == null && _uid == 0)
+                {
+                    _uid = 1;
+                    var gameObject = new GameObject(NAME_ID);
+                    _instance = gameObject.AddComponent<FBehaviour>();
+                }
+
+                return _instance;
+            }
+        }
+        
         private readonly Ticker _ticker = new();
         
         void Awake()
         {
-            transform.name = "[EasyFramework]";
             FDebug.Log($"{transform.name} OnAwake");
-            
             Object.DontDestroyOnLoad(gameObject);
         }
         void Update()
         {
             _ticker.Update();
-            WorldManager.Instance.Update();
         }
         void LateUpdate()
         {
             _ticker.LateUpdate();
-            WorldManager.Instance.LateUpdate();
         }
         void OnDestroy()
         {
             FDebug.Log($"[{transform.name}] OnDestroy");
-            
             _ticker.Destroy();
-            WorldManager.Instance.Destroy();
         }
         
-        public void Add(IBehaviourEvent v) => _ticker.Add(v);
-        public void Remove(IBehaviourEvent v) => _ticker.Remove(v);
+        public void Add(IFrameworkTick v) => _ticker.Add(v);
+        public void Remove(IFrameworkTick v) => _ticker.Remove(v);
 
         class Ticker
         {
-            private readonly List<IBehaviourEvent> _updateList = new();
-            private readonly List<IBehaviourEvent> _addList = new();
+            private readonly List<IFrameworkTick> _updateList = new();
+            private readonly List<IFrameworkTick> _addList = new();
             private bool _needRefresh;
 
             public void Update()
@@ -67,25 +80,18 @@ namespace EasyFramework
                 foreach (var v in _updateList) v.OnDestroy();
             }
             
-            public void Add(IBehaviourEvent v)
+            public void Add(IFrameworkTick v)
             {
                 if (_addList.Contains(v)) _addList.Remove(v);
                 _addList.Add(v);
                 _needRefresh = false;
             }
 
-            public void Remove(IBehaviourEvent v)
+            public void Remove(IFrameworkTick v)
             {
                 if (_addList.Contains(v)) _addList.Remove(v);
                 _needRefresh = false;
             }
         }
-    }
-
-    public interface IBehaviourEvent
-    {
-        void OnUpdate();
-        void OnLateUpdate();
-        void OnDestroy();
     }
 }

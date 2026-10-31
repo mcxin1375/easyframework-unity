@@ -21,22 +21,6 @@ namespace EasyFramework
             
         }
 
-        internal void Update()
-        {
-            if (!_alive) return;
-            if (_tmpQueue.Count > 0)
-            {
-                while (_tmpQueue.Count > 0)
-                {
-                    var entity = _tmpQueue.Dequeue();
-                    if (entity.Alive) _entities.Add(entity);
-                }
-            }
-        }
-        internal void LateUpdate()
-        {
-            
-        }
         internal void Destroy()
         {
             if (!_alive) return;

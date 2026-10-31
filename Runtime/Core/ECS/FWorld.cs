@@ -21,7 +21,7 @@ namespace EasyFramework
         private readonly Dictionary<Type, ISystem> _systemDict = new();
         private bool _needRefresh;
 
-        internal FWorld(int index)
+        internal FWorld(int index = 0)
         {
             Index = index;
         }
@@ -38,14 +38,7 @@ namespace EasyFramework
                 // Systems = _systemDict.Values.OrderByDescending(item => item.Order).ToArray();
             }
 
-            EntityManager.Update();
             foreach (var value in _systemList) value.Update();
-        }
-        public void LateUpdate()
-        {
-            if (!Alive) return;
-            EntityManager.LateUpdate();
-            foreach (var value in _systemList) value.LateUpdate();
         }
         public void Destroy()
         {
@@ -53,26 +46,29 @@ namespace EasyFramework
             Alive = false;
             EntityManager.Destroy();
             foreach (var value in _systemDict.Values)
+            {
                 try { value.Destroy(); }
                 catch (Exception e) { FDebug.LogException(e); }
+            }
             _systemDict.Clear();
             _systemList.Clear();
             _needRefresh = false;
         }
-        public T GetOrCreateSystem<T>() where T : class, ISystem, new()
-        {
-            if (!Alive) return null;
-            var type = typeof(T);
-            if (_systemDict.TryGetValue(type, out var value)) return value as T;
-            return CreateSystem<T>();
-        }
         
-        public T GetSystem<T>() where T : class, ISystem
-        {
-            var type = typeof(T);
-            if (_systemDict.TryGetValue(type, out var value)) return value as T;
-            return null;
-        }
+        // public T GetOrCreateSystem<T>() where T : class, ISystem, new()
+        // {
+        //     if (!Alive) return null;
+        //     var type = typeof(T);
+        //     if (_systemDict.TryGetValue(type, out var value)) return value as T;
+        //     return CreateSystem<T>();
+        // }
+        //
+        // public T GetSystem<T>() where T : class, ISystem
+        // {
+        //     var type = typeof(T);
+        //     if (_systemDict.TryGetValue(type, out var value)) return value as T;
+        //     return null;
+        // }
         
         public T CreateSystem<T>() where T : class, ISystem, new()
         {
@@ -135,6 +131,5 @@ namespace EasyFramework
             var result = b.Order.CompareTo(a.Order);
             return result != 0 ? result : string.CompareOrdinal(a.GetType().FullName, b.GetType().FullName);
         }
-
     }
 }

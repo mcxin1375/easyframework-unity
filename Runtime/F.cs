@@ -10,12 +10,10 @@ namespace EasyFramework
 {
     public static class F
     {
-        public static FWorld MainWorld => EasyFramework.WorldManager.Instance?.Main;
-        public static WorldManager WorldManager => EasyFramework.WorldManager.Instance;
-        public static IControllerManager ControllerManager => EasyFramework.ControllerManager.Instance;
-        
         public static EasyFrameworkSettings Settings => EasyFrameworkSettings.Instance;
-        public static FBehaviour Behaviour { get; private set; }
+        public static FBehaviour Behaviour => FBehaviour.Instance;
+
+        public static IControllerManager ControllerManager => EasyFramework.ControllerManager.Instance;
         
         public static Event Event => Event.Instance;
         public static IDLCManager DLCManager => EasyFramework.DLCManager.Instance;
@@ -57,10 +55,6 @@ namespace EasyFramework
         }
         private static EState _state = EState.None;
         
-        public static void Initialize()
-        {
-            _ = InitializeAsync();
-        }
         public static async ETask InitializeAsync()
         {
             switch (_state)
@@ -73,8 +67,6 @@ namespace EasyFramework
                     FDebug.Debugger = UnityDebugger.Instance;
                     FDebug.DebugLevel = EasyFrameworkSettings.Instance.debugLevel;
             
-                    Behaviour = FBehaviour.Instance;
-
                     EasyFramework.WindowManager.CreateInstance();
                     EasyFramework.SpriteLoader.CreateInstance();
                     EasyFramework.ShaderLoader.CreateInstance();
@@ -92,13 +84,12 @@ namespace EasyFramework
                     break;
             }
         }
-
+        
         [RuntimeInitializeOnLoadMethod]
         private static void InitOnLoadMethod()
         {
             var settings = EasyFrameworkSettings.CreateInstance();
-            if (!settings.autoInitialize) return;
-            Initialize();
+            if (settings.autoInitialize) InitializeAsync().Forget();
         }
     }
 }

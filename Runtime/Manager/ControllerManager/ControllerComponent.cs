@@ -8,11 +8,11 @@ namespace EasyFramework
 {
     public abstract class ControllerComponent : IControllerComponent
     {
-        public Controller Controller { get; private set; }
+        public IController Controller { get; private set; }
         
         public virtual void Create(IController controller)
         {
-            Controller = controller as Controller;
+            Controller = controller;
             
             OnCreate();
         }

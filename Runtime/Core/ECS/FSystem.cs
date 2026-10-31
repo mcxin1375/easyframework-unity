@@ -32,10 +32,8 @@ namespace EasyFramework
             time.StopAndPrint();
         }
         void ISystem.Update() => OnUpdate();
-        void ISystem.LateUpdate() => OnLateUpdate();
         protected virtual void OnCreate() { }
         protected virtual void OnDestroy() { }
         protected virtual void OnUpdate() { }
-        protected virtual void OnLateUpdate() { }
     }
 }

@@ -12,6 +12,5 @@ namespace EasyFramework
         void Create();
         void Destroy();
         void Update();
-        void LateUpdate();
     }
 }
