@@ -23,6 +23,7 @@ namespace EasyFramework
         public IState CurrentState { get; protected set; }
 
         private readonly Dictionary<string, IState> _stateDict = new ();
+        private static Type[] _types;
 
         public FSM(Type[] types, params object[] args)
         {
@@ -36,8 +37,9 @@ namespace EasyFramework
 
         public static FSM CreateByAttribute<T>(params object[] args) where T : Attribute
         {
-            var types = ReflectionUtility.FindInstanceTypesByAttribute(typeof(T));
-            return new FSM(types, args);
+            if (_types == null)
+                _types = ReflectionUtility.FindInstanceTypesByAttribute(typeof(T));
+            return new FSM(_types, args);
         }
 
         public void Enter<T, TK1>(TK1 t1) where T : class, IState, ITParams<TK1>, new()

@@ -68,7 +68,6 @@ namespace EasyFramework
                     _updateList.Clear();
                     foreach (var controller in _addList) _updateList.Add(controller);
                 }
-                
                 foreach (var v in _updateList) v.OnUpdate();
             }
             public void LateUpdate()
@@ -82,15 +81,15 @@ namespace EasyFramework
             
             public void Add(IFrameworkTick v)
             {
-                if (_addList.Contains(v)) _addList.Remove(v);
+                if (_addList.Contains(v)) return;
                 _addList.Add(v);
-                _needRefresh = false;
+                _needRefresh = true;
             }
 
             public void Remove(IFrameworkTick v)
             {
                 if (_addList.Contains(v)) _addList.Remove(v);
-                _needRefresh = false;
+                _needRefresh = true;
             }
         }
     }

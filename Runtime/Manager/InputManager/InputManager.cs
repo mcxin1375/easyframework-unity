@@ -16,16 +16,18 @@ namespace EasyFramework
         Up,
     }
 
-    public class InputManager : SingletonBehaviour<InputManager>, IInputManager
+    public class InputManager : Singleton<InputManager>, IInputManager, IFrameworkTick
     {
         public event Action<EInputType, int, Vector2> OnInputEvent;
 
-        private void Awake()
+        protected override void OnCreate()
         {
-            Input.multiTouchEnabled = true;
+            base.OnCreate();
+            
+            FBehaviour.Instance.Add(this);
         }
 
-        private void Update()
+        void IFrameworkTick.OnUpdate()
         {
             switch (Application.platform)
             {
@@ -41,6 +43,15 @@ namespace EasyFramework
                     UpdateTouch();
                     break;
             }
+        }
+
+        void IFrameworkTick.OnLateUpdate()
+        {
+        }
+
+        void IFrameworkTick.OnDestroy()
+        {
+            
         }
 
         private void UpdateMouse()
