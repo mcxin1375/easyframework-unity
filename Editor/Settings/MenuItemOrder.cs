@@ -11,6 +11,7 @@ namespace EasyFramework.Editor
         public const int Editor = 1000;
         public const int Tools = 2000;
         public const int ToolsEx = 3000;
+        public const int Windows = 6000;
         public const int Tests = 9000;
     }
 }
