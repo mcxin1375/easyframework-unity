@@ -34,6 +34,7 @@ namespace EasyFramework
 
             protected override bool OnTaskTick()
             {
+                if (!IsPending) return base.OnTaskTick();
                 if (_objectTask == null || _objectTask.IsCompleted)
                 {
                     TrySetResult();

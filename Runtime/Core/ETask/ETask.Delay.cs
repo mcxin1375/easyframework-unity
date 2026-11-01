@@ -23,6 +23,7 @@ namespace EasyFramework
 
             protected override bool OnTaskTick()
             {
+                if (!IsPending) return base.OnTaskTick();
                 if (ETask.Time >= _triggerTime)
                 {
                     TrySetResult();
@@ -51,6 +52,7 @@ namespace EasyFramework
 
             protected override bool OnTaskTick()
             {
+                if (!IsPending) return base.OnTaskTick();
                 if (_delayFrame == 0)
                 {
                     TrySetResult();

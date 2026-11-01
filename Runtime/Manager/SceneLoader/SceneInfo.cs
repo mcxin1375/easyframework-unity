@@ -167,11 +167,12 @@ namespace EasyFramework
             private SceneInfo _info;
             private EResState _state;
             
-            private bool IsCompleted => _info.State != _state;
+            private bool IsOperationCompleted => _info.State != _state;
 
             protected override bool OnTaskTick()
             {
-                if (IsCompleted)
+                if (!IsPending) return base.OnTaskTick();
+                if (IsOperationCompleted)
                 {
                     TrySetResult();
                     return false;

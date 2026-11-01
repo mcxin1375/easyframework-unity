@@ -64,8 +64,7 @@ namespace EasyFramework.Tests
 
         private sealed class ManualAwaiter : IETaskAwaiter
         {
-            private Action<object> _continuation;
-            private object _continuationState;
+            private Action _continuation;
             private ETaskStatus _status = ETaskStatus.Pending;
 
             public Guid Token { get; } = Guid.NewGuid();
@@ -76,11 +75,10 @@ namespace EasyFramework.Tests
                 return _status;
             }
 
-            public void OnCompleted(Action<object> continuation, object state, Guid token)
+            public void OnCompleted(Action continuation, Guid token)
             {
                 ValidateToken(token);
                 _continuation = continuation;
-                _continuationState = state;
 
                 if (_status != ETaskStatus.Pending)
                 {
@@ -110,10 +108,8 @@ namespace EasyFramework.Tests
             private void InvokeContinuation()
             {
                 var continuation = _continuation;
-                var state = _continuationState;
                 _continuation = null;
-                _continuationState = null;
-                continuation?.Invoke(state);
+                continuation?.Invoke();
             }
 
             private void ValidateToken(Guid token)

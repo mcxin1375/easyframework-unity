@@ -6,7 +6,39 @@
 
 当前文件同步自 `D:\WorkGIT\easyframework-unity\REVIEW.md` 的完整 26 项报告；原独立仓库报告保持原样。修复目标为 `D:\WorkGIT\easyframework-projects\EasyFramework.Unity2022\Packages\easyframework-unity`。
 
-历史基线共 **26 项：12 项 P1、14 项 P2**。当前 **4 项已修复、22 项待处理**；待处理为 **10 项 P1、12 项 P2**。已关闭 R01、R11、R16、R17；R14 的窗口容器已有本地部分修正，尚未完成生命周期验收，仍计入待处理。顺序 2–6 尚未执行。
+历史基线共 **26 项：12 项 P1、14 项 P2**。当前 **8 项已修复、18 项待处理**；待处理为 **6 项 P1、12 项 P2**。已关闭 R01–R05、R11、R16、R17；R14 的窗口容器已有本地部分修正，尚未完成生命周期验收，仍计入待处理。顺序 1、2 已完成，顺序 3–6 尚未执行。
+
+## Ticker Node 重构（2026-11-02）
+
+当前调度契约以本节及 `Documentation/Runtime/ETask.md` 为准；下文顺序 2 的 OnRemove、待清理节点禁止重加与 `_scheduled` 描述属于重构前记录。
+
+Ticker 改为内部 Node 双向链表和按目标引用身份比较的 `Dictionary<ITickerNode, Node>`。每次 Add 都使旧注册过期并建立新注册，新增批次从下一次 Tick 生效；Update 只摘除捕获的旧 Node，并在字典仍指向该 Node 时删除映射。回调锁外执行，稳定节点不再逐个获取集合锁或查询 HashSet，也不再重建快照。Action / Func 直接保存在内部 Node，删除委托包装对象与额外锁；已回收 Node 清空目标和委托后进入 Ticker 本地池。
+
+`ITickerNode` 删除 OnRemove。Remove 和 Dispose 只停止注册，不通知、取消或释放 Task 本体，这是本轮有意调整的契约。TaskAwaiter 删除 `_scheduled` 和 Releasing 状态，初始化完成后才发布到 Ticker；完成但未消费保留结果并退出调度，首次消费或续体结束请求新注册。最终在自身 OnTick 内移除本轮注册、重置基础状态，调用 OnTaskResult 清理并最后回池，然后直接返回 false。归还后旧调用不再读写实例，新租借注册不受旧返回值影响。结果发布、续体注册及消费仍保留必要同步。
+
+同时补齐 ETaskQueue 的回收门槛：取消结果被消费后，队列和后台执行仍持有任务时禁止回池；执行结束后释放持有权，避免旧命令续体执行或完成复用后的新命令。Clear 仅处理捕获的待执行批次，并保留取消回调中新加入的命令。
+
+验证：直接对原 `EasyFramework.Unity2022` 项目使用 Unity **2022.3.62f3** 命令行执行 Edit Mode 全套测试，**146/146 通过，0 失败、0 跳过**（ETaskAwaiter 47、Ticker 26、ETaskQueue 6、原有其他测试 67）。随后针对新增的“Tick 中 Dispose 释放已遍历目标”GC 回归，重新编译并执行最新 Ticker 测试，**27/27 通过，0 失败、0 跳过**，两次进程均正常退出。覆盖真实对象池立即复用、旧回调 false / true / 抛错、新旧注册隔离、并发移除、注册覆盖、延后首次消费、初始化发布顺序、取消后的执行持有和重入 Clear；未执行 Play Mode、Player 或 IL2CPP 构建。本轮没有提交或推送。
+
+## Ticker 与 TaskAwaiter 精简（2026-11-02，已通过 Edit Mode 回归）
+
+将 `Ticker.Action.cs`、`Ticker.Func.cs` 及其 `.meta` 移除，委托重载集中到 `Ticker.cs`，Ticker 不再声明 partial。删除 `LogException`、`LogError` 日志包装，相关异常分支直接调用 FDebug，不再捕获日志调用自身的异常。
+
+TaskAwaiter 删除 `Lifetime`、`ContinuationPhase` 两个枚举和 continuation state 参数。空闲由 `Token == Guid.Empty` 表示，消费由一个布尔字段表示，续体用真实 Action 和运行中/已执行两个私有静态标记表达阶段；基类由八个实例字段减为六个（泛型源另有结果字段）。`IETaskAwaiter.OnCompleted` 及三个测试用手写 awaiter 统一为 `OnCompleted(Action, Guid)`，框架 await 路径不增加闭包。完成竞争、续体锁外执行、延后首次消费、CanRecycle 门槛和回池后不再访问实例的协议保留；续体运行期间的消费由续体退出安排回收，消除重复 Add。
+
+实现阶段按要求只完成静态源码和差异检查，没有运行测试或编译；用户随后明确授权执行测试，最新回归结果见下节。
+
+## TaskAwaiter 两分支完成协议（2026-11-02，已通过 Edit Mode 回归）
+
+按最新职责约束移除 TaskAwaiter.SyncRoot 和 CanRecycle，Start 由子类独占初始化，不再加锁或防御重复启动。基类缩为五个实例字段：Token、Status、异常、续体、消费交接。TrySetResult / TrySetException 通过 CAS 取得一次完成权，写入结果后发布终态，续体通过原子引用交接；手写的完成/消费发布顺序保证旧调用最后一次访问结束前不会回池。静态续体标记只用于完成交接，不创建每任务的同步对象。
+
+显式 ITickerNode.OnTick 只保留 IsCompleted 完成分支和 OnTaskTick 更新分支。完成分支先清理本轮基础数据，再调用 OnTaskResult 最终完成并回池；没有 CanRecycle 或独立释放事件。所有框架轮询子类在操作结果已就绪时转入基类等待逻辑，不再重复检查业务条件。完成但未消费退出调度并保留结果，首次消费后重新注册，生产者与续体完成交接后进入下一次完成分支，支持延后首次 await。
+
+ETaskQueue 的 CommandTask 自己用专属锁保护真实的后台执行持有，扩展 IsCompleted 等待所有持有结束；最后释放持有前先发布一次注册，基类不再承担这部分同步。新增/调整测试源码描述完成未消费不执行业务 Tick、消费后的下一次 Tick 最终收尾。实现阶段未运行测试，后续在用户明确授权后执行以下验证。
+
+验证：对原 Unity 2022.3.62f3 项目运行完整 Edit Mode 回归，首次 **147/148 通过**，唯一失败为 `DLCDownloader_InvalidHashFails_AndCanRetry`；单独运行该用例再次复现。原因是下载结果已消费但最终收尾推迟到下一次 Tick，可重复使用的下载器仍凭旧 Token 拒绝重试。在 DLCDownloader.StartAsync 入口仅对已满足 IsCompleted 的上一轮执行原完成分支，再启动下一轮，不更改 TaskAwaiter 的两分支结构，也不忽略错误日志。修正后完整回归 **148/148 通过，0 失败、0 跳过**，Unity 进程退出码 0（ETaskAwaiter 48、Ticker 27、ETaskQueue 6、其他测试 67）。
+
+另用当前真实 ETask/Ticker/ObjectPool 源码执行 .NET 10 Release 隔离验证 **3/3 通过**：完成/注册竞争且持续 Tick 256 轮、结果发布与延后消费/生产者退出交错 256 轮，以及真实对象池在旧 OnTick 未返回前立即复用。该验证只替代主循环、时间和日志，不代表 IL2CPP 或全部交错证明。本次未执行 Play Mode 或 Player 构建；提交状态以 Git 历史为准。
 
 ## 顺序 1 执行记录（2026-11-01）
 
@@ -29,13 +61,23 @@ DLCUpdater 的四个 Func 注入已整理为可读的 `protected virtual` 属性
 
 本轮继续将下载文件辅助合并到已有 `FileHelper`，方法明确命名为 `CreateDownloadTempPath`、`VerifyFileIntegrity`、`ReplaceFileFromTemp`、`ExtractMD5FromFileName`，删除独立 `DownloadFileHelper.cs` 及其 `.meta`。`ExtractMD5FromFileName` 只提取文件名中的 MD5 标识，文件内容的 MD5 仍由 `MD5Helper.MD5File` 计算；保留临时下载、完整性校验、原子提交和失败保护行为。本轮合并后再次直接对同一原项目执行 Unity 命令行 Edit Mode 测试，结果 **67/67 通过、0 失败、0 跳过**；未创建临时 Unity 项目，也未启动交互式 Editor。
 
+## 顺序 2 执行记录（2026-11-01）
+
+R02–R05 已完成实现与验收，四项问题已关闭。TaskAwaiter 在同一同步边界内发布结果、异常和完成状态，锁外通知续体；消费时重新抛出保留的异常，并区分取消状态。完成后摘除调度但保留结果，首次消费且回调退出后才安全清理回池；无消费者且无引用时可由 GC 回收，不长期留在 Ticker。
+
+Ticker 逐节点隔离 OnTick / OnRemove 错误，移除幂等，延后清理以保护同一 tick 中的回调和池复用；等待条件抛错会令相应任务失败，后续节点继续执行。ETask 对 Timer.Tick 和 Ticker.Tick 分别保护，Timer 错误不会跳过 Ticker；尚未扩展为 Timer 内部所有节点逐一隔离。内部无需结果的队列/下载入口改用 Forget 完成消费。本轮改动覆盖 ETask 核心，顺序 1 记录中的“核心没有改动”仅指当时工作包。
+
+验证：修复前在原项目 Unity 命令行测试中复现 26 项失败（21 项 ETask、5 项 Ticker），原有 67 项通过。最终对同一 `EasyFramework.Unity2022` 项目使用 Unity **2022.3.62f3** 命令行 `-batchmode -nographics -runTests -testPlatform EditMode -testFilter EasyFramework.Tests` 执行 **115/115 通过、0 失败、0 跳过**：35 项 ETaskAwaiter、13 项 Ticker 与原有 67 项。没有创建临时 Unity 项目，没有执行 Play Mode 或 Player 构建；本轮尚未提交或推送。
+
+后续可读性整理：Set / TrySet 共用完成路径，锁内辅助方法以 Locked 标明调用约束；保留原子 token 校验、结果先于状态发布、锁外续体及安全回池。Ticker 将重复的移除入队收敛到 QueueRemovalLocked；在串行派发、延后清理和待清理集合禁止提前重加的约束下，去掉冗余版本号及元组快照。未新增接口、Func 或上下文类，外部行为保持。此前一轮 TaskAwaiter 由 307 行精简到 283 行，Ticker 由 166 行精简到 158 行；该轮整理后对同一原项目执行 Unity 命令行 Edit Mode 回归，**125/125 通过、0 失败、0 跳过**（42 项 ETaskAwaiter、16 项 Ticker 与原有 67 项，其中本轮新增 7 项完成 API 与 3 项 Ticker 回归）。进程已退出，未创建临时 Unity 项目或启动交互式 Editor。 随后将 TaskAwaiter 的 5 个布尔字段改为两个正交小枚举 Lifetime、ContinuationPhase，并保留表示 Ticker 注册事实的 _scheduled；枚举直接表达消费/清理和续体阶段，未用 Flags 隐藏原位状态。SyncRoot 继续保护线程池/Socket 等后台完成与调度线程共享的状态，Set/TrySet 薄入口共用加锁核心，Locked 辅助不重复加锁，外部续体仍锁外执行。此轮枚举整理后再次直接对同一原项目执行 Unity 2022.3.62f3 命令行 Edit Mode 测试，**128/128 通过、0 失败、0 跳过**（45 项 ETaskAwaiter、16 项 Ticker 与原有 67 项，本轮新增 3 项状态转换回归）；未创建临时 Unity 项目或启动交互式 Editor。
+
 ## 历史全量审查范围与结论
 
 沿用上次 Review 的 `5a6c4e4361d98b1c7541a4f76a64c20bb3f70ca1` 为增量基准，差异命令为 `git diff 5a6c4e4361d98b1c7541a4f76a64c20bb3f70ca1...HEAD`；期间只有 `d20f791 同步文档` 一个提交。该提交修改文档、示例、AGENTS 和包的 Samples 注册，未修改 Runtime、Editor、Module 或 Tests 实现。
 
 本次除检查增量外，重点复核当前 ETask / Ticker、事件、网络缓存、Controller、Window、初始化、资源下载、DLC、Editor 构建、UPM 依赖及 Profiler。历史审查记录 **26 项源码问题：12 项 P1、14 项 P2**。在该审查基线中，上次记录的 5 项问题均仍存在，对应 R06、R07、R08、R09、R13；其余 21 项为该次新识别的历史问题，不能归因于文档提交。当前修复状态以上节和各项标记为准。
 
-P1 表示应优先修复的数据丢失、核心流程失效或发布可靠性问题；P2 表示需排期处理的条件性错误与生命周期问题。编号用于跟踪；Standards、Spec 两轴分别报告，后面的源码清单另按修复优先级组织。历史全量审查阶段仅更新报告；当前已完成顺序 1。下文保留原故障描述、诊断证据及验收标准，已修复项的历史症状不表示当前仍可复现。
+P1 表示应优先修复的数据丢失、核心流程失效或发布可靠性问题；P2 表示需排期处理的条件性错误与生命周期问题。编号用于跟踪；Standards、Spec 两轴分别报告，后面的源码清单另按修复优先级组织。历史全量审查阶段仅更新报告；当前已完成顺序 1、2。下文保留原故障描述、诊断证据及验收标准，已修复项的历史症状不表示当前仍可复现。
 
 ## 历史审查：Standards
 
@@ -53,7 +95,7 @@ Controller 帧分发、批量退出、初始化失败和宿主生命周期等限
 
 **本轴：1 项 API 契约偏差，最严重项为 S01；映射到 R14，不额外计入 26 项源码问题。**
 
-## 历史问题清单：P1（当前 2 项已修复、10 项待处理）
+## 历史问题清单：P1（当前 6 项已修复、6 项待处理）
 
 ### R01 [P1] [已修复] DLC 清理误删应用数据根目录文件
 
@@ -65,37 +107,45 @@ Controller 帧分发、批量退出、初始化失败和宿主生命周期等限
 
 当前状态：已修复。保留项目原有 `DataPath → DLCPath` 修正，只删除合法版本清单下、DLC 根层的过期 MD5 文件，保护元数据、业务文件、子目录、链接和在途下载；真实 Unity 回归通过，详见顺序 1 执行记录。
 
-### R02 [P1] ETask 异常没有传播给 await 调用方
+### R02 [P1] [已修复] ETask 异常没有传播给 await 调用方
 
-位置：[ETask.TaskAwaiter.cs:67](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L67)、[异常完成:111](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L111)、[泛型结果:158](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L158)。验证：直接编译真实 ETask 源码诊断。
+位置：[当前异常保存:120](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L120)、[当前消费与抛出:80](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L80)、[当前泛型结果:212](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L212)。验证：原项目 Unity Edit Mode 回归与独立交错验证。
 
 异常完成只把状态改为 Faulted，没有保存异常；两种 GetResult 都不根据 Faulted 抛错。实测 `async ETask<int>` 内抛出 `InvalidOperationException` 后状态为 Faulted，调用方 GetResult 却返回 `0`；非泛型也正常返回。业务 await 后继续执行，外层 catch 无法恢复，池复用时泛型结果还缺少清理保证。
 
 优化：保存 `ExceptionDispatchInfo`，在 GetResult 传播原异常；明确取消语义和未观察异常策略，回池时清空结果/异常。验收：泛型/非泛型在同步失败、挂起后失败、取消及 Forget 路径上均符合约定，业务 catch 能收到原异常。
 
-### R03 [P1] ETask 完成与 continuation 注册竞争导致永久等待
+当前状态：已修复。以 ExceptionDispatchInfo 保存异常，泛型和非泛型消费时重新抛出；取消映射为 Canceled，Forget 按 EVoidScheduler 规则报告。覆盖真实 async 方法在同步/挂起后失败、取消及 Forget 场景，原项目 Unity 命令行回归通过。
 
-位置：[ETask.TaskAwaiter.cs:42](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L42)、[完成逻辑:99](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L99)、[泛型完成:166](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L166)。验证：真实源码、可控交错诊断。
+### R03 [P1] [已修复] ETask 完成与 continuation 注册竞争导致永久等待
+
+位置：[当前续体注册:61](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L61)、[当前完成发布:118](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L118)、[当前泛型完成:222](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L222)。验证：真实源码、可控交错诊断。
 
 OnCompleted 预期完成方会设置 sentinel，但 TrySetResult / TrySetException 只调用已有 continuation，从不设置 sentinel。实测顺序 `IsCompleted=false → TrySetResult → OnCompleted(callback)`，callback 不执行。这对应后台任务完成与 await 注册之间的竞争，调用链可能永久挂起。
 
 优化：以同一原子状态机交接注册和完成，结果/异常先于完成状态发布，保证 continuation 恰好执行一次。验收：人为控制“先完成后注册”和“先注册后完成”，成功、失败及取消都能唤醒，再补并发压力验证。
 
-### R04 [P1] ETask 在首次消费前就回池
+当前状态：已修复。完成方以 CAS 取得唯一完成权，结果/异常先于终态发布，续体通过原子标记交接，回调不持有调度锁；先完成后注册也会唤醒，重复注册被拒绝。可控交错、并发完成与泛型结果发布测试通过。
 
-位置：[ETask.TaskAwaiter.cs:122](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L122)、[失效状态查询:35](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L35)、[ETask.StateMachine.cs:19](Runtime/Core/ETask/ETask.StateMachine.cs#L19)。验证：真实源码隔离诊断。
+### R04 [P1] [已修复] ETask 在首次消费前就回池
+
+位置：[当前消费:159](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L159)、[当前状态读取:31](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L31)、[当前最终摘除:183](Runtime/Core/ETask/ETask.TaskAwaiter.cs#L183)。验证：真实源码隔离诊断。
 
 Ticker 移除已完成节点时无条件清空 Token 并回池，不等待首次 GetResult。实测创建 `ETask.DelayFrame(0)`，推进一个 tick，再首次读取结果，Status 显示 Succeeded，GetResult 却抛出 recycled `ArgumentException`。这是首次消费，文档的“不要重复 await”不能规避“先启动、稍后首次 await”的正常用法。
 
 优化：分开调度节点移除与结果消费；结果在首次消费前保持有效，定义未消费任务的释放策略，并统一 token 校验。验收：完成后隔若干 tick 首次 await 仍成功，池复用不影响旧任务，重复消费按明确规则拒绝。
 
-### R05 [P1] 一个 tick 回调异常持续阻塞后续节点
+当前状态：已修复。完成后不使结果失效，延后首次 await 仍可消费；每轮由子类独占初始化，最终回池后旧调用不再访问实例。真实池复用、同 tick 重入、旧 token 和单次消费测试通过。
 
-位置：[Ticker.cs:51](Runtime/Core/ETask/Ticker/Ticker.cs#L51)。验证：真实 Ticker 源码诊断。
+### R05 [P1] [已修复] 一个 tick 回调异常持续阻塞后续节点
+
+位置：[当前逐节点异常隔离:98](Runtime/Core/ETask/Ticker/Ticker.cs#L98)、[当前异常处理:125](Runtime/Core/ETask/Ticker/Ticker.cs#L125)、[当前 Timer/Ticker 分开调度:34](Runtime/Core/ETask/ETask.cs#L34)。验证：真实 Ticker 源码诊断。
 
 Tick 对整个节点列表执行循环，没有逐节点异常隔离；ETask 外层即使记录错误，失败节点仍留在集合。实测先注册持续抛异常的节点，再注册计数节点，连续两个 tick 后计数仍为 `0`。WaitUntil 条件抛错也可触发，影响后续 Delay、等待及队列推进。
 
 优化：按节点隔离异常，让失败异步任务进入 Faulted，普通回调按约定移除或停用；保证移除和资源清理完成。验收：异常节点之后的节点在当次及后续 tick 都继续执行，失败等待不会永久 Pending。
+
+当前状态：已修复。Ticker 逐 Node 隔离 OnTick 异常，任务 tick 异常令对应任务失败，后续节点继续；移除只清理内部 Node，不通知 Target；Timer.Tick 错误不跳过 Ticker.Tick。未扩展 Timer 内部各节点隔离。等待条件抛错、普通节点、同 tick 增删、回收重入及 Timer 错误回归通过。
 
 ### R06 [P1] Controller 批量退出跳过退出回调
 
@@ -161,9 +211,11 @@ AB 构建返回 null 时只打印错误，外层资源构建链继续运行 DLCB
 
 位置：[F.cs:64](Runtime/F.cs#L64)、[后续等待:82](Runtime/F.cs#L82)。状态：上次问题仍在，本次源码复核。
 
-状态在模块创建前置 Initializing，任何异常都没有失败状态或复位；后续调用只能等待 Initialized。加载器也可能仅记录失败后正常返回，再叠加 R02，导致 Initialized 不代表 Manifest 有效。
+状态在模块创建前置 Initializing，任何异常都没有失败状态或复位；后续调用只能等待 Initialized。历史基线中，加载器也可能仅记录失败后正常返回，再叠加当时的 R02，导致 Initialized 不代表 Manifest 有效。
 
-优化：先修复 ETask 异常传播，再以可共享的初始化操作承载结果与错误，定义失败状态和重试规则；不要直接复用当前只能单次消费的 ETask 值。验收：任一步注入失败，并发和后续调用都能在有限时间内得到同一失败；允许重试时能恢复。
+当前进度：ETask 异常传播前置已由顺序 2 修复；F 初始化自身的失败状态与重试策略尚未实现，R13 仍未关闭。
+
+优化：以可共享的初始化操作承载结果与错误，定义失败状态和重试规则；不要直接复用当前只能单次消费的 ETask 值。验收：任一步注入失败，并发和后续调用都能在有限时间内得到同一失败；允许重试时能恢复。
 
 ### R14 [P2] [本地部分修复，未验收] 窗口销毁没有完成关闭、队列清理和容器失效
 
@@ -282,7 +334,7 @@ OnUpdate 用 `lastValue == 0` 跳过赋值，导致 DrawCalls、GC 分配等指�
 | 顺序 | 状态 | 工作包 | 对应问题 | 设计与交付范围 | 完成门槛 |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 已完成 | 保护用户数据和下载文件 | R01、R11、R16、R17 | 约束 DLC 文件所有权与清理根目录；临时下载、完整性校验后提交；版本快照及路径缓存一起切换 | 根目录存档不变；断网/取消不留下可用半包；换版本路径与内容一致 |
-| 2 | 待执行 | 稳定 ETask 与调度基础 | R02–R05 | 统一结果、异常、取消、continuation 和消费/回池协议；逐节点隔离 tick 异常；写清单次消费语义 | 真实 TaskAwaiter 回归覆盖异常、竞争、延后首次消费、回池复用及失败节点隔离 |
+| 2 | 已完成 | 稳定 ETask 与调度基础 | R02–R05 | 统一结果、异常、取消、continuation 和消费/回池协议；逐节点隔离 tick 异常；写清单次消费语义 | 真实 TaskAwaiter 回归覆盖异常、竞争、延后首次消费、回池复用及失败节点隔离 |
 | 3 | 待执行 | 修复网络与事件边界 | R10、R18、R19 | 统一 RingBuffer 满/空不变量、写入与扩容规则；事件重入策略；socket 无条件幂等释放 | 满容量/绕回字节测试、订阅变更测试及 native handle 释放测试通过 |
 | 4 | 待执行 | 统一初始化和业务生命周期 | R06–R08、R13–R15 | 初始化共享结果/失败策略；Controller 栈变更与回调配对；Window 创建中/已打开/已关闭/已销毁状态；统一最终清理入口 | Unity 场景验证退出/解绑各一次、帧分发正常、并发窗口只创建一次、失败能收敛 |
 | 5 | 待执行 | 让构建失败可见且可恢复 | R12、R20–R22 | 构建阶段失败立即上抛；暂存全部产物并校验后发布；统一生命周期；每次执行读取当前配置 | 故障注入时 LatestVersion/底包保持原样；回调各一次；同会话修改目录立即生效 |
@@ -305,7 +357,7 @@ OnUpdate 用 `lastValue == 0` 跳过赋值，导致 DrawCalls、GC 分配等指�
 | 包依赖 | 对照本机 Unity 2022.3.62f3 PackageCache 内原始 asmdef.meta | TMP / HybridCLR / URP 的 GUID 引用与缺失清单声明再次确认；未据此声称纯净导入已实测 |
 | Review 文件 | 检查源码链接、问题编号、严重度计数及 git diff --check | 仅更新 REVIEW.md；诊断复现的是现存缺陷，不能视为修复后的测试通过 |
 
-历史全量审查当时未执行 Unity Edit Mode / Play Mode 测试、纯净工程导入、目标平台 Player 构建、HybridCLR 热更新或实际 CDN 更新。当前顺序 1 已完成真实 Unity Edit Mode 验证：首次交互式 TestRunnerApi 67/67、virtual 可读性整理后原项目命令行 67/67，以及最终合并 FileHelper 后原项目命令行 67/67，均为 0 失败、0 跳过；Play Mode、纯净导入、目标平台 Player / WebGL 构建、HybridCLR 热更新和实际 CDN 更新仍未验证。隔离诊断验证状态/文件/缓冲区逻辑，不验证 Unity 主线程调度、原生对象或目标平台兼容性。Editor 和 Profiler 中标为源码路径的结论仍需要对应的 Unity 故障注入与场景验收。
+历史全量审查当时未执行 Unity Edit Mode / Play Mode 测试、纯净工程导入、目标平台 Player 构建、HybridCLR 热更新或实际 CDN 更新。当前顺序 1 已完成真实 Unity Edit Mode 验证：首次交互式 TestRunnerApi 67/67、virtual 可读性整理后原项目命令行 67/67，以及最终合并 FileHelper 后原项目命令行 67/67；顺序 2 修复后原项目命令行 115/115，可读性精简后对同一原项目命令行 125/125，枚举状态整理后同一原项目命令行 128/128，以上均为 0 失败、0 跳过；Play Mode、纯净导入、目标平台 Player / WebGL 构建、HybridCLR 热更新和实际 CDN 更新仍未验证。隔离诊断验证状态/文件/缓冲区逻辑，不验证 Unity 主线程调度、原生对象或目标平台兼容性。Editor 和 Profiler 中标为源码路径的结论仍需要对应的 Unity 故障注入与场景验收。
 
 ## 历史记录
 

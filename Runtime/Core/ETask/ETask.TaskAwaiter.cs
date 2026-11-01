@@ -5,9 +5,8 @@
 //----------------------------------------------------------------*/
 
 using System;
-using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Threading;
-using ArgumentException = System.ArgumentException;
 
 namespace EasyFramework
 {
@@ -15,164 +14,220 @@ namespace EasyFramework
     {
         public abstract class TaskAwaiter : IETaskAwaiter, ITickerNode
         {
+            private const int Completing = -1;
+            // Null/Action: awaiting completion. The remaining markers track the producer's handoff.
+            private static readonly Action HandingOff = () => { };
+            private static readonly Action Available = () => { };
+            private static readonly Action Running = () => { };
+            private static readonly Action Invoked = () => { };
+
             protected Guid Token;
             protected int Status;
-            protected Action<object> _continuation;
-            protected object _continuationState;
+            protected ExceptionDispatchInfo Error;
+            private Action _continuation;
+            private int _consumed; // 0: unread, 1: publishing consumption, 2: consumed.
+
+            protected bool IsPending => Volatile.Read(ref Status) == ETaskStatusValue.Pending;
+            protected virtual bool IsCompleted => Volatile.Read(ref _consumed) == 2 && HandoffFinished;
+            private bool HandoffFinished
+            {
+                get
+                {
+                    var continuation = Volatile.Read(ref _continuation);
+                    return ReferenceEquals(continuation, Available) || ReferenceEquals(continuation, Invoked);
+                }
+            }
 
             protected void Start(out Guid token)
             {
-                Token = Guid.NewGuid();
-                token = Token;
+                // The creator owns initialization; publish only after its start hook has finished.
+                token = Token = Guid.NewGuid();
                 Status = ETaskStatusValue.Pending;
                 _continuation = null;
-                _continuationState = null;
-                
+                Error = null;
+                _consumed = 0;
+                try { OnTaskStart(); }
+                catch (Exception error) { TrySetException(error); }
                 AddTick(this);
-                OnTaskStart();
             }
 
             ETaskStatus IETaskAwaiter.GetStatus(Guid token)
             {
-                // Log.Info($"TaskAwaiter.GetStatus: {token}");
-                if (Token == Guid.Empty || Token != token) return ETaskStatus.Succeeded;
-                return (ETaskStatus)Status;
+                ValidateToken(token);
+                int status = Volatile.Read(ref Status);
+                return status == Completing ? ETaskStatus.Pending : (ETaskStatus)status;
             }
 
-            void IETaskAwaiter.OnCompleted(Action<object> continuation, object state, Guid token)
+            void IETaskAwaiter.OnCompleted(Action continuation, Guid token)
             {
-                // Log.Info($"TaskAwaiter.OnCompleted");
                 if (continuation == null) throw new ArgumentNullException(nameof(continuation));
-                if (token != Token) throw new ArgumentException($"Task has already been recycled. token = {token}");
+                ValidateToken(token);
+                var current = Interlocked.CompareExchange(ref _continuation, continuation, null);
+                if (current == null) return; // The completion producer will take this callback.
 
-                object oldContinuation = _continuation;
-                if (oldContinuation == null)
+                var spinner = new SpinWait();
+                while (ReferenceEquals(current, HandingOff))
                 {
-                    _continuationState = state;
-                    oldContinuation = Interlocked.CompareExchange(ref _continuation, continuation, null);
+                    spinner.SpinOnce();
+                    current = Volatile.Read(ref _continuation);
                 }
-
-                if (oldContinuation != null)
-                {
-                    // already running continuation in TrySet.
-                    // It will cause call OnCompleted multiple time, invalid.
-                    if (!ReferenceEquals(oldContinuation, ETask.s_sentinel))
-                    {
-                        throw new InvalidOperationException("Already continuation registered, can not await twice or get Status after await.");
-                    }
-                    continuation(state);
-                }
+                if (!ReferenceEquals(current, Available)
+                    || !ReferenceEquals(Interlocked.CompareExchange(ref _continuation, Running, Available), Available))
+                    throw new InvalidOperationException("A task can only be awaited once.");
+                InvokeContinuation(continuation);
             }
 
             void IETaskAwaiter.GetResult(Guid token)
             {
-                // Log.Info($"TaskAwaiter.GetResult: {token}");
-                if (token != Token) throw new ArgumentException($"Task has already been recycled. token = {token}");
-                if (Status == ETaskStatusValue.Pending) throw new InvalidOperationException("Not yet completed, UniTask only allow to use await.");
-
-                Token = Guid.Empty;
+                ValidateResult(token);
+                var error = Error;
+                ConsumeResult();
+                error?.Throw();
             }
+
             void IETaskAwaiter.SetResult(Guid token)
             {
-                // Log.Info($"TaskAwaiter.SetResult: {token}");
-                if (token != Token) throw new ArgumentException($"Task has already been recycled. token = {token}");
-                TrySetResult();
+                ValidateToken(token);
+                if (!TrySetResult()) throw new InvalidOperationException("The task is already complete.");
             }
 
             public void SetException(Guid token, Exception exception)
             {
-                // Log.Error($"TaskAwaiter.SetException: {token}, {exception}");
-                if (token != Token) throw new ArgumentException($"Task has already been recycled. token = {token}");
-
-                if (exception is OperationCanceledException)
-                {
-                    FDebug.LogWarning(exception.ToString());
-                }
-                else
-                {
-                    FDebug.LogException(exception);
-                }
-                TrySetException(exception);
+                ValidateToken(token);
+                if (!TrySetException(exception)) throw new InvalidOperationException("The task is already complete.");
             }
-            
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+
             public bool TrySetResult()
             {
-                // Log.Info($"TaskAwaiter.TrySetResult: {_continuation != null}");
-                if (Interlocked.CompareExchange(ref Status, ETaskStatusValue.Succeeded, ETaskStatusValue.Pending) == ETaskStatusValue.Pending)
-                {
-                    _continuation?.Invoke(_continuationState);
-                    // Log.Info($"TaskAwaiter.TrySetResult End");
-                    return true;
-                }
-                return false;
+                if (!TryBeginCompletion()) return false;
+                PublishCompletion(null);
+                return true;
             }
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+
             public bool TrySetException(Exception error)
             {
-                // Log.Error($"TaskAwaiter.TrySetException: {error}");
-                if (Interlocked.CompareExchange(ref Status, ETaskStatusValue.Faulted, ETaskStatusValue.Pending) == ETaskStatusValue.Pending)
+                if (error == null) throw new ArgumentNullException(nameof(error));
+                if (!TryBeginCompletion()) return false;
+                PublishCompletion(error);
+                return true;
+            }
+
+            protected bool TryBeginCompletion() =>
+                Interlocked.CompareExchange(ref Status, Completing, ETaskStatusValue.Pending) == ETaskStatusValue.Pending;
+
+            protected void PublishCompletion(Exception error)
+            {
+                Error = error == null ? null : ExceptionDispatchInfo.Capture(error);
+                Volatile.Write(ref Status, error == null ? ETaskStatusValue.Succeeded
+                    : error is OperationCanceledException ? ETaskStatusValue.Canceled : ETaskStatusValue.Faulted);
+                var continuation = Interlocked.Exchange(ref _continuation, HandingOff);
+                if (continuation == null)
                 {
-                    _continuation?.Invoke(_continuationState);
-                    return true;
+                    // This publication is the producer's last access to this generation.
+                    Volatile.Write(ref _continuation, Available);
+                    return;
                 }
-                return false;
+                Volatile.Write(ref _continuation, Running);
+                InvokeContinuation(continuation);
+            }
+
+            private void InvokeContinuation(Action continuation)
+            {
+                try { continuation(); }
+                catch (Exception error) { EVoidScheduler.PublishUnobservedTaskException(error); }
+                finally
+                {
+                    if (Volatile.Read(ref _consumed) != 0) AddTick(this);
+                    // Do not touch this instance after publishing the end of the callback.
+                    Volatile.Write(ref _continuation, Invoked);
+                }
+            }
+
+            protected void ValidateToken(Guid token)
+            {
+                if (token != Token || token == Guid.Empty || Volatile.Read(ref _consumed) != 0)
+                    throw new InvalidOperationException("The task has already been consumed or released.");
+            }
+
+            protected void ValidateResult(Guid token)
+            {
+                ValidateToken(token);
+                if (Volatile.Read(ref Status) <= ETaskStatusValue.Pending)
+                    throw new InvalidOperationException("The task has not completed.");
+            }
+
+            protected void ConsumeResult()
+            {
+                if (Interlocked.CompareExchange(ref _consumed, 1, 0) != 0)
+                    throw new InvalidOperationException("A task can only be consumed once.");
+                AddTick(this);
+                // Tick must not recycle the source before the new registration is published.
+                Volatile.Write(ref _consumed, 2);
             }
 
             bool ITickerNode.OnTick()
             {
-                if (Token == Guid.Empty) return false;
-                if (Status != ETaskStatusValue.Pending) return false;
-
-                return OnTaskTick();
+                if (IsCompleted)
+                {
+                    OnTaskResult(Finish());
+                    return false;
+                }
+                try { return OnTaskTick(); }
+                catch (Exception error)
+                {
+                    TrySetException(error);
+                    return false;
+                }
             }
 
-            void ITickerNode.OnRemove()
+            private ETaskStatus Finish()
             {
-                // Log.Info("TaskAwaiter.OnRemove");
-                Token = Guid.Empty;
                 var status = (ETaskStatus)Status;
-                Status = ETaskStatusValue.Pending;
+                RemoveTick(this);
+                ResetResult();
+                Error = null;
                 _continuation = null;
-                _continuationState = null;
-                OnTaskResult(status);
+                _consumed = 0;
+                Token = Guid.Empty;
+                return status;
             }
 
+            protected virtual void ResetResult() { }
             protected virtual void OnTaskStart() { }
-            protected virtual bool OnTaskTick() => true;
+            protected virtual bool OnTaskTick() =>
+                Volatile.Read(ref Status) <= ETaskStatusValue.Pending || Volatile.Read(ref _consumed) != 0 || !HandoffFinished;
             protected virtual void OnTaskResult(ETaskStatus status) { }
         }
-        
+
         public abstract class TaskAwaiter<TResult> : TaskAwaiter, IETaskAwaiter<TResult>
         {
             private TResult _result;
-            
+
             void IETaskAwaiter<TResult>.SetResult(TResult result, Guid token)
             {
-                if (token != Token) throw new ArgumentException($"Task has already been recycled. token = {token}");
-                if (!TrySetResult(result))
-                {
-                    throw new ArgumentException($"Task has already been set result. token = {token}");
-                }
+                ValidateToken(token);
+                if (!TrySetResult(result)) throw new InvalidOperationException("The task is already complete.");
             }
+
             TResult IETaskAwaiter<TResult>.GetResult(Guid token)
             {
-                if (token != Token) throw new ArgumentException($"Task has already been recycled. token = {token}");
-                if (Status == ETaskStatusValue.Pending) throw new InvalidOperationException("Not yet completed, UniTask only allow to use await.");
-                return _result;
+                ValidateResult(token);
+                var result = _result;
+                var error = Error;
+                ConsumeResult();
+                error?.Throw();
+                return result;
             }
-            
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+
             public bool TrySetResult(TResult result)
             {
-                if (Interlocked.CompareExchange(ref Status, ETaskStatusValue.Succeeded, ETaskStatusValue.Pending) == ETaskStatusValue.Pending)
-                {
-                    _result = result;
-                    _continuation?.Invoke(_continuationState);
-                    return true;
-                }
-                return false;
+                if (!TryBeginCompletion()) return false;
+                _result = result;
+                PublishCompletion(null);
+                return true;
             }
+
+            protected override void ResetResult() => _result = default;
         }
     }
 }

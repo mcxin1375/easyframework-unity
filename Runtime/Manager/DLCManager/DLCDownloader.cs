@@ -54,6 +54,8 @@ namespace EasyFramework
 
         public ETask<bool> StartAsync(CancellationToken cancellationToken = default)
         {
+            // This downloader is reused directly, so finish a consumed run before starting its retry.
+            if (IsCompleted) ((ITickerNode)this).OnTick();
             if (IsRunning)
             {
                 FDebug.LogError("DownloadTask is already running.");
@@ -87,6 +89,7 @@ namespace EasyFramework
 
         protected override bool OnTaskTick()
         {
+            if (!IsPending) return base.OnTaskTick();
             if (_cancellationToken.IsCancellationRequested)
                 while (_pendingIndexes.Count > 0)
                 {
@@ -100,7 +103,7 @@ namespace EasyFramework
                 var index = _pendingIndexes[^1];
                 _pendingIndexes.RemoveAt(_pendingIndexes.Count - 1);
                 _activeCount++;
-                _ = DownloadAsync(index, _requests[index], _cancellationToken);
+                DownloadAsync(index, _requests[index], _cancellationToken).Forget();
             }
             if (_activeCount == 0 && _pendingIndexes.Count == 0)
             {

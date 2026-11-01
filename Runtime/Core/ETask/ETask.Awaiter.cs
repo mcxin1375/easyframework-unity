@@ -11,19 +11,6 @@ namespace EasyFramework
 {
     public readonly partial struct ETask
     {
-        internal static readonly Action<object> InvokeContinuationDelegate = Continuation;
-        internal static readonly Action<object> s_sentinel = CompletionSentinel;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void Continuation(object state)
-        {
-            ((Action)state).Invoke();
-        }
-        private static void CompletionSentinel(object _) // named method to aid debugging
-        {
-            throw new InvalidOperationException("The sentinel delegate should never be invoked.");
-        }
-        
         public readonly struct Awaiter : ICriticalNotifyCompletion
         {
             private readonly ETask _task;
@@ -51,7 +38,7 @@ namespace EasyFramework
                 }
                 else
                 {
-                    _task._source.OnCompleted(ETask.InvokeContinuationDelegate, continuation, _task._token);
+                    _task._source.OnCompleted(continuation, _task._token);
                 }
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -63,7 +50,7 @@ namespace EasyFramework
                 }
                 else
                 {
-                    _task._source.OnCompleted(ETask.InvokeContinuationDelegate, continuation, _task._token);
+                    _task._source.OnCompleted(continuation, _task._token);
                 }
             }
         }
@@ -98,7 +85,7 @@ namespace EasyFramework
                 }
                 else
                 {
-                    _task._source.OnCompleted(ETask.InvokeContinuationDelegate, continuation, _task._token);
+                    _task._source.OnCompleted(continuation, _task._token);
                 }
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -110,7 +97,7 @@ namespace EasyFramework
                 }
                 else
                 {
-                    _task._source.OnCompleted(ETask.InvokeContinuationDelegate, continuation, _task._token);
+                    _task._source.OnCompleted(continuation, _task._token);
                 }
             }
         }

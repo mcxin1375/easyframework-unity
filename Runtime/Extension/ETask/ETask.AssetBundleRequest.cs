@@ -25,6 +25,7 @@ namespace EasyFramework
 
             protected override bool OnTaskTick()
             {
+                if (!IsPending) return base.OnTaskTick();
                 if (_assetBundleRequest == null)
                 {
                     TrySetResult(null);

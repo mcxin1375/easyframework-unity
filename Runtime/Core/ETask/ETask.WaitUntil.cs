@@ -21,6 +21,7 @@ namespace EasyFramework
 
             protected override bool OnTaskTick()
             {
+                if (!IsPending) return base.OnTaskTick();
                 if (_predicate == null || _predicate())
                 {
                     TrySetResult();

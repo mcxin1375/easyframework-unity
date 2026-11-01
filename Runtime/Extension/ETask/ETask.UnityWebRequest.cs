@@ -38,6 +38,7 @@ namespace EasyFramework
 
             protected override bool OnTaskTick()
             {
+                if (!IsPending) return base.OnTaskTick();
                 if (UnityEngine.Time.time < _lockTime) return true;
 
                 if (_unityWebRequest == null)
@@ -123,6 +124,7 @@ namespace EasyFramework
 
             protected override bool OnTaskTick()
             {
+                if (!IsPending) return base.OnTaskTick();
                 if (_cancellationToken.IsCancellationRequested || _unityWebRequest == null)
                 {
                     ClearRequest();

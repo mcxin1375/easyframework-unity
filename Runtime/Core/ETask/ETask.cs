@@ -36,12 +36,13 @@ namespace EasyFramework
             try
             {
                 Timer.Tick();
-                Ticker.Tick();
             }
             catch (Exception e)
             {
                 FDebug.LogError(e.ToString());
             }
+            try { Ticker.Tick(); }
+            catch (Exception e) { FDebug.LogError(e.ToString()); }
         }
 
         private static void Dispose()

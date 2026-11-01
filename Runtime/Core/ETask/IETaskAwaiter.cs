@@ -11,7 +11,7 @@ namespace EasyFramework
     public interface IETaskAwaiter
     {
         ETaskStatus GetStatus(Guid token);
-        void OnCompleted(Action<object> continuation, object state, Guid token);
+        void OnCompleted(Action continuation, Guid token);
         void SetException(Guid token, Exception exception);
         void GetResult(Guid token);
         void SetResult(Guid token);

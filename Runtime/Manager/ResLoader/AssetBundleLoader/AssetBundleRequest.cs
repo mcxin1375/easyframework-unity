@@ -153,7 +153,8 @@ namespace EasyFramework
 
             protected override bool OnTaskTick()
             {
-                if (IsCompleted())
+                if (!IsPending) return base.OnTaskTick();
+                if (IsOperationCompleted())
                 {
                     TrySetResult(_mainInfo.Bundle);
                     return false;
@@ -162,7 +163,7 @@ namespace EasyFramework
                 return true;
             }
 
-            private bool IsCompleted()
+            private bool IsOperationCompleted()
             {
                 switch (_state)
                 {

@@ -33,9 +33,23 @@ namespace EasyFramework
         public readonly bool RunOnNewThread;
         public readonly string Name;
 
-        public IReadOnlyCollection<ICommandTask> Tasks => _tasks;
+        public IReadOnlyCollection<ICommandTask> Tasks
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    var tasks = new List<ICommandTask>();
+                    if (_current != null) tasks.Add(_current);
+                    tasks.AddRange(_tasks);
+                    return tasks;
+                }
+            }
+        }
+
         private readonly ConcurrentQueue<CommandTask> _tasks = new();
         private readonly object _lock = new();
+        private CommandTask _current;
         private bool _busying;
 
         private ETaskQueue(bool runOnNewThread = true, string name = "EasyTaskQueue")
@@ -59,22 +73,41 @@ namespace EasyFramework
 
         public bool OnTick()
         {
-            if (!_busying && _tasks.Count > 0)
-                _ = DoCommandAsync();
-
+            lock (_lock)
+            {
+                if (_busying || _tasks.IsEmpty) return true;
+                _busying = true;
+            }
+            DoCommandAsync().Forget();
             return true;
         }
 
         public void Clear()
         {
-            foreach (var task in _tasks) task.Cancel();
-            _tasks.Clear();
+            var pending = new List<CommandTask>();
+            CommandTask current;
+            lock (_lock)
+            {
+                current = _current;
+                current?.Retain();
+                while (_tasks.TryDequeue(out var task)) pending.Add(task);
+            }
+
+            if (current != null) CancelAndRelease(current);
+            foreach (var task in pending) CancelAndRelease(task);
+        }
+
+        private static void CancelAndRelease(CommandTask task)
+        {
+            try { task.Cancel(); }
+            catch (Exception error) { FDebug.LogError(error.ToString()); }
+            finally { task.Release(); }
         }
 
         public ETask<ECommandResult> ExecuteAsync(ICommand command, bool forceTick = false)
         {
             var task = CommandTask.Create(command, out var token);
-            _tasks.Enqueue(task);
+            lock (_lock) _tasks.Enqueue(task);
             if (forceTick) OnTick();
             return new ETask<ECommandResult>(task, token);
         }
@@ -82,85 +115,134 @@ namespace EasyFramework
         public ETask<ECommandResult> ExecuteAsync(Action action, bool forceTick = false)
         {
             var task = CommandTask.Create(action, out var token);
-            _tasks.Enqueue(task);
+            lock (_lock) _tasks.Enqueue(task);
             if (forceTick) OnTick();
             return new ETask<ECommandResult>(task, token);
         }
 
         private async ETask DoCommandAsync()
         {
-            lock (_lock)
+            try
             {
-                if (_busying) return;
-                _busying = true;
-            }
-
-            while (_tasks.Count > 0)
-            {
-                if (_tasks.TryPeek(out var cmd))
+                while (true)
                 {
-                    if (RunOnNewThread)
+                    CommandTask task;
+                    lock (_lock)
                     {
-                        await ETask.RunOnThreadPool(cmd.ExecuteAsync);
-                    }
-                    else
-                    {
-                        await cmd.ExecuteAsync();
+                        if (!_tasks.TryDequeue(out task)) return;
+                        _current = task;
                     }
 
-                    _tasks.TryDequeue(out _);
+                    try
+                    {
+                        if (RunOnNewThread)
+                            await ETask.RunOnThreadPool(task.ExecuteAsync);
+                        else
+                            await task.ExecuteAsync();
+                    }
+                    finally
+                    {
+                        lock (_lock)
+                        {
+                            _current = null;
+                            task.Release();
+                        }
+                    }
                 }
             }
-
-            _busying = false;
+            finally
+            {
+                lock (_lock) _busying = false;
+            }
         }
 
         class CommandTask : ETask.TaskAwaiter<ECommandResult>, ICommandTask
         {
             public ICommand Command { get; private set; }
             public Action Action { get; private set; }
+            private readonly object _commandLock = new();
             private CancellationTokenSource _tokenSource;
+            private int _holds;
+            private bool _cancelRequested;
+
+            protected override bool IsCompleted
+            {
+                get
+                {
+                    lock (_commandLock) return _holds == 0 && base.IsCompleted;
+                }
+            }
 
             protected override void OnTaskResult(ETaskStatus status)
             {
+                Command = null;
+                Action = null;
+                _tokenSource.Dispose();
+                _tokenSource = null;
                 ObjectPool<CommandTask>.Shared.Return(this);
             }
 
-            protected override bool OnTaskTick()
+            public void Retain()
             {
-                return _tokenSource != null && !_tokenSource.IsCancellationRequested;
+                lock (_commandLock) _holds++;
+            }
+
+            public void Release()
+            {
+                lock (_commandLock)
+                {
+                    // Re-register before publishing the last release; a terminal task may be detached.
+                    if (_holds == 1) ETask.AddTick(this);
+                    _holds--;
+                }
             }
 
             public async ETask ExecuteAsync()
             {
+                ICommand command;
+                Action action;
+                CancellationToken token;
+                lock (_commandLock)
+                {
+                    if (_cancelRequested || !IsPending) return;
+                    command = Command;
+                    action = Action;
+                    token = _tokenSource.Token;
+                }
+
                 try
                 {
-                    if (Command != null)
-                    {
-                        await Command.OnExecuteAsync(_tokenSource.Token);
-                    }
-
-                    Action?.Invoke();
-                    
+                    if (command != null) await command.OnExecuteAsync(token);
+                    action?.Invoke();
                     TrySetResult(ECommandResult.Succeed);
                 }
-                catch (Exception e)
+                catch (Exception error)
                 {
-                    FDebug.LogError(e.ToString());
-                    
+                    FDebug.LogError(error.ToString());
                     TrySetResult(ECommandResult.Failed);
                 }
             }
 
             public void Cancel()
             {
-                TrySetResult(ECommandResult.Cancelled);
-                
-                _tokenSource?.Cancel();
-                _tokenSource = null;
-                Command?.OnCancel();
-                Command = null;
-                Action = null;
+                ICommand command;
+                CancellationTokenSource source;
+                lock (_commandLock)
+                {
+                    if (_holds == 0 || _cancelRequested || !IsPending) return;
+                    _cancelRequested = true;
+                    _holds++;
+                    command = Command;
+                    source = _tokenSource;
+                }
+
+                try
+                {
+                    if (!TrySetResult(ECommandResult.Cancelled)) return;
+                    try { source.Cancel(); }
+                    finally { command?.OnCancel(); }
+                }
+                finally { Release(); }
             }
 
             public static CommandTask Create(ICommand command, out Guid token) => Create(command, null, out token);
@@ -171,7 +253,9 @@ namespace EasyFramework
                 var task = ObjectPool<CommandTask>.Shared.Rent();
                 task.Command = command;
                 task.Action = action;
-                task._tokenSource ??= new CancellationTokenSource();
+                task._tokenSource = new CancellationTokenSource();
+                task._holds = 1; // The pending queue owns this hold until execution or Clear ends.
+                task._cancelRequested = false;
                 task.Start(out token);
                 return task;
             }
