@@ -1,4 +1,4 @@
-﻿/*----------------------------------------------------------------
+/*----------------------------------------------------------------
 // author:Cookie(mcx)
 // date:2023/11/7
 // describe:
@@ -62,6 +62,36 @@ namespace EasyFramework
         {
             return File.Exists(file) ? new FileInfo(file).Length : 0;
         }
+
+        public static string CreateDownloadTempPath(string targetFile)
+        {
+            string path = Path.GetFullPath(targetFile);
+            CreateDirectory(Path.GetDirectoryName(path));
+            return path + "." + Guid.NewGuid().ToString("N") + ".download";
+        }
+
+        public static bool VerifyFileIntegrity(string file, long expectedLength = -1, string expectedMD5 = null)
+        {
+            if (!File.Exists(file)) return false;
+            if (expectedLength >= 0 && new FileInfo(file).Length != expectedLength) return false;
+            return string.IsNullOrEmpty(expectedMD5) || string.Equals(MD5Helper.MD5File(file), expectedMD5, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static void ReplaceFileFromTemp(string tempFile, string targetFile)
+        {
+            if (File.Exists(targetFile)) File.Replace(tempFile, targetFile, null);
+            else File.Move(tempFile, targetFile);
+        }
+
+        public static string ExtractMD5FromFileName(string fileName)
+        {
+            string md5 = Path.GetFileNameWithoutExtension(fileName);
+            if (md5 == null || md5.Length != 32) return null;
+            foreach (char c in md5)
+                if (!Uri.IsHexDigit(c)) return null;
+            return md5;
+        }
+
         public static void CreateDirectory(string directory)
         {
             if (string.IsNullOrEmpty(directory)) return;

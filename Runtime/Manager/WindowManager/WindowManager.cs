@@ -5,6 +5,7 @@
 //----------------------------------------------------------------*/
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -27,6 +28,7 @@ namespace EasyFramework
 
         internal readonly UIWindowBehaviour UIWindowBehaviour;
         private UIRootBehaviour UIRootBehaviour => UIRootBehaviour.Instance;
+        private readonly Dictionary<Type, IWindow> _windowDict = new();
 
         public WindowManager()
         {
@@ -37,7 +39,7 @@ namespace EasyFramework
         {
             FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {uiLayer}");
             
-            var window = WindowContainer.GetOrCreateWindow<T>();
+            var window = GetOrCreateWindow<T>();
             if (window is ITParams t) t.SetParamsDefault();
 
             UIWindowBehaviour.OpenWindow(window, uiLayer);
@@ -47,7 +49,7 @@ namespace EasyFramework
         {
             FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {uiLayer}");
             
-            var window = WindowContainer.GetOrCreateWindow<T>();
+            var window = GetOrCreateWindow<T>();
             window.SetParams(in tk1);
 
             UIWindowBehaviour.OpenWindow(window, uiLayer);
@@ -57,7 +59,7 @@ namespace EasyFramework
         {
             FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {uiLayer}");
             
-            var window = WindowContainer.GetOrCreateWindow<T>();
+            var window = GetOrCreateWindow<T>();
             window.SetParams(in tk1, in tk2);
 
             UIWindowBehaviour.OpenWindow(window, uiLayer);
@@ -67,7 +69,7 @@ namespace EasyFramework
         {
             FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {uiLayer}");
             
-            var window = WindowContainer.GetOrCreateWindow<T>();
+            var window = GetOrCreateWindow<T>();
             window.SetParams(in tk1, in tk2, in tk3);
 
             UIWindowBehaviour.OpenWindow(window, uiLayer);
@@ -77,7 +79,7 @@ namespace EasyFramework
         {
             FDebug.Log($"F.UISystem.Open(type: {type.Name}), uiLayer: {uiLayer}");
             
-            var window = WindowContainer.GetOrCreateWindow(type);
+            var window = GetOrCreateWindow(type);
             if (window is ITParams t) t.SetParams(tParams);
 
             UIWindowBehaviour.OpenWindow(window, uiLayer);
@@ -88,7 +90,7 @@ namespace EasyFramework
         {
             FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {uiLayer}");
             
-            var window = WindowContainer.GetOrCreateWindow<T>();
+            var window = GetOrCreateWindow<T>();
             if (window is ITParams t) t.SetParamsDefault();
             
             return UIWindowBehaviour.OpenWindowAsync(window, uiLayer);
@@ -97,7 +99,7 @@ namespace EasyFramework
         {
             FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {uiLayer}");
             
-            var window = WindowContainer.GetOrCreateWindow<T>();
+            var window = GetOrCreateWindow<T>();
             window.SetParams(in tk1);
             
             return UIWindowBehaviour.OpenWindowAsync(window, uiLayer);
@@ -106,7 +108,7 @@ namespace EasyFramework
         {
             FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {uiLayer}");
             
-            var window = WindowContainer.GetOrCreateWindow<T>();
+            var window = GetOrCreateWindow<T>();
             window.SetParams(in tk1, in tk2);
             
             return UIWindowBehaviour.OpenWindowAsync(window, uiLayer);
@@ -115,7 +117,7 @@ namespace EasyFramework
         {
             FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {uiLayer}");
             
-            var window = WindowContainer.GetOrCreateWindow<T>();
+            var window = GetOrCreateWindow<T>();
             window.SetParams(in tk1, in tk2, in tk3);
 
             return UIWindowBehaviour.OpenWindowAsync(window, uiLayer);
@@ -125,7 +127,7 @@ namespace EasyFramework
         {
             FDebug.Log($"F.UISystem.OpenAsync(type: {type.Name}), uiLayer: {uiLayer}");
             
-            var window = WindowContainer.GetOrCreateWindow(type);
+            var window = GetOrCreateWindow(type);
             if (window is ITParams t) t.SetParams(tParams);
 
             return UIWindowBehaviour.OpenWindowAsync(window, uiLayer);
@@ -148,7 +150,7 @@ namespace EasyFramework
 
         public void Close<T>() where T : class, IWindow, new()
         {
-            var window = WindowContainer.GetWindow<T>();
+            var window = GetWindow<T>();
             if (window == null) return;
             
             Close(window);
@@ -156,7 +158,7 @@ namespace EasyFramework
 
         public async ETask CloseAsync<T>() where T : class, IWindow, new()
         {
-            var window = WindowContainer.GetWindow<T>();
+            var window = GetWindow<T>();
             if (window == null) return;
             
             await window.BeforeCloseAsync();
@@ -181,18 +183,19 @@ namespace EasyFramework
 
             Debug.Log($"F.WindowManager.Destroy(type:{window.GetType().Name})");
             UIWindowBehaviour.Destroy(window);
+            _windowDict.Remove(window.GetType());
         }
         public void Destroy<T>() where T : class, IWindow, new()
         {
-            var window = WindowContainer.GetWindow<T>();
+            var window = GetWindow<T>();
             if (window == null) return;
             
             Destroy(window);
         }
         
         public void RefreshAllWindow() => UIWindowBehaviour.RefreshAllWindow();
-        public T GetWindow<T>() where T : class, IWindow => WindowContainer.GetWindow<T>();
-        public IWindow GetWindow(Type type) => WindowContainer.GetWindow(type);
+        public T GetWindow<T>() where T : class, IWindow => GetWindow(typeof(T)) as T;
+        public IWindow GetWindow(Type type) => _windowDict.GetValueOrDefault(type);
         public IWindow[] GetWindows(UILayer uiLayer) => UIWindowBehaviour.GetWindows(uiLayer);
         
         public UILayerBehaviour GetLayerData(UILayer uiLayer) => UIRootBehaviour.GetLayerData(uiLayer);
@@ -201,5 +204,25 @@ namespace EasyFramework
         
         public bool IsOpen<T>() where T : class, IWindow => GetWindow(typeof(T))?.IsOpen ?? false;
         public IWindow GetTopWindow(UILayer uiLayer) => UIWindowBehaviour.GetTopWindow(uiLayer);
+        
+        private T GetOrCreateWindow<T>() where T : class, IWindow, new()
+        {
+            var type = typeof(T);
+            if (!_windowDict.TryGetValue(type, out var window))
+            {
+                window = new T();
+                _windowDict[type] = window;
+            }
+            return window as T;
+        }
+        private IWindow GetOrCreateWindow(Type type)
+        {
+            if (!_windowDict.TryGetValue(type, out var window))
+            {
+                window = Activator.CreateInstance(type) as IWindow;
+                _windowDict[type] = window;
+            }
+            return window;
+        }
     }
 }

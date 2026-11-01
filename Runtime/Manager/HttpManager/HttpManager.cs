@@ -27,9 +27,9 @@ namespace EasyFramework
         }
         public async ETask<bool> DownloadAsync(string url, string file, int requestIndex, IHttpReceiver httpReceiver, CancellationToken token = default)
         {
-#if WEB_GL
-            var webRequest = await ETask.UnityWebRequestDownload(url, file, httpReceiver, token);
-            return webRequest.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
+#if UNITY_WEBGL
+            var webRequest = await ETask.UnityWebRequestDownload(url, file, httpReceiver, token, requestIndex);
+            return webRequest != null && webRequest.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
 #else
             return await HttpClient.DownloadAsync(url, file, requestIndex, httpReceiver, token);
 #endif

@@ -42,11 +42,11 @@ namespace EasyFramework
             }
         }
 
-        public void AddRequest(string url, string file, long length = 0)
+        public void AddRequest(string url, string file, long length = 0, string md5 = null)
         {
             if (_currentRequestBytes != null) throw new InvalidOperationException("Cannot add a request after download started.");
 
-            var request = new Request(url, file, length);
+            var request = new Request(url, file, length, md5);
             _requests.Add(request);
             if (length > 0) TotalBytes += length;
             else _allLengthsValid = false;
@@ -124,7 +124,7 @@ namespace EasyFramework
             UnityWebRequest webRequest = null;
             try
             {
-                webRequest = await ETask.UnityWebRequestDownload(request.URL, request.File, this, cancellationToken, index);
+                webRequest = await ETask.UnityWebRequestDownload(request.URL, request.File, this, cancellationToken, index, request.Length > 0 ? request.Length : -1, request.MD5);
                 success = webRequest != null && webRequest.result == UnityWebRequest.Result.Success;
             }
             catch (Exception e) { FDebug.LogException(e); }
@@ -161,12 +161,14 @@ namespace EasyFramework
             public readonly string URL;
             public readonly string File;
             public readonly long Length;
+            public readonly string MD5;
 
-            public Request(string url, string file, long length)
+            public Request(string url, string file, long length, string md5 = null)
             {
                 URL = url;
                 File = file;
                 Length = length;
+                MD5 = md5;
             }
         }
     }

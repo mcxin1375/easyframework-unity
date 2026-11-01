@@ -8,6 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine.Networking;
 
 namespace EasyFramework
@@ -21,64 +23,56 @@ namespace EasyFramework
             DownloadError,
         }
         
-        public string DLCVersionInfoLocalFile => $"{EasyFrameworkSettings.Instance.DLCPath}/{DLCVersionInfo.FileName}";
+        public string DLCVersionInfoLocalFile => Path.Combine(_dlcPath, DLCVersionInfo.FileName);
         public DLCVersionInfo VersionInfo { get; private set; }
-        
-        private DLCDownloader _dlcDownloader;
-        private readonly Dictionary<string, string> _fileDict = new();
+
+        protected virtual string VersionUid => EasyFrameworkConfig.Instance.DLCVersionInfoUid;
+        protected virtual string ServerUrl => EasyFrameworkConfig.Instance.DLCServerUrl;
+
+        private readonly string _dlcPath;
+        private readonly SemaphoreSlim _downloadSlots;
+        private readonly Dictionary<string, Task<string>> _downloads = new();
+        private string _currentServerUrl;
+
+        public DLCUpdater() : this(EasyFrameworkSettings.Instance.DLCPath, EasyFrameworkSettings.Instance.downloadParallel) { }
+
+        internal DLCUpdater(string dlcPath, int parallel = 3)
+        {
+            _dlcPath = Path.GetFullPath(dlcPath);
+            _downloadSlots = new SemaphoreSlim(Math.Max(1, parallel));
+        }
 
         public async ETask<EResult> UpdateAsync()
         {
-            await InitializeAsync();
-            if (VersionInfo == null) return EResult.VersionError;
+            if (!await InitializeAsync()) return EResult.VersionError;
 
-            _dlcDownloader = new();
-            foreach (var info in VersionInfo.hashFiles)
-            {
-                // FDebug.Log($"{info.resName}, {info.fileName}");
-                var downloadFile = $"{EasyFrameworkSettings.Instance.DLCPath}/{info.fileName}";
-                if (File.Exists(downloadFile)) continue;
-
-                var downloadUrl = $"{EasyFrameworkConfig.Instance.DLCServerUrl}/{info.fileName}";
-                _dlcDownloader.AddRequest(downloadUrl, downloadFile, info.length);
-            }
-
-            FDebug.Log("Download Task Start");
-            var result = await _dlcDownloader.StartAsync();
-            FDebug.Log("Download Task End: " + result);
-            
-            if (!result) return EResult.DownloadError;
-            
-            return EResult.Success;
+            var versionInfo = VersionInfo;
+            var serverUrl = _currentServerUrl;
+            var tasks = new List<Task<string>>();
+            foreach (var info in versionInfo.hashFiles) tasks.Add(GetOrDownloadAsync(info, serverUrl));
+            var files = await Task.WhenAll(tasks);
+            if (VersionInfo != versionInfo) return EResult.VersionError;
+            return files.All(file => !string.IsNullOrEmpty(file)) ? EResult.Success : EResult.DownloadError;
         }
 
         public string GetResServerUrl(string resName)
         {
-            var info = VersionInfo?.GetFileInfo(resName);
+            var info = GetFileInfo(resName);
             if (info == null) return string.Empty;
-            return $"{EasyFrameworkConfig.Instance.DLCServerUrl}/{info.fileName}";
+            return $"{_currentServerUrl}/{info.fileName}";
         }
 
-        public string GetFileName(string resName) => VersionInfo?.GetFileName(resName);
+        public string GetFileName(string resName) => GetFileInfo(resName)?.fileName;
         public string GetFilePath(string resName)
         {
-            if (_fileDict.TryGetValue(resName, out var filePath)) return filePath;
-            var info = VersionInfo?.GetFileInfo(resName);
-            if (info == null)
-            {
-                FDebug.LogError($"[DLCUpdater] Res not found: {resName}");
-                return string.Empty;
-            }
-
-            filePath = $"{EasyFrameworkSettings.Instance.DLCPath}/{info.fileName}";
-            _fileDict.Add(resName, filePath);
-            return filePath;
+            var info = GetFileInfo(resName);
+            return info == null ? string.Empty : Path.Combine(_dlcPath, info.fileName);
         }
 
         public bool Exists(string resName)
         {
-            var filePath = GetFilePath(resName);
-            return string.IsNullOrWhiteSpace(filePath) || File.Exists(filePath);
+            var info = GetFileInfo(resName);
+            return info != null && IsValidFile(Path.Combine(_dlcPath, info.fileName), info);
         }
 
         public async ETask<bool> DownloadAsync(string resName)
@@ -89,78 +83,161 @@ namespace EasyFramework
 
         public async ETask<string> DownloadAndReturnFileAsync(string resName)
         {
-            var filePath = GetFilePath(resName);
-            if (File.Exists(filePath)) return filePath;
-
-            var downloadUrl = GetResServerUrl(resName);
-            FDebug.LogWarning($"[Download] {resName} - {downloadUrl}");
-            var result = await F.HttpManager.DownloadAsync(downloadUrl, filePath);
-            if (result)
-            {
-                FDebug.LogWarning($"[Download] {resName} - true");
-                return filePath;
-            }
-            else
-            {
-                FDebug.LogWarning($"[Download] {resName} - false");
-                return string.Empty;
-            }
+            var versionInfo = VersionInfo;
+            var info = GetFileInfo(resName);
+            if (info == null) return string.Empty;
+            var file = await GetOrDownloadAsync(info, _currentServerUrl);
+            return VersionInfo == versionInfo ? file : string.Empty;
         }
 
-        public async ETask InitializeAsync(string url = null)
+        public async ETask<bool> InitializeAsync(string url = null)
         {
             try
             {
-                if (url.IsNullOrWhiteSpace())
+                var uid = VersionUid;
+                var serverUrl = ServerUrl;
+                bool explicitUrl = !url.IsNullOrWhiteSpace();
+                if (!explicitUrl && IsValidVersion(VersionInfo, uid))
                 {
-                    url = $"{EasyFrameworkConfig.Instance.DLCServerUrl}/{DLCVersionInfo.FileName}";
+                    _currentServerUrl = serverUrl;
+                    return true;
                 }
-                
-                if (VersionInfo != null && VersionInfo.uid == EasyFrameworkConfig.Instance.DLCVersionInfoUid)
-                    return;
-                
-                VersionInfo = ConfigHelper.Load<DLCVersionInfo>(DLCVersionInfoLocalFile);
-                if (VersionInfo == null || VersionInfo.uid != EasyFrameworkConfig.Instance.DLCVersionInfoUid)
-                {
-                    // FDebug.Log($"Request: {url}");
-                    var unityWebRequest = await ETask.UnityWebRequest(url);
-                    if (unityWebRequest.result != UnityWebRequest.Result.Success)
-                    {
-                        FDebug.LogError($"[UWR Error] {url}");
-                        return;
-                    }
-                    FDebug.Log($"Request: {url}\n{unityWebRequest.downloadHandler.text}");
 
-                    File.WriteAllText(DLCVersionInfoLocalFile, unityWebRequest.downloadHandler.text);
-                    VersionInfo = ConfigHelper.LoadFromText<DLCVersionInfo>(unityWebRequest.downloadHandler.text);
+                DLCVersionInfo versionInfo = null;
+                if (!explicitUrl)
+                {
+                    try
+                    {
+                        if (File.Exists(DLCVersionInfoLocalFile)) versionInfo = LoadVersionInfo(File.ReadAllText(DLCVersionInfoLocalFile));
+                    }
+                    catch (Exception e) { FDebug.LogException(e); }
                 }
-            
-                VersionInfo?.RefreshNames();
+                if (!IsValidVersion(versionInfo, explicitUrl ? null : uid))
+                {
+                    url = explicitUrl ? url : $"{serverUrl}/{DLCVersionInfo.FileName}";
+                    var content = await LoadTextAsync(url);
+                    versionInfo = LoadVersionInfo(content);
+                    if (!IsValidVersion(versionInfo, explicitUrl ? null : uid)) return false;
+                }
+                if (uid != VersionUid || serverUrl != ServerUrl) return false;
+
+                versionInfo.RefreshNames();
+                var tempFile = FileHelper.CreateDownloadTempPath(DLCVersionInfoLocalFile);
+                try
+                {
+                    ConfigHelper.Save(versionInfo, tempFile);
+                    FileHelper.ReplaceFileFromTemp(tempFile, DLCVersionInfoLocalFile);
+                }
+                finally { FileHelper.DeleteFile(tempFile); }
+
+                VersionInfo = versionInfo;
+                _currentServerUrl = serverUrl;
                 DeleteUnversionedFiles();
-                
-                FDebug.Log($"DLCUpdater Initialized! Count: {VersionInfo?.hashFiles.Length ?? -1}");
+                return true;
             }
-            catch (Exception e)
-            {
-                FDebug.LogException(e);
-            }
+            catch (Exception e) { FDebug.LogException(e); }
+            return false;
         }
         
         public void DeleteUnversionedFiles()
         {
-            if (VersionInfo == null) return;
-            
-            var hashSet = VersionInfo.hashFiles.Select(item => item.fileName).ToHashSet();
-            var files = Directory.GetFiles(EasyFrameworkSettings.Instance.DataPath);
-            foreach (var file in files)
+            if (!IsValidVersion(VersionInfo, null) || !Directory.Exists(_dlcPath)) return;
+            try
             {
-                var fileName = Path.GetFileName(file);
-                if (!hashSet.Contains(fileName))
+                if ((File.GetAttributes(_dlcPath) & FileAttributes.ReparsePoint) != 0) return;
+                var filesToKeep = VersionInfo.hashFiles.Select(info => info.fileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                foreach (var file in Directory.GetFiles(_dlcPath))
                 {
+                    var fileName = Path.GetFileName(file);
+                    if (filesToKeep.Contains(fileName) || FileHelper.ExtractMD5FromFileName(fileName) == null) continue;
+                    if ((File.GetAttributes(file) & FileAttributes.ReparsePoint) != 0) continue;
+                    lock (_downloads) if (_downloads.ContainsKey(file)) continue;
                     File.Delete(file);
                     FDebug.Log($"Delete: {file}");
                 }
             }
+            catch (Exception e) { FDebug.LogException(e); }
         }
+
+        private HashFileInfo GetFileInfo(string resName) =>
+            string.IsNullOrEmpty(resName) ? null : VersionInfo?.GetFileInfo(resName);
+
+        private static DLCVersionInfo LoadVersionInfo(string content) =>
+            ConfigHelper.LoadFromText<DLCVersionInfo>(content, EConfigType.Newtonsoft, EConfigEncrypt.None, null);
+
+        private static bool IsValidVersion(DLCVersionInfo versionInfo, string uid)
+        {
+            if (versionInfo == null || string.IsNullOrWhiteSpace(versionInfo.uid) || versionInfo.hashFiles == null) return false;
+            if (!string.IsNullOrEmpty(uid) && versionInfo.uid != uid) return false;
+            var names = new HashSet<string>();
+            var lengths = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            foreach (var info in versionInfo.hashFiles)
+            {
+                if (info == null || string.IsNullOrWhiteSpace(info.resName) || !names.Add(info.resName) || info.length < 0) return false;
+                if (string.IsNullOrEmpty(info.fileName) || info.fileName.IndexOfAny(new[] { '/', '\\', ':' }) >= 0) return false;
+                if (info.fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || FileHelper.ExtractMD5FromFileName(info.fileName) == null) return false;
+                if (lengths.TryGetValue(info.fileName, out var length) && length != info.length) return false;
+                lengths[info.fileName] = info.length;
+            }
+            return true;
+        }
+
+        private static bool IsValidFile(string file, HashFileInfo info)
+        {
+            try { return FileHelper.VerifyFileIntegrity(file, info.length, FileHelper.ExtractMD5FromFileName(info.fileName)); }
+            catch (Exception e) { FDebug.LogException(e); return false; }
+        }
+
+        private Task<string> GetOrDownloadAsync(HashFileInfo info, string serverUrl)
+        {
+            var file = Path.Combine(_dlcPath, info.fileName);
+            if (IsValidFile(file, info)) return Task.FromResult(file);
+            TaskCompletionSource<string> completion;
+            lock (_downloads)
+            {
+                if (_downloads.TryGetValue(file, out var task)) return task;
+                completion = new TaskCompletionSource<string>();
+                _downloads.Add(file, completion.Task);
+            }
+            _ = DownloadAsync(info, serverUrl, file, completion);
+            return completion.Task;
+        }
+
+        private async Task DownloadAsync(HashFileInfo info, string serverUrl, string file, TaskCompletionSource<string> completion)
+        {
+            var result = string.Empty;
+            string tempFile = null;
+            await _downloadSlots.WaitAsync();
+            try
+            {
+                if (IsValidFile(file, info)) result = file;
+                else
+                {
+                    tempFile = FileHelper.CreateDownloadTempPath(file);
+                    bool success = await DownloadFileAsync($"{serverUrl}/{info.fileName}", tempFile);
+                    if (success && IsValidFile(tempFile, info))
+                    {
+                        FileHelper.ReplaceFileFromTemp(tempFile, file);
+                        result = file;
+                    }
+                }
+            }
+            catch (Exception e) { FDebug.LogException(e); }
+            finally
+            {
+                FileHelper.DeleteFile(tempFile);
+                _downloadSlots.Release();
+                lock (_downloads) _downloads.Remove(file);
+                completion.TrySetResult(result);
+            }
+        }
+
+        protected virtual async ETask<string> LoadTextAsync(string url)
+        {
+            var request = await ETask.UnityWebRequest(url);
+            return request != null && request.result == UnityWebRequest.Result.Success ? request.downloadHandler.text : null;
+        }
+
+        protected virtual ETask<bool> DownloadFileAsync(string url, string file) => F.HttpManager.DownloadAsync(url, file);
     }
 }

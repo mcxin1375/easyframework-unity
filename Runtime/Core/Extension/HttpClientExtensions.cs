@@ -45,29 +45,32 @@ namespace EasyFramework
         public static async ETask<bool> DownloadAsync(this HttpClient httpClient, string url, string file, int requestIndex = -1, IHttpReceiver httpReceiver = null, CancellationToken token = default)
         {
             byte[] buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+            string tempFile = null;
             try
             {
-                string directory = Path.GetDirectoryName(file);
-                if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
-                if (File.Exists(file)) File.Delete(file);
-                
-                var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
-                response.EnsureSuccessStatusCode();
-                var contentLength = response.Content.Headers.ContentLength ?? 0;
-                
-                await using Stream contentStream = await response.Content.ReadAsStreamAsync(),
-                    fileStream = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize);
-
-                int bytesRead;
-                ulong bytesReceived = 0;
-                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
+                file = Path.GetFullPath(file);
+                tempFile = FileHelper.CreateDownloadTempPath(file);
+                long contentLength;
+                using (var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token))
                 {
-                    await fileStream.WriteAsync(buffer, 0, bytesRead, token);
-                    bytesReceived += (ulong)bytesRead;
+                    response.EnsureSuccessStatusCode();
+                    contentLength = response.Content.Headers.ContentLength ?? -1;
+                    await using Stream contentStream = await response.Content.ReadAsStreamAsync(),
+                        fileStream = new FileStream(tempFile, FileMode.CreateNew, FileAccess.Write, FileShare.None, BufferSize);
 
-                    httpReceiver?.OnProgress(requestIndex, bytesReceived);
+                    int bytesRead;
+                    ulong bytesReceived = 0;
+                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, token)) > 0)
+                    {
+                        await fileStream.WriteAsync(buffer, 0, bytesRead, token);
+                        bytesReceived += (ulong)bytesRead;
+                        httpReceiver?.OnProgress(requestIndex, bytesReceived);
+                    }
                 }
 
+                if (!FileHelper.VerifyFileIntegrity(tempFile, contentLength)) return false;
+                token.ThrowIfCancellationRequested();
+                FileHelper.ReplaceFileFromTemp(tempFile, file);
                 return true;
             }
             catch (Exception ex)
@@ -78,6 +81,7 @@ namespace EasyFramework
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
+                FileHelper.DeleteFile(tempFile);
             }
             return false;
         }

@@ -18,10 +18,10 @@ namespace EasyFramework
             return new ETask<UnityWebRequest>(UnityWebRequestTask.Create(url, out var token), token);
         }
         
-        public static ETask<UnityWebRequest> UnityWebRequestDownload(string url, string file, IHttpReceiver httpReceiver = null, CancellationToken cancellationToken = default, int requestIndex = -1)
+        public static ETask<UnityWebRequest> UnityWebRequestDownload(string url, string file, IHttpReceiver httpReceiver = null, CancellationToken cancellationToken = default, int requestIndex = -1, long length = -1, string md5 = null)
         {
             FDebug.Log($"{url} -> {file}");
-            return new ETask<UnityWebRequest>(UnityWebRequestDownloadTask.Create(url, file, out var token, httpReceiver, cancellationToken, requestIndex), token);
+            return new ETask<UnityWebRequest>(UnityWebRequestDownloadTask.Create(url, file, out var token, httpReceiver, cancellationToken, requestIndex, length, md5), token);
         }
 
 
@@ -111,143 +111,124 @@ namespace EasyFramework
             private string _url;
             private string _file;
             private string _tempFile;
+            private long _length;
+            private string _md5;
             private int _errorRetry;
             private CancellationToken _cancellationToken;
             private UnityWebRequest _unityWebRequest;
             private IHttpReceiver _httpReceiver;
             private int _requestIndex;
 
-            private enum EState
-            {
-                None,
-                Downloading,
-                Success,
-                Failure
-            }
-            private EState _state = EState.None;
-
             private int MaxRetryCount => EasyFrameworkSettings.Instance.maxRetryCount;
 
             protected override bool OnTaskTick()
             {
-                var bytesReceived = _unityWebRequest?.downloadedBytes ?? 0;
-                _httpReceiver?.OnProgress(_requestIndex, bytesReceived);
-                switch (_state)
+                if (_cancellationToken.IsCancellationRequested || _unityWebRequest == null)
                 {
-                    case EState.Failure:
-                        TrySetResult(_unityWebRequest);
-                        return false;
-                    case EState.Success:
-                        TrySetResult(_unityWebRequest);
-                        return false;
-                    case EState.Downloading:
-
-                        if (_cancellationToken.IsCancellationRequested)
-                        {
-                            _state = EState.Failure;
-                            return true;
-                        }
-
-                        if (_unityWebRequest == null)
-                        {
-                            StartRetry();
-                            return true;
-                        }
-
-                        if (_unityWebRequest.isDone)
-                        {
-                            bool isSuccess = _unityWebRequest.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
-                            if (isSuccess)
-                            {
-                                MoveDownloadedFile();
-                                _state = EState.Success;
-                            }
-                            else
-                            {
-                                StartRetry();
-                            }
-                        }
-
-                        break;
+                    ClearRequest();
+                    TrySetResult(null);
+                    return false;
                 }
+
+                bool success = false;
+                try
+                {
+                    _httpReceiver?.OnProgress(_requestIndex, _unityWebRequest.downloadedBytes);
+                    if (!_unityWebRequest.isDone) return true;
+
+                    if (_unityWebRequest.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+                    {
+                        // Release the file handle before validation and replacement.
+                        _unityWebRequest.downloadHandler?.Dispose();
+                        if (!FileHelper.VerifyFileIntegrity(_tempFile, _length, _md5))
+                            throw new InvalidDataException($"Downloaded file validation failed: {_url}");
+                        if (!_cancellationToken.IsCancellationRequested)
+                        {
+                            FileHelper.ReplaceFileFromTemp(_tempFile, _file);
+                            success = true;
+                        }
+                    }
+                }
+                catch (Exception e) { FDebug.LogException(e); }
+
+                if (success)
+                {
+                    TrySetResult(_unityWebRequest);
+                    return false;
+                }
+                ClearRequest();
+                _errorRetry++;
+                if (_cancellationToken.IsCancellationRequested || _errorRetry >= MaxRetryCount)
+                {
+                    TrySetResult(null);
+                    return false;
+                }
+                StartRequest();
                 return true;
             }
 
             protected override void OnTaskStart()
             {
                 _errorRetry = 0;
-                _state = EState.None;
-                string tempDirectory = EasyFrameworkSettings.Instance.DownloadTempPath;
-                FileHelper.CreateDirectory(tempDirectory);
-                _tempFile = Path.Combine(tempDirectory, $"{Token:N}.download");
-
-                StartRequest();
-            }
-
-            private void MoveDownloadedFile()
-            {
-                // DownloadHandlerFile keeps the temporary file open until it is disposed.
-                _unityWebRequest.downloadHandler?.Dispose();
-
-                string directory = Path.GetDirectoryName(_file);
-                if (!string.IsNullOrEmpty(directory)) FileHelper.CreateDirectory(directory);
-
-                FileHelper.DeleteFile(_file);
-                File.Move(_tempFile, _file);
-            }
-
-            private void StartRetry()
-            {
-                _errorRetry++;
-
-                if (_errorRetry >= MaxRetryCount)
+                _tempFile = null;
+                _unityWebRequest = null;
+                if (_cancellationToken.IsCancellationRequested) return;
+                try
                 {
-                    _state = EState.Failure;
-                    return;
+                    _tempFile = FileHelper.CreateDownloadTempPath(_file);
+                    StartRequest();
                 }
-                StartRequest();
+                catch (Exception e) { FDebug.LogException(e); }
             }
 
             private void StartRequest()
             {
-                _state = EState.Downloading;
+                try
+                {
+                    FDebug.Log($"StartRequest：{_url}, {_tempFile}");
+                    _unityWebRequest = new UnityWebRequest(_url, "GET");
+                    _unityWebRequest.downloadHandler = new DownloadHandlerFile(_tempFile) { removeFileOnAbort = true };
+                    _unityWebRequest.SendWebRequest();
+                }
+                catch (Exception e)
+                {
+                    FDebug.LogException(e);
+                    ClearRequest();
+                }
+            }
 
+            private void ClearRequest()
+            {
                 if (_unityWebRequest != null)
                 {
+                    if (!_unityWebRequest.isDone) _unityWebRequest.Abort();
                     _unityWebRequest.Dispose();
                     _unityWebRequest = null;
                 }
-
                 FileHelper.DeleteFile(_tempFile);
-
-                FDebug.Log($"StartRequest：{_url}, {_tempFile}");
-                
-                _unityWebRequest = UnityEngine.Networking.UnityWebRequest.Get(_url);
-                var downloadHandler = new DownloadHandlerFile(_tempFile);
-                downloadHandler.removeFileOnAbort = true;
-                _unityWebRequest.downloadHandler = downloadHandler;
-                _unityWebRequest.SendWebRequest();
             }
 
             protected override void OnTaskResult(ETaskStatus status)
             {
-                _unityWebRequest?.Dispose();
-                _unityWebRequest = null;
-                FileHelper.DeleteFile(_tempFile);
+                ClearRequest();
                 _url = string.Empty;
                 _file = string.Empty;
                 _tempFile = string.Empty;
+                _length = -1;
+                _md5 = null;
                 _httpReceiver = null;
                 _requestIndex = -1;
-                
+                _cancellationToken = default;
                 ObjectPool<UnityWebRequestDownloadTask>.Shared.Return(this);
             }
-            
-            public static UnityWebRequestDownloadTask Create(string url, string file, out Guid token, IHttpReceiver httpReceiver = null, CancellationToken cancellationToken = default, int requestIndex = -1)
+
+            public static UnityWebRequestDownloadTask Create(string url, string file, out Guid token, IHttpReceiver httpReceiver = null, CancellationToken cancellationToken = default, int requestIndex = -1, long length = -1, string md5 = null)
             {
                 var task = ObjectPool<UnityWebRequestDownloadTask>.Shared.Rent();
                 task._url = url;
                 task._file = file;
+                task._length = length;
+                task._md5 = md5;
                 task._httpReceiver = httpReceiver;
                 task._requestIndex = requestIndex;
                 task._cancellationToken = cancellationToken;
