@@ -4,9 +4,9 @@
 
 ## 当前修复进度
 
-当前文件同步自 `D:\WorkGIT\easyframework-unity\REVIEW.md` 的完整 26 项报告；原独立仓库报告保持原样。修复目标为 `D:\WorkGIT\easyframework-projects\EasyFramework.Unity2022\Packages\easyframework-unity`。
+当前文件同步自 `D:\WorkGIT\easyframework-unity\REVIEW.md` 的完整 26 项报告；原独立仓库报告保持原样。当前修复目标为 `D:\WorkCookie\easyframework-projects\EasyFramework.Unity2022\Packages\easyframework-unity`；下文顺序 1、2 保留当时的项目路径。
 
-历史基线共 **26 项：12 项 P1、14 项 P2**。当前 **8 项已修复、18 项待处理**；待处理为 **6 项 P1、12 项 P2**。已关闭 R01–R05、R11、R16、R17；R14 的窗口容器已有本地部分修正，尚未完成生命周期验收，仍计入待处理。顺序 1、2 已完成，顺序 3–6 尚未执行。
+历史基线共 **26 项：12 项 P1、14 项 P2**。当前 **11 项已修复、15 项待处理**；待处理为 **5 项 P1、10 项 P2**。已关闭 R01–R05、R10、R11、R16–R19；R14 的窗口容器已有本地部分修正，尚未完成生命周期验收，仍计入待处理。顺序 1–3 已完成，顺序 4–6 尚未执行。
 
 ## Ticker Node 重构（2026-11-02）
 
@@ -71,13 +71,43 @@ Ticker 逐节点隔离 OnTick / OnRemove 错误，移除幂等，延后清理以
 
 后续可读性整理：Set / TrySet 共用完成路径，锁内辅助方法以 Locked 标明调用约束；保留原子 token 校验、结果先于状态发布、锁外续体及安全回池。Ticker 将重复的移除入队收敛到 QueueRemovalLocked；在串行派发、延后清理和待清理集合禁止提前重加的约束下，去掉冗余版本号及元组快照。未新增接口、Func 或上下文类，外部行为保持。此前一轮 TaskAwaiter 由 307 行精简到 283 行，Ticker 由 166 行精简到 158 行；该轮整理后对同一原项目执行 Unity 命令行 Edit Mode 回归，**125/125 通过、0 失败、0 跳过**（42 项 ETaskAwaiter、16 项 Ticker 与原有 67 项，其中本轮新增 7 项完成 API 与 3 项 Ticker 回归）。进程已退出，未创建临时 Unity 项目或启动交互式 Editor。 随后将 TaskAwaiter 的 5 个布尔字段改为两个正交小枚举 Lifetime、ContinuationPhase，并保留表示 Ticker 注册事实的 _scheduled；枚举直接表达消费/清理和续体阶段，未用 Flags 隐藏原位状态。SyncRoot 继续保护线程池/Socket 等后台完成与调度线程共享的状态，Set/TrySet 薄入口共用加锁核心，Locked 辅助不重复加锁，外部续体仍锁外执行。此轮枚举整理后再次直接对同一原项目执行 Unity 2022.3.62f3 命令行 Edit Mode 测试，**128/128 通过、0 失败、0 跳过**（45 项 ETaskAwaiter、16 项 Ticker 与原有 67 项，本轮新增 3 项状态转换回归）；未创建临时 Unity 项目或启动交互式 Editor。
 
+## 顺序 3 执行记录（2026-11-02）
+
+执行项目：`D:\WorkCookie\easyframework-projects\EasyFramework.Unity2022`，包子模块为 `Packages/easyframework-unity` 的 `dev` 分支。本轮完成“修复网络与事件边界”工作包，关闭 R10、R18、R19。
+
+| 问题 | 本轮修正 | 验收结果 |
+| --- | --- | --- |
+| R10：满容量被判为空 | 显式记录有效字节数；统一普通写入、连续/分段写区间、Advance、扩容和 Compact；连续区间满足 sizeHint 且不暴露未读数据，Advance 不得超出本次借用 | 30 项回归覆盖容量减一/容量/容量加一、绕回填满、三种连续写入 API、分段写入、借用失效及 1000 步混合操作对照 |
+| R18：回调退订污染派发 | Invoke 在回调前捕获对象与委托两组快照；首轮写时复制已在后续调整为订阅 List 与分段复用快照，当前派发和嵌套语义不变 | 首轮 14 项，后续扩展为 18 项同步事件回归；覆盖订阅变化、深层嵌套扩容、异常引用清理及预热后分配 |
+| R19：未连接 Socket 未释放 | Dispose 无条件关闭原生 Socket，重复/并发调用幂等；提交与释放同步，所有同步/异步完成统一释放操作持有；最后一个回调退出后才释放事件参数与池化缓冲区 | 12 项真实 loopback/句柄回归覆盖未连接、连接失败、发送/接收在途、异步断开后、连接等待期间、回调内及回调执行期间 Dispose |
+
+修复前，直接编译真实源码与正式 NUnit 用例的 Roslyn/Mono 隔离验证中，RingBuffer 基线为 **9/30 通过、21 失败**，事件初版为 **4/12 通过、8 失败**。Socket 原生句柄回归在原项目 Unity 命令行中明确复现 Dispose 后 `IsClosed=false`。修复后的 RingBuffer 与事件隔离验证分别为 **30/30**、**14/14** 通过。
+
+直接对当前原项目使用 Unity **2022.3.62f3** 命令行 `-batchmode -nographics -runTests -testPlatform EditMode -testFilter EasyFramework.Tests` 执行完整 Edit Mode 回归，**204/204 通过，0 失败、0 跳过**：原有 148 项及新增 RingBuffer 30、Event 14、SocketChannel 12 项。随后补充在途操作/回调结束后实际归还底层池缓冲区的断言，Socket 聚焦回归 **12/12 通过，退出码 0**；最终完整回归仍为 **204/204 通过，0 失败、0 跳过，退出码 0**。两次最终进程均已退出，报告统一保存在项目内 `Library/Review3Validation/EditMode.xml`、`EditMode.log`，聚焦报告为同目录 `SocketChannel.xml`、`SocketChannel.log`。按用户要求使用命令行测试，没有创建临时 Unity 工程或启动交互式 Editor。
+
+事件 API 仍要求同线程订阅/派发；RingBuffer 的借用内存、扩容和释放仍由调用者协调同步，相关契约已分别写入 Event 文档和 IRingBuffer 注释。本轮未执行 Play Mode、Player 或 IL2CPP 构建，没有提交或推送。
+
+## Event List 快照与异步事件（2026-11-02）
+
+按用户要求恢复同步事件的订阅 List，并新增两条复用快照 List。每次 Invoke 在回调前追加两组订阅，保存各自起点和数量，按本次区间派发；同类型嵌套仅尾部追加，finally 清除自己的尾段和引用，保留容量。有效增删不再每次分配新数组；容量不足仍会扩容，每次派发增加 O(n) 复制和清引用开销。
+
+新增 4 项正式同步回归：五层嵌套期间两组快照扩容与完整顺序、日志器再抛异常后的同类型恢复及退订目标 GC、预热后有效对象/委托增删 1024 轮零分配、稳定及五层嵌套派发各 1024 轮零分配。对原项目执行 Unity 2022.3.62f3 命令行完整 Edit Mode 回归，**208/208 通过，0 失败、0 跳过，退出码 0**；其中 EventTests **18/18**。报告位于 `Library/EventSnapshotValidation/EditMode.xml` 和 `EditMode.log`。零分配断言仅覆盖测试中的预建处理器与预热容量，不包括业务分配、首次使用及扩容。
+
+随后新增独立异步事件通道，统一从 `F.Event` 使用 `AddAsync/RemoveAsync/InvokeAsync`，支持 `IAsyncEvent<T>.ExecuteAsync(T)` 和 `Func<T, ETask>`；原同步 Add/Remove/Invoke 保持不变。同步和异步订阅、快照完全分离，即使参数类型相同也不相互触发或解绑。每次异步派发先捕获对象与委托两组快照，先对象后委托按注册顺序逐个 await；处理器异常与取消记录后继续，日志器自身异常仍传播给调用方。
+
+异步派发使用每次独占的池化 Snapshot，完成后在 finally 中清引用归池，支持同类型嵌套和多个挂起派发按任意顺序完成；不共用同步派发的尾段存储。事件调用、订阅变更及续体仍遵循同线程契约；返回的 ETask 只能由调用方 await 或 Forget 一次。不承诺异步调用整体零 GC，也不新增并行广播、Task 重载或统一取消入口。
+
+新增 **10 项 AsyncEventTests**，使用真实 ETask.TaskAwaiter 控制挂起，覆盖同步/异步隔离及挂起期间同步事件操作、逐个等待与参数顺序、订阅变化、同类型嵌套、非 LIFO 完成与重租隔离、同步/挂起后异常及取消、空/重复订阅，以及正常和日志异常路径的引用清理。最新 Unity **2022.3.62f3** 原项目命令行完整 Edit Mode 回归 **218/218 通过，0 失败、0 跳过，退出码 0**，进程正常退出；其中同步事件 **18/18**、异步事件 **10/10**。报告位于 `Library/EventSnapshotValidation/AsyncEditMode.xml` 和 `AsyncEditMode.log`。
+
+已同步 Event/AsyncEvent 文档及入口索引；未创建临时 Unity 工程、未启动交互式 Editor，未执行 Play Mode、Player 或 IL2CPP 构建，未提交或推送。
+
 ## 历史全量审查范围与结论
 
 沿用上次 Review 的 `5a6c4e4361d98b1c7541a4f76a64c20bb3f70ca1` 为增量基准，差异命令为 `git diff 5a6c4e4361d98b1c7541a4f76a64c20bb3f70ca1...HEAD`；期间只有 `d20f791 同步文档` 一个提交。该提交修改文档、示例、AGENTS 和包的 Samples 注册，未修改 Runtime、Editor、Module 或 Tests 实现。
 
 本次除检查增量外，重点复核当前 ETask / Ticker、事件、网络缓存、Controller、Window、初始化、资源下载、DLC、Editor 构建、UPM 依赖及 Profiler。历史审查记录 **26 项源码问题：12 项 P1、14 项 P2**。在该审查基线中，上次记录的 5 项问题均仍存在，对应 R06、R07、R08、R09、R13；其余 21 项为该次新识别的历史问题，不能归因于文档提交。当前修复状态以上节和各项标记为准。
 
-P1 表示应优先修复的数据丢失、核心流程失效或发布可靠性问题；P2 表示需排期处理的条件性错误与生命周期问题。编号用于跟踪；Standards、Spec 两轴分别报告，后面的源码清单另按修复优先级组织。历史全量审查阶段仅更新报告；当前已完成顺序 1、2。下文保留原故障描述、诊断证据及验收标准，已修复项的历史症状不表示当前仍可复现。
+P1 表示应优先修复的数据丢失、核心流程失效或发布可靠性问题；P2 表示需排期处理的条件性错误与生命周期问题。编号用于跟踪；Standards、Spec 两轴分别报告，后面的源码清单另按修复优先级组织。历史全量审查阶段仅更新报告；当前已完成顺序 1–3。下文保留原故障描述、诊断证据及验收标准，已修复项的历史症状不表示当前仍可复现。
 
 ## 历史审查：Standards
 
@@ -95,7 +125,7 @@ Controller 帧分发、批量退出、初始化失败和宿主生命周期等限
 
 **本轴：1 项 API 契约偏差，最严重项为 S01；映射到 R14，不额外计入 26 项源码问题。**
 
-## 历史问题清单：P1（当前 6 项已修复、6 项待处理）
+## 历史问题清单：P1（当前 7 项已修复、5 项待处理）
 
 ### R01 [P1] [已修复] DLC 清理误删应用数据根目录文件
 
@@ -179,13 +209,15 @@ Runtime 无条件引用 TMP、HybridCLR 和 URP，Profiler 也无条件引用 UR
 
 优化：明确必须依赖并在清单声明；将真正可选的 HybridCLR / URP 集成拆到独立程序集并控制启用，避免核心程序集引用可选包。确定最低支持 Unity 版本。验收：纯净工程按公开安装步骤导入，核心及各可选集成组合均无缺失引用和编译错误。
 
-### R10 [P1] RingBuffer 写满容量时把有效数据判为空
+### R10 [P1] [已修复] RingBuffer 写满容量时把有效数据判为空
 
 位置：[RingBuffer.cs:26](Runtime/Core/Network/RingBuffer.cs#L26)、[Write:61](Runtime/Core/Network/RingBuffer.cs#L61)、[Advance:204](Runtime/Core/Network/RingBuffer.cs#L204)、[扩容判断:261](Runtime/Core/Network/RingBuffer.cs#L261)。验证：真实 RingBuffer 源码诊断。
 
 读写指针相同表示空，但 FreeLength 和扩容判断允许写满整个 Capacity；写满后写指针绕回读指针，Length 变为 0。实测 `Write(new byte[buffer.Capacity])` 后 Length 为 0、TryPeek 失败；GetMemory / Advance 写满也相同。Socket 使用该缓存，满容量边界会静默丢失数据。
 
 优化：维护有效数据计数，或保留一个哨兵空位；统一 Write、Advance、可写区域和扩容的容量语义。验收：容量减一、容量、容量加一、绕回后恰好填满，以及两种写入 API 都保持字节完整和顺序。
+
+当前状态：已修复。有效字节计数区分满/空，全部 Capacity 可用；普通/连续/分段写入、Advance、线性化和扩容遵循统一不变量。30 项真实源码回归及原项目 Unity Edit Mode 完整回归通过，详见顺序 3 执行记录。
 
 ### R11 [P1] [已修复] HTTP 失败留下半包，DLC 随后把它当作成功资源
 
@@ -205,7 +237,7 @@ AB 构建返回 null 时只打印错误，外层资源构建链继续运行 DLCB
 
 优化：各阶段显式返回失败或抛出异常并中断父链；全部产物验证成功后再提交索引、LatestVersion 和 StreamingAssets。验收：注入 AB 构建失败、源文件不可读和复制失败，版本不推进、可用底包不覆盖、后续 Player 构建不继续。
 
-## 历史问题清单：P2（当前 2 项已修复、12 项待处理）
+## 历史问题清单：P2（当前 4 项已修复、10 项待处理）
 
 ### R13 [P2] 初始化异常后，后续调用永久等待
 
@@ -255,7 +287,7 @@ GetFilePath 对不存在的资源返回空字符串，Exists 却执行 `string.I
 
 当前状态：已修复。Exists 仅在清单条目存在且文件长度、MD5 均有效时返回 true；未知资源下载直接失败且不发请求，真实 Unity 回归通过。
 
-### R18 [P2] 事件派发中退订导致漏调用与越界
+### R18 [P2] [已修复] 事件派发中退订导致漏调用与越界
 
 位置：[Event.cs:49](Runtime/Core/Event/Event.cs#L49)、[Action 分支:65](Runtime/Core/Event/Event.cs#L65)。验证：真实 Event 源码诊断。
 
@@ -263,13 +295,17 @@ GetFilePath 对不存在的资源返回空字符串，Exists 却执行 `string.I
 
 优化：使用派发快照或支持重入的延迟增删，明确订阅变化在当前/下一次派发生效的语义。验收：移除自己/他人、新增订阅及嵌套 Invoke 均按约定调用且不越界。
 
-### R19 [P2] SocketChannel.Dispose 不释放未连接的 socket
+当前状态：已修复。两组订阅表均在回调前捕获；订阅变更不影响当前派发，嵌套和后续 Invoke 使用最新订阅。后续按用户要求改为订阅 List 加分段复用快照，容量预热后避免每次订阅变更与派发的框架内部分配；18 项同步事件回归及 Unity Edit Mode 完整回归通过，详见 Event 后续执行记录。
+
+### R19 [P2] [已修复] SocketChannel.Dispose 不释放未连接的 socket
 
 位置：[SocketChannel.cs:78](Runtime/Core/Network/SocketChannel.cs#L78)、[Dispose:113](Runtime/Core/Network/SocketChannel.cs#L113)。验证：真实源码及真实 .NET Socket 诊断。
 
 Dispose 只调用 Disconnect，后者在 IsConnected=false 时直接返回，socket 本身没有无条件 Dispose。实测 new 后立即 Dispose，native handle 的 IsClosed 仍为 false。连接失败或异步断开后也存在绕过释放的路径。
 
 优化：Dispose 无条件释放 socket，协调在途异步操作和回调，清理保持幂等。验收：未连接、连接失败、已连接及异步断开后均关闭 native handle，重复 Dispose 安全。
+
+当前状态：已修复。Dispose 无条件关闭句柄并终止连接等待；同步与异步完成共同持有事件参数及池化缓冲区，回调退出后统一幂等清理。12 项真实 Socket/loopback 回归及 Unity Edit Mode 完整回归通过。
 
 ### R20 [P2] 无效发布版本会先清空可用 StreamingAssets
 
@@ -335,7 +371,7 @@ OnUpdate 用 `lastValue == 0` 跳过赋值，导致 DrawCalls、GC 分配等指�
 | --- | --- | --- | --- | --- | --- |
 | 1 | 已完成 | 保护用户数据和下载文件 | R01、R11、R16、R17 | 约束 DLC 文件所有权与清理根目录；临时下载、完整性校验后提交；版本快照及路径缓存一起切换 | 根目录存档不变；断网/取消不留下可用半包；换版本路径与内容一致 |
 | 2 | 已完成 | 稳定 ETask 与调度基础 | R02–R05 | 统一结果、异常、取消、continuation 和消费/回池协议；逐节点隔离 tick 异常；写清单次消费语义 | 真实 TaskAwaiter 回归覆盖异常、竞争、延后首次消费、回池复用及失败节点隔离 |
-| 3 | 待执行 | 修复网络与事件边界 | R10、R18、R19 | 统一 RingBuffer 满/空不变量、写入与扩容规则；事件重入策略；socket 无条件幂等释放 | 满容量/绕回字节测试、订阅变更测试及 native handle 释放测试通过 |
+| 3 | 已完成 | 修复网络与事件边界 | R10、R18、R19 | 统一 RingBuffer 满/空不变量、写入与扩容规则；事件重入策略；socket 无条件幂等释放 | 满容量/绕回字节测试、订阅变更测试及 native handle 释放测试通过 |
 | 4 | 待执行 | 统一初始化和业务生命周期 | R06–R08、R13–R15 | 初始化共享结果/失败策略；Controller 栈变更与回调配对；Window 创建中/已打开/已关闭/已销毁状态；统一最终清理入口 | Unity 场景验证退出/解绑各一次、帧分发正常、并发窗口只创建一次、失败能收敛 |
 | 5 | 待执行 | 让构建失败可见且可恢复 | R12、R20–R22 | 构建阶段失败立即上抛；暂存全部产物并校验后发布；统一生命周期；每次执行读取当前配置 | 故障注入时 LatestVersion/底包保持原样；回调各一次；同会话修改目录立即生效 |
 | 6 | 待执行 | 完成可安装性与诊断隔离 | R09、R23–R26 | 明确最低 Unity 与必选依赖；隔离可选集成程序集；Profiler 遵循开关、主线程消费日志、恢复输入屏蔽、正确记录零值 | 纯净工程安装及集成组合编译通过；Profiler 开关/日志/输入/计数器场景通过 |

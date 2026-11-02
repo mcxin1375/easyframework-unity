@@ -18,6 +18,8 @@ namespace EasyFramework
     {
         private static readonly List<IEvent<T>> EventList = new();
         private static readonly List<Action<T>> ActionList = new();
+        private static readonly List<IEvent<T>> EventSnapshot = new();
+        private static readonly List<Action<T>> ActionSnapshot = new();
 
         public static void Add(IEvent<T> handler)
         {
@@ -28,7 +30,7 @@ namespace EasyFramework
         public static void Remove(IEvent<T> handler)
         {
             if (handler == null) return;
-            if (EventList.Contains(handler)) EventList.Remove(handler);
+            EventList.Remove(handler);
         }
 
         public static void Add(Action<T> handler)
@@ -40,41 +42,49 @@ namespace EasyFramework
         public static void Remove(Action<T> handler)
         {
             if (handler == null) return;
-            if (ActionList.Contains(handler)) ActionList.Remove(handler);
+            ActionList.Remove(handler);
         }
 
         public static void Invoke(in T args)
         {
-            // Invoke IEvent handlers
-            var handlers = EventList;
-            int count = handlers.Count;
-
-            for (int i = 0; i < count; i++)
+            int eventStart = EventSnapshot.Count;
+            int actionStart = ActionSnapshot.Count;
+            try
             {
-                try
+                int eventCount = EventList.Count;
+                int actionCount = ActionList.Count;
+                // Capture both groups before callbacks; nested dispatch appends its own range.
+                EventSnapshot.AddRange(EventList);
+                ActionSnapshot.AddRange(ActionList);
+
+                for (int i = 0; i < eventCount; i++)
                 {
-                    handlers[i].Execute(args);
+                    try
+                    {
+                        EventSnapshot[eventStart + i].Execute(args);
+                    }
+                    catch (Exception e)
+                    {
+                        FDebug.LogError(e);
+                    }
                 }
-                catch (Exception e)
+
+                for (int i = 0; i < actionCount; i++)
                 {
-                    FDebug.LogError(e);
+                    try
+                    {
+                        ActionSnapshot[actionStart + i]?.Invoke(args);
+                    }
+                    catch (Exception e)
+                    {
+                        FDebug.LogError(e);
+                    }
                 }
             }
-
-            // Invoke Action handlers
-            var actions = ActionList;
-            int actionCount = actions.Count;
-
-            for (int i = 0; i < actionCount; i++)
+            finally
             {
-                try
-                {
-                    actions[i]?.Invoke(args);
-                }
-                catch (Exception e)
-                {
-                    FDebug.LogError(e);
-                }
+                EventSnapshot.RemoveRange(eventStart, EventSnapshot.Count - eventStart);
+                ActionSnapshot.RemoveRange(actionStart, ActionSnapshot.Count - actionStart);
             }
         }
     }
@@ -88,5 +98,13 @@ namespace EasyFramework
         public void Remove<T>(Action<T> handler) => Event<T>.Remove(handler);
 
         public void Invoke<T>(in T args) => Event<T>.Invoke(args);
+
+        public void AddAsync<T>(IAsyncEvent<T> instance) => AsyncEvent<T>.Add(instance);
+        public void RemoveAsync<T>(IAsyncEvent<T> instance) => AsyncEvent<T>.Remove(instance);
+
+        public void AddAsync<T>(Func<T, ETask> handler) => AsyncEvent<T>.Add(handler);
+        public void RemoveAsync<T>(Func<T, ETask> handler) => AsyncEvent<T>.Remove(handler);
+
+        public ETask InvokeAsync<T>(T args) => AsyncEvent<T>.InvokeAsync(args);
     }
 }

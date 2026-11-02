@@ -37,7 +37,7 @@ public sealed class GameController : Controller<GameController>
 | `F.Settings` | 参数与运行路径 | [Settings](EasyFrameworkSettings.md) |
 | `F.Behaviour` | Unity 生命周期宿主 | [Behaviour](FBehaviour.md) |
 | `F.ControllerManager` | Controller 栈与状态查询 | [ControllerManager](ControllerManager.md) |
-| `F.Event` | 泛型事件注册与派发 | [Event](Event.md) |
+| `F.Event` | 同步派发与异步逐个等待事件 | [Event](Event.md) / [异步事件](AsyncEvent.md) |
 | `F.ResLoader` | 资源加载与持有关系 | [ResLoader](ResLoader.md) |
 | `F.DLCManager` | 版本与文件下载 | [DLCManager](DLCManager.md) |
 | `F.HttpManager` | HTTP 文本与文件下载 | [HttpManager](HttpManager.md) |

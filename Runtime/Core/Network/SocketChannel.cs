@@ -41,9 +41,13 @@ namespace EasyFramework
         private readonly ISocketHandler _handler;
 
         private const int ChunkSize = 16 * 1024;
+        private readonly object _socketLock = new();
+        private volatile bool _disposed;
+        private int _pendingOperations;
+        private bool _resourcesDisposed;
         
         private int _sendState;
-        private ETaskState _taskState = ETaskState.None;
+        private volatile ETaskState _taskState = ETaskState.None;
         
         public SocketChannel(ISocketHandler handler)
         {
@@ -60,16 +64,29 @@ namespace EasyFramework
         
         public async ETask<bool> ConnectAsync(string host, int port)
         {
+            if (_disposed) return false;
             Host = host;
             Port = port;
             
             IPAddress[] addresses = await Dns.GetHostAddressesAsync(Host);
             if (addresses.Length == 0) return false;
             
-            _sendArgs.RemoteEndPoint = new IPEndPoint(addresses[0], port);
-
-            _taskState = ETaskState.Connecting;
-            if (!_socket.ConnectAsync(_sendArgs)) OnConnectComplete(_sendArgs);
+            bool pending;
+            lock (_socketLock)
+            {
+                if (_disposed) return false;
+                _sendArgs.RemoteEndPoint = new IPEndPoint(addresses[0], port);
+                _taskState = ETaskState.Connecting;
+                _pendingOperations++;
+                try { pending = _socket.ConnectAsync(_sendArgs); }
+                catch
+                {
+                    _pendingOperations--;
+                    _taskState = ETaskState.None;
+                    throw;
+                }
+            }
+            if (!pending) OnSocketEvent(this, _sendArgs);
             
             await ETask.WaitUntil(() => _taskState == ETaskState.None);
             return IsConnected;
@@ -77,34 +94,39 @@ namespace EasyFramework
 
         public void Disconnect()
         {
-            if (!IsConnected) return;
-
-            IsConnected = false;
-            Volatile.Write(ref _sendState, 0);
-            _sendBuffer.Clear();
-            _receiveBuffer.Clear();
-            
-            try
+            lock (_socketLock)
             {
-                _socket.Shutdown(SocketShutdown.Both);
-                _socket.Close();
-            }
-            catch (Exception e)
-            {
-                FDebug.LogException(e);
+                if (_disposed || !IsConnected) return;
+                IsConnected = false;
+                Volatile.Write(ref _sendState, 0);
+                _sendBuffer.Clear();
+                _receiveBuffer.Clear();
+                try { _socket.Shutdown(SocketShutdown.Both); }
+                catch (SocketException e) { FDebug.LogException(e); }
+                finally { _socket.Close(); }
             }
         }
         public async ETask<bool> DisconnectAsync()
         {
-            if (!IsConnected) return false;
-
-            IsConnected = false;
-            Volatile.Write(ref _sendState, 0);
-            _sendBuffer.Clear();
-            _receiveBuffer.Clear();
-            
-            _taskState = ETaskState.Disconnecting;
-            if (!_socket.DisconnectAsync(_sendArgs)) OnDisconnectComplete(_sendArgs);
+            bool pending;
+            lock (_socketLock)
+            {
+                if (_disposed || !IsConnected) return false;
+                IsConnected = false;
+                Volatile.Write(ref _sendState, 0);
+                _sendBuffer.Clear();
+                _receiveBuffer.Clear();
+                _taskState = ETaskState.Disconnecting;
+                _pendingOperations++;
+                try { pending = _socket.DisconnectAsync(_sendArgs); }
+                catch
+                {
+                    _pendingOperations--;
+                    _taskState = ETaskState.None;
+                    throw;
+                }
+            }
+            if (!pending) OnSocketEvent(this, _sendArgs);
             
             await ETask.WaitUntil(() => _taskState == ETaskState.None);
             return IsConnected;
@@ -112,8 +134,27 @@ namespace EasyFramework
 
         public void Dispose()
         {
-            Disconnect();
-            
+            lock (_socketLock)
+            {
+                if (_disposed) return;
+                _disposed = true;
+                IsConnected = false;
+                _taskState = ETaskState.None;
+                Volatile.Write(ref _sendState, 0);
+                // Close the handle even when connection never succeeded. Pending callbacks
+                // retain their args and pooled buffers until they have finished.
+                try { _socket.Dispose(); }
+                finally { ReleaseResources(); }
+            }
+        }
+
+        // Called under _socketLock; each submitted operation releases its hold exactly once.
+        private void ReleaseResources()
+        {
+            if (!_disposed || _pendingOperations != 0 || _resourcesDisposed) return;
+            _resourcesDisposed = true;
+            _sendArgs.Completed -= OnSocketEvent;
+            _receiveArgs.Completed -= OnSocketEvent;
             _sendArgs.Dispose();
             _receiveArgs.Dispose();
             _sendBuffer.Dispose();
@@ -124,9 +165,11 @@ namespace EasyFramework
         public void Send(byte[] buffer, int offset, int count) => Send(new ReadOnlySpan<byte>(buffer, offset, count));
         public void Send(ReadOnlySpan<byte> span)
         {
-            if (!IsConnected) return;
-            
-            _sendBuffer.Write(span);
+            lock (_socketLock)
+            {
+                if (_disposed || !IsConnected) return;
+                _sendBuffer.Write(span);
+            }
             StartSending();
         }
 
@@ -138,79 +181,98 @@ namespace EasyFramework
 
         private void OnSocketEvent(object sender, SocketAsyncEventArgs e)
         {
-            switch (e.LastOperation)
+            try
             {
-                case SocketAsyncOperation.Connect:
-                    OnConnectComplete(e);
-                    break;
-                case SocketAsyncOperation.Receive:
-                    OnReceiveComplete(e);
-                    break;
-                case SocketAsyncOperation.Send:
-                    OnSendComplete(e);
-                    break;
-                case SocketAsyncOperation.Disconnect:
-                    OnDisconnectComplete(e);
-                    break;
-                default:
-                    throw new Exception("socket error: " + e.LastOperation);
+                if (_disposed) return;
+                switch (e.LastOperation)
+                {
+                    case SocketAsyncOperation.Connect: OnConnectComplete(e); break;
+                    case SocketAsyncOperation.Receive: OnReceiveComplete(e); break;
+                    case SocketAsyncOperation.Send: OnSendComplete(e); break;
+                    case SocketAsyncOperation.Disconnect: OnDisconnectComplete(e); break;
+                    default: throw new Exception("socket error: " + e.LastOperation);
+                }
+            }
+            finally
+            {
+                lock (_socketLock)
+                {
+                    _pendingOperations--;
+                    ReleaseResources();
+                }
             }
         }
         private void OnConnectComplete(SocketAsyncEventArgs e)
         {
-            IsConnected = e.SocketError == SocketError.Success;
-
-            if (e.SocketError != SocketError.Success)
+            lock (_socketLock)
             {
-                Disconnect();
-                _handler.OnSocketError(ESocketOperation.Connect, e.SocketError);
+                if (_disposed) return;
+                IsConnected = e.SocketError == SocketError.Success;
             }
-
-            if (IsConnected) StartReceiving();
-            
-            _taskState = ETaskState.None;
+            try
+            {
+                if (e.SocketError != SocketError.Success)
+                {
+                    Disconnect();
+                    if (!_disposed) _handler.OnSocketError(ESocketOperation.Connect, e.SocketError);
+                }
+                if (IsConnected) StartReceiving();
+            }
+            finally { _taskState = ETaskState.None; }
         }
         private void OnDisconnectComplete(SocketAsyncEventArgs e)
         {
-            if (e.SocketError != SocketError.Success)
+            if (_disposed) return;
+            try
             {
-                Disconnect();
-                _handler.OnSocketError(ESocketOperation.Disconnect, e.SocketError);
+                if (e.SocketError != SocketError.Success)
+                {
+                    Disconnect();
+                    if (!_disposed) _handler.OnSocketError(ESocketOperation.Disconnect, e.SocketError);
+                }
             }
-            
-            _taskState = ETaskState.None;
+            finally { _taskState = ETaskState.None; }
         }
         private void OnReceiveComplete(SocketAsyncEventArgs e)
         {
+            lock (_socketLock)
+            {
+                if (_disposed || !IsConnected) return;
+                if (e.SocketError == SocketError.Success && e.BytesTransferred > 0)
+                    _receiveBuffer.Advance(e.BytesTransferred);
+            }
             // 对端关闭
             if (e.SocketError != SocketError.Success || e.BytesTransferred == 0)
             {
                 if (IsConnected)
                 {
                     Disconnect();
-                    _handler.OnSocketError(ESocketOperation.Receive, e.SocketError);
+                    if (!_disposed) _handler.OnSocketError(ESocketOperation.Receive, e.SocketError);
                 }
                 return;
             }
             
-            _receiveBuffer.Advance(e.BytesTransferred);
-            _handler.OnReceive(_receiveBuffer);
+            if (!_disposed) _handler.OnReceive(_receiveBuffer);
             
             StartReceiving();
         }
         private void OnSendComplete(SocketAsyncEventArgs e)
         {
+            lock (_socketLock)
+            {
+                if (_disposed || !IsConnected) return;
+                if (e.SocketError == SocketError.Success)
+                    _sendBuffer.AdvanceRead(e.BytesTransferred);
+            }
             if (e.SocketError != SocketError.Success)
             {
                 if (IsConnected)
                 {
                     Disconnect();
-                    _handler.OnSocketError(ESocketOperation.Send, e.SocketError);
+                    if (!_disposed) _handler.OnSocketError(ESocketOperation.Send, e.SocketError);
                 }
                 return;
             }
-            
-            _sendBuffer.AdvanceRead(e.BytesTransferred);
             
             Volatile.Write(ref _sendState, 0);
             StartSending();
@@ -218,24 +280,42 @@ namespace EasyFramework
 
         private void StartReceiving()
         {
-            var segment = _receiveBuffer.GetSegment(ChunkSize);
-            _receiveArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
-            if (!_socket.ReceiveAsync(_receiveArgs)) OnReceiveComplete(_receiveArgs);
+            bool pending;
+            lock (_socketLock)
+            {
+                if (_disposed || !IsConnected) return;
+                var segment = _receiveBuffer.GetSegment(ChunkSize);
+                _receiveArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
+                _pendingOperations++;
+                try { pending = _socket.ReceiveAsync(_receiveArgs); }
+                catch { _pendingOperations--; throw; }
+            }
+            if (!pending) OnSocketEvent(this, _receiveArgs);
         }
         
         private void StartSending()
         {
-            if (!IsConnected || _sendBuffer.Length == 0) return;
-            
-            if (Interlocked.CompareExchange(ref _sendState, 1, 0) != 0) return;
-            
-            if (!_sendBuffer.TryPeekSegment(ChunkSize, out var segment))
+            bool pending;
+            lock (_socketLock)
             {
-                Volatile.Write(ref _sendState, 0);
-                return;
+                if (_disposed || !IsConnected || _sendBuffer.Length == 0) return;
+                if (Interlocked.CompareExchange(ref _sendState, 1, 0) != 0) return;
+                if (!_sendBuffer.TryPeekSegment(ChunkSize, out var segment))
+                {
+                    Volatile.Write(ref _sendState, 0);
+                    return;
+                }
+                _sendArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
+                _pendingOperations++;
+                try { pending = _socket.SendAsync(_sendArgs); }
+                catch
+                {
+                    _pendingOperations--;
+                    Volatile.Write(ref _sendState, 0);
+                    throw;
+                }
             }
-            _sendArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
-            if (!_socket.SendAsync(_sendArgs)) OnSendComplete(_sendArgs);
+            if (!pending) OnSocketEvent(this, _sendArgs);
         }
 
     }

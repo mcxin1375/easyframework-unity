@@ -94,7 +94,8 @@ public static class GameBuild
 | --- | --- |
 | [ETask](Documentation/Runtime/ETask.md) | 异步任务与生命周期 |
 | [Settings](Documentation/Runtime/EasyFrameworkSettings.md) / [Behaviour](Documentation/Runtime/FBehaviour.md) | 配置、宿主与帧循环 |
-| [ControllerManager](Documentation/Runtime/ControllerManager.md) / [Event](Documentation/Runtime/Event.md) | 业务流程与事件 |
+| [ControllerManager](Documentation/Runtime/ControllerManager.md) | 业务流程 |
+| [Event](Documentation/Runtime/Event.md) / [异步事件](Documentation/Runtime/AsyncEvent.md) | 同步派发与异步逐个等待事件 |
 | [ResLoader](Documentation/Runtime/ResLoader.md) / [DLCManager](Documentation/Runtime/DLCManager.md) | 资源与版本 |
 | [WindowManager](Documentation/Runtime/WindowManager.md) | 窗口与 UI |
 | [SceneLoader](Documentation/Runtime/SceneLoader.md) / [SpriteLoader](Documentation/Runtime/SpriteLoader.md) / [ShaderLoader](Documentation/Runtime/ShaderLoader.md) | 场景、Sprite、Shader |
