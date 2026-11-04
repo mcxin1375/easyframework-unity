@@ -10,12 +10,8 @@ namespace EasyFramework
     {
         public IController Controller { get; private set; }
         
-        public virtual void Create(IController controller)
-        {
-            Controller = controller;
-            
-            OnCreate();
-        }
+        void IControllerComponent.Register(IController controller) => Controller = controller;
+        void IControllerComponent.OnCreate() => OnCreate();
         ETask IControllerComponent.OnPreEnterAsync()
         {
             OnPreEnter();

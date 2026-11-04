@@ -1,6 +1,6 @@
 # F.WindowManager
 
-`F.WindowManager` 的类型是 `IWindowManager`，负责 UI Root、UI Layer 和窗口实例的创建、打开、关闭、刷新与销毁。业务代码通过 `F.WindowManager` 访问它，不直接依赖内部的 `WindowManager` 实现类。
+`F.WindowManager` 的类型是 `IWindowManager`，负责 UI Root、UI Layer 和窗口实例的创建、打开、关闭、刷新与销毁。业务代码通过 `F.WindowManager` 访问它，不直接依赖内部的 `WindowManager` 实现类。窗口管理逻辑集中在 WindowManager，通过 IFrameworkTick 注册到 FBehaviour 的帧循环，不再添加独立的 UIWindowBehaviour 组件。
 
 ## 前置条件
 
@@ -37,17 +37,25 @@ UI Root、各个 `UILayer` 和窗口资源也必须已经配置。`UILayer` 当�
 
 泛型窗口需要满足 `class, IWindow, new()`。优先使用泛型 API，这样窗口类型和参数约束可以在编译期检查。
 
+窗口入口在 Unity 主线程调用。Window 的对象在首次 Open / OpenAsync 时创建，IWindow.Create() 是管理器创建实例时的入口。异步加载由 IsLoading 标记保护，加载结束或抛错都会在 finally 中复位；仅在加载中直接重复调用 IWindow.Open / OpenAsync 时抛出 InvalidOperationException，已加载对象仍可复用。管理器在修改层登记前检查 IsLoading，重叠请求记录错误并返回 null，保留首个请求及其登记；打开过程抛错则清理对应实例并返回 null。资源对象为 null 也视为打开失败，后续请求可以重新创建。参数仍在管理器入口写入，拒绝的重叠请求也可能改变参数，因此同类型打开应顺序 await。
+
+
 ## 关闭与销毁
 
 | API | 说明 |
 | --- | --- |
 | `Close(IWindow)` / `Close<T>()` | 关闭指定窗口；窗口对象通常保留以便再次打开 |
-| `CloseAsync(IWindow)` / `CloseAsync<T>()` | 等待窗口关闭前的异步流程 |
 | `CloseLayer(UILayer)` | 关闭指定层的窗口 |
 | `CloseAll()` | 关闭全部窗口 |
 | `Destroy(IWindow)` / `Destroy<T>()` | 销毁窗口实例及其 GameObject |
 
-`Close` 和 `Destroy` 语义不同：需要暂时隐藏时关闭，需要彻底释放实例时销毁。窗口关闭后不要假设它已经被销毁；窗口销毁后则不能继续使用原实例。
+`Close` 和 `Destroy` 语义不同：需要暂时隐藏时关闭，需要释放实例时销毁。关闭会移除层映射及层列表登记，类型缓存仍保留实例供重新打开。WindowManager 在需要刷新时，从类型缓存建立打开窗口的 `_updateList` 和已关闭窗口的 `_closedList`；更新时跳过已经移除层映射或仍在加载的实例，关闭缓存按 NeedDestroy 检查超时并经管理器销毁。
+
+管理器销毁前先验证类型缓存仍指向传入实例，再删除该缓存并移除层关系；旧关闭缓存不能删除同类型的新实例。Window.Destroy 先同步调用 Close，再执行窗口 OnDestroy、组件 OnDestroy 和原生对象销毁。窗口快照按需在后续 Update 刷新，本帧已无层映射的实例停止更新，回调中新开的实例从下一次快照刷新参与 Update。
+
+窗口销毁后不能继续使用原实例，再次通过管理器 Open 得到新实例。管理器拒绝不属于当前类型缓存的旧实例；Window 本体没有已销毁标记，直接重复调用 IWindow.Destroy 仍可能重复执行回调。创建中 Destroy 不会取消加载或处理迟到对象，业务应等待打开操作完成再销毁。清理回调抛错会中断该实例后续步骤，管理器记录异常。
+
+窗口帧更新由 FBehaviour 驱动，禁用 UI Root 不会停止管理器的更新和超时检查。窗口更新异常在管理器的帧入口统一记录，避免跳过宿主中后续模块；运行时层级和窗口调试信息显示在 UI Root 的 Inspector。
 
 ## 查询与刷新
 
@@ -60,6 +68,10 @@ UI Root、各个 `UILayer` 和窗口资源也必须已经配置。`UILayer` 当�
 | `GetLayerData(UILayer)` | 获取层行为数据 |
 | `GetCamera(UILayer)` / `GetCanvas(UILayer)` | 获取层对应的 Camera 或 Canvas |
 | `RefreshAllWindow()` | 刷新全部窗口及其组件 |
+
+IsOpen 查询管理器中的层登记，因此打开已登记但仍在加载时也可能为 true；需要使用原生对象时必须等待 OpenAsync 完成。GetWindows / GetTopWindow 同样依据层列表返回实例。RefreshAllWindow 使用当前更新快照，并跳过已移除或加载中的窗口。
+
+每层由 WindowLayerInfo 保存顺序。普通 Add / Remove 只修改列表；只有正在排序时发生变更才立即嵌套重排，旧循环在当前窗口回调返回后检测 UID 并退出，finally 复位标记。打开操作结束后管理器刷新该层排序；窗口及组件回调逐次读取 Canvas.sortingOrder。移除窗口后允许排序值留空，只要求剩余窗口相对顺序正确，不为压紧数值额外重排。
 
 ## 定义窗口
 
@@ -97,7 +109,7 @@ public class HelloWorldWindow1 : Window
 
 `Window` 默认通过 `F.ResLoader` 加载资源对象，资源名必须与窗口类型名一致；上例中资源名为 `HelloWorldWindow1`。同步创建使用 `F.ResLoader.CreateObj(Type.Name, parent)`，异步创建使用 `F.ResLoader.CreateObjAsync(Type.Name, parent, this)`。如果默认规则满足需求，可以像上例一样直接调用基类实现；需要自定义资源来源时再重写这两个方法。
 
-窗口对象创建后会初始化窗口组件并触发 `OnCreate`；打开时触发监听器注册、`OnOpen` 和刷新；关闭时移除监听器、触发 `OnClose` 并隐藏 GameObject。
+窗口对象创建后先为组件 Register 注册 owner，再执行窗口与组件的 OnLoadObject；打开时注册监听器、执行 OnOpen 和刷新，关闭后重新打开不会重复 OnLoadObject，但会重新注册监听器。关闭时移除监听器、执行 OnClose 并隐藏 GameObject。加载、打开阶段的回调抛错会中止本次打开并由管理器清理；排序回调异常由 WindowLayerInfo 记录。
 
 ### 自动绑定 UI
 
@@ -194,4 +206,5 @@ public static async ETask Test()
 - [IWindowManager.cs](../../Runtime/Manager/WindowManager/IWindowManager.cs)
 - [IWindow.cs](../../Runtime/Manager/WindowManager/IWindow.cs)
 - [Window.cs](../../Runtime/Manager/WindowManager/Window.cs)
+- [WindowLayerInfo.cs](../../Runtime/Manager/WindowManager/WindowLayerInfo.cs)
 - [WindowResources.cs](../../Runtime/Manager/WindowManager/WindowResources.cs)

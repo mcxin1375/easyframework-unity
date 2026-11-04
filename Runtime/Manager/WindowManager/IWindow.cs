@@ -11,16 +11,14 @@ namespace EasyFramework
 {
     public interface IWindow
     {
-        bool IsOpen { get; }
+        bool IsLoading { get; }
         bool NeedDestroy { get; }
         UILayerBehaviour LayerBehaviour { get; }
         GameObject WindowObject { get; }
-        ETask CreateAsync(UILayerBehaviour uiLayer);
-        void Create(UILayerBehaviour uiLayer);
+        void Create();
         void Destroy();
-        void Open();
-        ETask AfterOpenAsync();
-        ETask BeforeCloseAsync();
+        void Open(UILayerBehaviour uiLayer);
+        ETask OpenAsync(UILayerBehaviour uiLayer);
         void Close();
         void SetActive(bool enabled);
         void Refresh();
@@ -29,19 +27,18 @@ namespace EasyFramework
     }
     public interface IWindowComponent
     {
-        void Create(IWindow window);
-        void Destroy();
-        void AddListeners();
-        void RemoveListeners();
-        void Open();
-        ETask AfterOpenAsync();
-        ETask BeforeCloseAsync();
-        void Close();
-        void SetActive(bool value) { }
-        void Refresh();
-        void RefreshOrderInLayer(int orderInLayer);
-        void ButtonClick(Button btn);
-        void Update();
+        void Register(IWindow window);
+        void OnLoadObject();
+        void OnDestroy();
+        void OnAddListeners();
+        void OnRemoveListeners();
+        void OnOpen();
+        void OnClose();
+        void OnSetActive(bool value) { }
+        void OnRefresh();
+        void OnRefreshOrderInLayer(int orderInLayer);
+        void OnButtonClick(Button btn);
+        void OnUpdate();
     }
     public interface IWindowUI
     {

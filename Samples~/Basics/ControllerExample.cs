@@ -29,8 +29,7 @@ namespace EasyFramework.Samples.Basics
             }
             finally
             {
-                if (controller.IsEnter) await controller.ExitAsync();
-                ExampleController.DestroyInstance();
+                await controller.ExitAsync();
             }
         }
     }

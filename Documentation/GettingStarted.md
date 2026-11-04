@@ -57,7 +57,7 @@ public sealed class GameController : Controller<GameController>
 }
 ```
 
-即使开启 autoInitialize，也先等待 F.InitializeAsync()。Controller 通过自己的 Instance 进入；管理器只负责栈与状态查询。结束使用时先 await controller.ExitAsync()，再 DestroyInstance()。
+即使开启 autoInitialize，也先等待 F.InitializeAsync()。业务通过 GameController.Instance.EnterAsync(...) 进入，通过 Instance.ExitAsync() 退出；基类入口将调用转发到 F.ControllerManager，状态和参数写入时机由管理器统一处理。退出后保留实例缓存，后续进入复用；不提供公开 DestroyAsync。OnAddListeners / OnRemoveListeners 及监听去重在 Controller 内部实现。
 
 资源组件使用 `await F.ResLoader.CreateObjAsync("Cube", request: this)`，并实现 IResRequest.Alive；清理时销毁实例并调用 `F.ResLoader.Unload("Cube", this)`。使用同一个请求持有与释放，处理异步完成前组件已销毁的情况。完整处理见 ResourceExample，而不是直接丢弃加载结果。
 

@@ -2,6 +2,8 @@
 
 F.ResLoader 的静态类型是 IResLoader。Player 使用 AssetBundleLoader；Editor 默认启用 resLoaderEditorMode，使用编辑器资源桥接。调用前等待 F.InitializeAsync()。
 
+AssetBundleLoader 初始化直接清空并填充内部 _abDict，不额外分配 bundles 字典，也不复制第二遍；全部条目成功后才设置 Manifest。Manifest 无效会向上传播异常，中途失败可能留下部分条目，下次初始化重新清空并填充，不承诺失败回滚。初始化状态及自动重试规则见 [F 总览](F.md)。
+
 ## 资源加载
 
 | API | 说明 |
@@ -49,6 +51,6 @@ public sealed class ResourceOwner : IResRequest
 
 Unload 不负责 Destroy 已实例化的 GameObject。先停止使用并销毁实例，再释放请求。UnloadForce / UnloadAllForce 绕过持有关系，可选择卸载已加载对象，不应作为常规清理方式。
 
-当前批量 CreateObjAsync(resName, count, ...) 的 Unity 2022.3+ 分支存在等待不完整问题，基础示例使用单实例重载，详见仓库 [Review](../../REVIEW.md)。
+批量 CreateObjAsync(resName, count, ...) 在所有分支都等待实例化完成后返回；Editor Bundle 模式随后恢复 Shader。count 为 0 返回空数组且不加载资源，负数抛出 ArgumentOutOfRangeException；资源加载失败返回 null。
 
 源码：[IResLoader.cs](../../Runtime/Manager/ResLoader/IResLoader.cs)、[IResLoaderEx.cs](../../Runtime/Manager/ResLoader/IResLoaderEx.cs)、[IResRequest.cs](../../Runtime/Manager/ResLoader/IResRequest.cs)、[AssetBundleRequest.cs](../../Runtime/Manager/ResLoader/AssetBundleLoader/AssetBundleRequest.cs)。

@@ -10,42 +10,40 @@ namespace EasyFramework
 {
     public abstract class WindowBehaviour<T> : WindowBehaviour where T : class, IWindow
     {
-        public new T Window { get; private set; }
-        public sealed override void Create(IWindow window)
-        {
-            Window = window as T;
-            base.Create(window);
+        private T _t;
+        public new T Window {
+            get
+            {
+                _t ??= base.Window as T;
+                return _t;
+            }
         }
     }
     public abstract class WindowBehaviour : UIBaseBehaviour, IWindowComponent
     {
-        public IWindow Window { get; private set; }
+        protected IWindow Window { get; private set; }
 
-        public virtual void Create(IWindow window)
+        void IWindowComponent.Register(IWindow window)
         {
             Window = window;
-            OnCreate();
         }
-        void IWindowComponent.Destroy() => OnDestroyEx();
-        void IWindowComponent.AddListeners() => OnAddListeners();
-        void IWindowComponent.RemoveListeners() => OnRemoveListeners();
-        void IWindowComponent.Open() => OnOpen();
-        ETask IWindowComponent.AfterOpenAsync() => OnAfterOpenAsync();
-        ETask IWindowComponent.BeforeCloseAsync() => OnBeforeCloseAsync();
-        void IWindowComponent.Close() => OnClose();
-        void IWindowComponent.SetActive(bool value) => OnSetActive(value);
-        void IWindowComponent.Refresh() => OnRefresh();
-        void IWindowComponent.RefreshOrderInLayer(int orderInLayer) => OnRefreshOrderInLayer(orderInLayer);
-        void IWindowComponent.ButtonClick(Button btn) => OnButtonClick(btn);
-        void IWindowComponent.Update() => OnUpdate();
+        void IWindowComponent.OnLoadObject() => OnLoadObject();
+        void IWindowComponent.OnDestroy() => OnDestroyEx();
+        void IWindowComponent.OnAddListeners() => OnAddListeners();
+        void IWindowComponent.OnRemoveListeners() => OnRemoveListeners();
+        void IWindowComponent.OnOpen() => OnOpen();
+        void IWindowComponent.OnClose() => OnClose();
+        void IWindowComponent.OnSetActive(bool value) => OnSetActive(value);
+        void IWindowComponent.OnRefresh() => OnRefresh();
+        void IWindowComponent.OnRefreshOrderInLayer(int orderInLayer) => OnRefreshOrderInLayer(orderInLayer);
+        void IWindowComponent.OnButtonClick(Button btn) => OnButtonClick(btn);
+        void IWindowComponent.OnUpdate() => OnUpdate();
 
-        protected virtual void OnCreate() { }
+        protected virtual void OnLoadObject() { }
         protected virtual void OnDestroyEx() { }
         protected virtual void OnAddListeners() { }
         protected virtual void OnRemoveListeners() { }
         protected virtual void OnOpen() { }
-        protected virtual ETask OnAfterOpenAsync() => ETask.CompletedTask;
-        protected virtual ETask OnBeforeCloseAsync() => ETask.CompletedTask;
         protected virtual void OnClose() { }
         protected virtual void OnSetActive(bool value) { }
         protected virtual void OnRefresh() { }

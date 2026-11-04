@@ -6,7 +6,9 @@
 
 当前文件同步自 `D:\WorkGIT\easyframework-unity\REVIEW.md` 的完整 26 项报告；原独立仓库报告保持原样。当前修复目标为 `D:\WorkCookie\easyframework-projects\EasyFramework.Unity2022\Packages\easyframework-unity`；下文顺序 1、2 保留当时的项目路径。
 
-历史基线共 **26 项：12 项 P1、14 项 P2**。当前 **11 项已修复、15 项待处理**；待处理为 **5 项 P1、10 项 P2**。已关闭 R01–R05、R10、R11、R16–R19；R14 的窗口容器已有本地部分修正，尚未完成生命周期验收，仍计入待处理。顺序 1–3 已完成，顺序 4–6 尚未执行。
+历史基线共 **26 项：12 项 P1、14 项 P2**。当前 **16 项已修复、10 项待处理**；待处理为 **2 项 P1、8 项 P2**。已关闭 R01–R08、R10、R11、R13、R15–R19；R14 保留部分修正，仍待处理。顺序 1–3 已完成，顺序 4 部分完成，顺序 5–6 尚未执行。
+
+上述数量仅统计历史 26 项。2026-11-04 顺序 4 全量复核另确认的 **P2：Controller 的 UpdateEnabled 求值未纳入帧异常隔离**现已修复，不混入历史问题计数。修复后完整 Edit Mode 218/218、Play Mode 95/95 通过；当前约定范围已通过，R14 已明确暂缓的窗口终态保护仍保留待处理，顺序 4 整体仍为部分完成。证据见“Controller 帧资格异常隔离修复（2026-11-04）”。
 
 ## Ticker Node 重构（2026-11-02）
 
@@ -101,13 +103,159 @@ Ticker 逐节点隔离 OnTick / OnRemove 错误，移除幂等，延后清理以
 
 已同步 Event/AsyncEvent 文档及入口索引；未创建临时 Unity 工程、未启动交互式 Editor，未执行 Play Mode、Player 或 IL2CPP 构建，未提交或推送。
 
+## 顺序 4 执行记录（2026-11-02，历史完整实现）
+
+执行项目：`D:\WorkCookie\easyframework-projects\EasyFramework.Unity2022`，包分支 `dev`。当时完成 R06–R08、R13–R15：初始化状态及失败重试；Controller 快照退出、失败清理和稳定帧分发；批量原生实例化统一等待；Window 共享创建、失败重试、销毁中创建结果收敛、关闭队列去重及统一幂等最终清理。相关主线程调用、并发参数和目标层规则同步至 Runtime 文档。窗口后续按用户要求还原，当前范围及 R14 未完成部分见下方窗口调整记录。
+
+当时版本验证：直接在原项目使用 Unity **2022.3.62f3** 命令行执行完整 Edit Mode 回归 **218/218 通过，0 失败、0 跳过**；新增真实 Play Mode 生命周期回归 **14/14 通过，0 失败、0 跳过**。覆盖两实例退出/解绑各一次、退出异常后继续清理、进入失败回滚重试、异步退出、退出中进入其他实例、帧回调变更栈、共享初始化异常及真实 Editor 模式重试、并发创建失败重试、并发 OpenAsync 单对象和最终目标层、创建中销毁、直接/重复/关闭后销毁、旧实例不误删新实例、超时回收、原生批量实例化与 count 边界。初始化失败通过注入共享操作验证通知，未逐阶段注入真实 CDN/Manifest 故障。结果与日志位于 `Library/Order4Validation/`，两个 Unity 测试进程均已正常退出；测试产生的 ShaderVariant 与 ProjectSettings 自动改动已恢复。
+
+未执行 Player / IL2CPP 构建或实际 CDN 初始化；Editor Bundle Shader 恢复与 Player 分支依据共同等待路径完成源码检查，未单独进行目标模式运行验收。本轮没有提交或推送。
+
+## F 初始化精简（2026-11-02，移除 Initialization）
+
+按用户本人修改后的 F.cs 同步文档：基于原版 switch 只使用静态 EState（None / Initializing / Initialized / Exception），不保留 Initialization 类、异常字段或等待者计数。首调用在 try/catch 中初始化；catch 记录原异常、置 Exception 并重新抛出。进入 Initializing 的其他调用分别等待状态变化，恢复时若状态为 Exception，则抛出新的通用异常 `Exception("F.InitializeAsync Error!")`。成功后重复调用直接完成。
+
+保留自动重试：Exception 状态下的新调用立即启动初始化。当前等待者读取全局状态，没有轮次隔离；重试可能先于旧等待者恢复，因此不保证旧等待者收到先前那轮失败，也不保证与首调用收到相同异常实例。原始原因通过初始化日志查看。只使用 ETask，不引入 Task / TaskCompletionSource、轮次对象或额外初始化方法；入口仍要求 Unity 主线程。本次仅按当前源码核对并更新 F 相关文档，没有修改 F 源码。
+
+此前带 ExceptionDispatchInfo 和等待者计数的版本在原项目 Unity **2022.3.62f3** 命令行 Play Mode 生命周期回归中 **15/15 通过，0 失败、0 跳过**，进程正常退出；覆盖真实本地无效清单、旧等待者原异常、失败续体中排队重试、并发成功等待、成功后重复调用及计数归零。该结果与 `Library/Order4Validation/FStateOnly/` 的日志属于旧版本，不能作为当前仅 EState 实现的验证结果。本次文档同步仅核对源码；新版本回归另行记录。顺序 4 的 218/218 同样为初始化精简前结果，未据此声称当前版本通过完整 Edit Mode 或 Player 验证。
+
+## 生命周期与资源加载精简（2026-11-02）
+
+F 文档按用户当前源码更新，未修改 F.cs。Controller.ExitAsync 删除 Run 局部包装、逐步骤 try/catch 和异常聚合，只保留一层 try/finally：依次移栈、解绑、执行退出和事件；任一步失败直接传播并停止后续步骤，finally 始终复位 _exiting。ControllerManager.ExitAllAsync 按当前源码逐实例捕获并记录异常，继续退出其他实例；文档和旧异常测试同步该契约。
+
+AssetBundleLoader.InitializeAsync 移除临时 bundles 字典，直接 Clear 并填充 _abDict，全部条目成功后才设置 Manifest。没有额外字典分配和二次复制；中途失败可能留下部分条目，下次初始化重新 Clear，因此不再承诺资源字典的事务提交或失败回滚。
+
+直接在原项目通过 Unity **2022.3.62f3** 命令行执行 Play Mode 生命周期回归：首次 **16/17 通过**，唯一失败是旧测试仍要求批量退出向外抛异常，与当前源码记录错误并继续的行为不符；更新断言后重新编译执行，最终 **17/17 通过，0 失败、0 跳过**，进程正常退出。覆盖 Controller 同步/异步退出异常立即传播、后续阶段停止、标记复位后重新进入退出、批量错误记录，以及当前 F 实现的首调用原异常、等待者通用异常和失败后重试。AssetBundleLoader 直接填充路径完成编译及差异检查，未单独构建 Bundle 故障场景。
+
+结果与日志位于 `Library/Order4Validation/LifecycleSimplification/PlayMode-final.xml` 和 `PlayMode-final.log`。F.cs 与 Startup.cs 和测试前备份哈希一致；测试产生的 ShaderVariant / ProjectSettings 自动改动已恢复。本轮未重复执行完整 Edit Mode 或 Player 构建，未提交或推送。
+
+## Window 还原与创建状态（2026-11-02）
+
+按用户要求将 Window 恢复到原有生命周期实现，只增加 CreateAsync 的创建中标记和 try/finally 复位；异步创建中再次同步或异步创建均以 InvalidOperationException 失败，已有对象仍直接复用。Destroy 按追加要求先同步调用 Close，再执行原有 OnDestroy、组件 Destroy 和 Object.Destroy。移除共享 Task / TaskCompletionSource、已销毁标记及逐步骤清理包装。
+
+保留 UIWindowBehaviour 的关闭队列去重、重新打开和销毁时移除队列、批量操作快照，以及超时经 WindowManager 销毁；保留管理器按实例身份在回调前移除类型容器。重复 Destroy 幂等、创建中销毁后的迟到对象收敛仍未实现，R14 恢复为部分待处理。R15 当前以拒绝重叠创建的契约关闭，不再承诺多调用共享创建结果；参数在管理器入口写入，同类型打开仍应顺序等待。
+
+本次窗口文档按该范围同步。上方顺序 4 的 14/14，以及后续 F / 生命周期精简的 15/15、17/17 均属于窗口还原前版本。当前直接在原项目使用 Unity **2022.3.62f3** 命令行重新编译并执行 Play Mode 生命周期回归，**19/19 通过，0 失败、0 跳过**，进程正常退出。覆盖异步创建中的重复同步/异步调用被拒绝且不清除首调用状态、异常和空对象返回后标记复位、成功后对象复用、重叠 Open 拒绝及顺序重开，以及直接 Destroy / Close 后 Destroy 的解绑→关闭→销毁顺序。
+
+结果与日志位于 `Library/Order4Validation/WindowCreationGuard/`。F.cs 与 Startup.cs 和测试前备份哈希一致；测试产生的 ShaderVariant 与 ProjectSettings 自动改动已恢复。本轮未重复执行完整 Edit Mode 或 Player 构建，未提交或推送。
+
+## UIWindowBehaviour 统一更新（2026-11-02）
+
+移除 _closeList 及全部加入、去重、移除和独立遍历逻辑。_windowLayerDict 跟踪已打开和已关闭的窗口，_uiLayerWindowDict 仅保留已打开窗口；Close 只从层级列表移除，继续保留超时检查资格。_updateList 按需从跟踪字典建立稳定快照，同时负责打开窗口 Update 和关闭窗口 NeedDestroy 检查。
+
+AddWindow / RemoveWindow 统一标记刷新，Destroy 在回调前移除跟踪映射，下一帧才重建快照；当前遍历和 RefreshAllWindow 检查映射成员资格，跳过本帧其他回调已经销毁的实例。解决审查中“超时回收的销毁回调又销毁另一个关闭窗口”导致的关闭队列越界，回调中新开窗口下一帧开始更新。
+
+直接在原项目通过 Unity **2022.3.62f3** 命令行重新编译并执行 Play Mode 回归，**23/23 通过，0 失败、0 跳过**，进程正常退出（原有生命周期 19 项、新增统一更新 4 项）。覆盖超时销毁互相重入且每实例一次、更新回调销毁同快照实例后跳过、快照延后刷新、关闭窗口继续跟踪且查询排除、重复关闭/重新打开、以及销毁回调新窗口下帧更新。结果与日志位于 `Library/Order4Validation/UnifiedWindowUpdate/PlayMode-final.xml` 和 `PlayMode-final.log`。
+
+本轮只完成这一项优化，不据此关闭顺序 4 的全部问题；此前审查中的 Controller 同实例重入退出及 Window.OnCreate 失败重试缺口未在本轮修改。没有重复执行完整 Edit Mode 或 Player 构建，未提交或推送。
+
+## WindowManager 合并（2026-11-02）
+
+移除 UIWindowBehaviour 脚本及其 meta，将窗口跟踪、打开/关闭、层级排序、查询、刷新和统一快照更新合并到 WindowManager。所有泛型和 Type 入口直接调用本类逻辑，IWindowManager 接口不变。WindowManager 在 OnCreate 初始化层列表后注册 IFrameworkTick，由 FBehaviour 分发更新；销毁时移除注册。保留帧入口统一异常记录，窗口回调失败不会跳过宿主中的后续模块。
+
+沿用上一节的跟踪字典与稳定 _updateList：关闭窗口仍参与超时检查，销毁先移字典并标记下一帧刷新，当前快照跳过已移除实例，回调中新开的窗口下一帧参与更新。帧循环现由 FBehaviour 驱动，禁用 UI Root 不再停止管理器更新。删除旧组件专用 Inspector，将运行时层级/窗口调试显示迁到现有 UIRootBehaviourInspector；项目序列化资源未发现旧组件脚本 GUID 引用。
+
+直接在原项目使用 Unity **2022.3.62f3** 命令行重新编译并执行 Play Mode 回归，**25/25 通过，0 失败、0 跳过**，进程正常退出（生命周期 19 项、WindowManager 更新 6 项）。保留四项快照/重入/超时回归，并新增真实 FBehaviour 注册分发、移除后停止，以及窗口 Update 抛错后后续订阅者仍执行的验证。Runtime 与 Editor 程序集编译通过；Inspector 未进行视觉验收。
+
+结果与日志位于 `Library/Order4Validation/WindowManagerMerge/`。未重复执行完整 Edit Mode 或 Player 构建；本轮不修改此前剩余 Controller 重入退出及 Window 初始化失败重试问题，不将顺序 4 标为全部完成。未提交或推送。
+
+## ControllerManager 统一生命周期（2026-11-04，初版）
+
+按本次达成共识的设计，将实例缓存、组件发现与注册、参数写入、进入退出、激活、帧分发和销毁集中到 ControllerManager。Controller<T> 保留 protected 业务回调、事件、只读查询和接口转发；Instance 与无参实例 EnterAsync / ExitAsync 只转发到同一管理器，不保留第二份缓存。移除 Controller.TParams 和同步 DestroyInstance；带参数通过管理器 0–3 个强类型 ITParams 重载进入，销毁统一使用可等待的 DestroyAsync。
+
+刷新进入先占用本实例操作、写入最新参数，重新执行 PreEnter / Enter / AfterEnter；PreEnter 成功后即入栈激活，已有实例移到栈顶，监听仅在首次加入当前进入生命周期时绑定一次。进入、退出或销毁进行中，同一实例的其他过渡直接抛异常；不同实例可以嵌套调用。异常首错中断并向上传播，finally 只释放操作保护，不自动补偿退出、不设置 Faulted。PreEnter 前后是否已提交栈关系由管理器记录，不以业务回调是否成功代替入栈状态；退出先移栈再清理，失败不会重新入栈。
+
+进入轮次同时用于 ExitAll 批次与同帧 Update / LateUpdate 快照。B 的退出回调退出并重新进入 A，或仅刷新 A，旧批次均跳过新轮次；帧回调中的新轮次从下一帧参与分发，组件分发也验证轮次。每个实例的激活版本使切换回调中“切走又切回”的旧通知失效，避免重复激活或误丢其他实例的停用通知。ExitAll 尝试入口批次中的所有有效轮次，最后传播单个原异常或 AggregateException；这取代历史版本“只记录错误并继续、不向调用方报告”的行为。
+
+同步 ControllerManager / F 文档、快速开始及基础示例，并将旧生命周期测试的失败回滚、批量退出吞错断言调整到当前契约。新增 25 项 ControllerManager 测试，覆盖 0–3 参数及默认值、刷新进入与监听去重、各类过渡冲突、参数 setter 重入、提前入栈、异常传播及操作复位、完成事件重入、批次和帧轮次、激活回调重入、创建失败及管理器销毁。窗口运行时未改动，但按此前通过后同步文档的约定，补齐其当前接口、打开/关闭缓存、IsLoading、实例身份保护及 WindowLayerInfo 即时重排说明。
+
+验证：原 EasyFramework.Unity2022 工程 Unity **2022.3.62f3** 命令行完整 Edit Mode **218/218 通过**，完整 Play Mode **76/76 通过**，均 0 失败、0 跳过、进程正常退出。Play Mode 包含 ControllerManager 25、原生命周期 20、窗口组件 2、窗口诊断 18、窗口更新 11。结果与日志位于 `Library/Order4Validation/ControllerManagerCentralization-20261104/`（`EditMode.xml`、`PlayMode-final.xml`）。
+
+本轮未修改业务 Startup / MainController / MainWindow，也未改动窗口运行时；这些业务文件、ShaderVariant 和 ProjectSettings 与测试前哈希相同。未执行 Player / IL2CPP 构建，未提交或推送。R06 的同实例重新进入误退已修正，R07 的帧分发增加轮次保护；R14 明确暂缓的窗口销毁终态范围仍保持待处理，不据此将顺序 4 标为全部完成。
+
+## Controller 组件封装边界（2026-11-04）
+
+按追加要求修正初版的职责边界：ControllerManager 只持有和调用 IController，删除 Entry 的组件数组以及全部组件发现、owner 注册和分发循环。IController / IControllerManager 均不暴露组件接口；直接实现 CustomController : IController 的类型使用同一套管理器入口、操作保护和轮次快照，不需要继承 Controller<T> 或引用 IControllerComponent。
+
+组件支持收敛到 Controller<T> 内部：IController.OnCreate 的实现负责发现组件、为全部组件 Register owner，并按业务回调在前、组件在后的顺序转发各生命周期阶段。基类在新进入的 PreEnter 开始、移除监听和销毁时更新本地分发版本，旧组件帧工作即使遇到刷新提交后激活回调失败也会停止；组件激活通知则独立检查本实例激活版本和当前激活结果，不因无关栈变化或失败的准备阶段而遗漏有效停用通知。管理器仍只决定 IController 的进入、退出、激活、帧更新和销毁时机，不感知这些内部转发。
+
+新增 6 项不继承基类且不引用组件接口的 CustomController 回归，覆盖强类型参数、刷新进入与监听次数、异步冲突、异常后的管理器状态、ExitAll 轮次、帧快照和销毁保护。原 ControllerManager 测试增至 27 项，补充失败激活后旧组件帧调用中止和失败准备不丢失停用通知两条路径。
+
+验证：原工程 Unity **2022.3.62f3** 命令行完整 Edit Mode **218/218 通过**、完整 Play Mode **84/84 通过**，均 0 失败、0 跳过、进程正常退出。Play Mode 包含 ControllerManager 27、CustomController 6、原生命周期 20、窗口组件 2、窗口诊断 18、窗口更新 11。结果位于 `Library/Order4Validation/ControllerComponentEncapsulation-20261104/`（`EditMode.xml`、`PlayMode-final.xml`）。ControllerManager 文档同步此边界；业务 MainController / Startup / MainWindow、ShaderVariant 和 ProjectSettings 与测试前哈希一致。未执行 Player / IL2CPP 构建，未提交或推送。
+
+## Controller 实例入口与监听封装（2026-11-04）
+
+按最新要求收敛公开入口：从 IControllerManager 删除 DestroyAsync，具体管理器仅保留内部清理，不作为业务接口。业务结束本轮流程使用 ExitAsync，实例留在管理器会话缓存；测试通过仅存在于测试程序集中的清理扩展释放隔离实例。示例、快速开始和运行时文档改用 X.Instance.EnterAsync(...) / ExitAsync()。
+
+Controller<T> 增加 1–3 参数 EnterAsync 转发，加上已有无参入口可直接进行实例跳转。参数仍由管理器在验证实例归属并占用 Entering 后写入；不支持对应 ITParams 形状时明确抛 ArgumentException，冲突请求不改参数或默认值。管理器的有参泛型重载继续保留编译期 ITParams 约束，CustomController : IController 仍可直接使用管理器入口。
+
+OnAddListeners / OnRemoveListeners 从 IController 移除，管理器 Entry 不再保存监听标记或调度监听阶段。Controller<T> 在 IController.OnEnterAsync 内部首次绑定监听，再执行业务进入；刷新进入不重绑。IController.OnExitAsync 内部先按需解绑，再执行业务退出。组件监听转发同样由基类完成，自定义 IController 自行实现内部监听，不受基类约定影响。
+
+新增 4 项实例入口及公开接口回归：0–3 参数和默认值、错误参数类型/数量不改写、过渡期间拒绝且不改参数、公开接口不含销毁或监听调度。CustomController 测试改为在自身进入退出中维护监听。原工程 Unity **2022.3.62f3** 命令行完整 Edit Mode **218/218 通过**、完整 Play Mode **88/88 通过**，均 0 失败、0 跳过、进程正常退出。Play Mode 包含 ControllerManager 31、CustomController 6、原生命周期 20、窗口组件 2、窗口诊断 18、窗口更新 11。结果位于 `Library/Order4Validation/ControllerPublicSurface-20261104/`（`EditMode.xml`、`PlayMode.xml`）。业务脚本、ShaderVariant 和 ProjectSettings 与测试前哈希一致，未执行 Player / IL2CPP 构建，未提交或推送。
+
+## Controller 内部阶段与实例事件（2026-11-04）
+
+按最新职责约定进一步精简 IController：删除 OnAfterEnterAsync、OnEntered、OnExited。AfterEnter 与组件 AfterEnter 收回 Controller<T> 的 IController.OnEnterAsync 实现末尾，管理器只等待该进入接口，不再单独编排后置阶段；自定义 IController 不必实现这些扩展约定。
+
+完成事件是 Controller 的自定义行为，不属于管理器契约。X.Instance.EnterAsync 的无参和 1–3 参数入口分别等待管理器完成后，自行发送 OnEnterEvent；实例 ExitAsync 在调用管理器前记录当前入栈状态，成功退出后按需发送 OnExitEvent，稳定的重复退出不重复通知。事件发送时管理器已释放操作保护，事件内可以再次进入或退出同一实例，旧流程不会再覆盖新轮次；事件订阅者抛错由实例入口向调用方传播。直接管理器进入、退出及 ExitAll 只执行 IController 生命周期，不发送基类实例事件。此前将事件放入受保护生命周期内的尝试已撤回，不改变原先实例事件可重入的目标。
+
+实例无参进入也按当前实例身份校验，避免自行 new 出来的 Controller 进入管理器中的另一实例，却向错误实例发送事件。补充 AfterEnter 异常中断、不发送失败阶段的事件、实例事件异常传播、管理器直调与批量退出不发送事件、0–3 参数事件顺序及未登记实例拒绝的回归；原完成事件重入测试改为显式通过实例入口发起。
+
+验证：原工程 Unity **2022.3.62f3** 命令行完整 Edit Mode **218/218 通过**、完整 Play Mode **93/93 通过**，均 0 失败、0 跳过、进程正常退出。Play Mode 包含 ControllerManager 36、CustomController 6、原生命周期 20、窗口组件 2、窗口诊断 18、窗口更新 11。结果位于 `Library/Order4Validation/ControllerInstanceEvents-20261104/`（`EditMode.xml`、`PlayMode.xml`）。同步 ControllerManager 文档；业务脚本、ShaderVariant 和 ProjectSettings 与测试前哈希一致。未执行 Player / IL2CPP 构建，未提交或推送。
+
+## 顺序 4 全量复核（2026-11-04）
+
+本轮直接复核原 EasyFramework.Unity2022 工程中的包，分支 dev，固定基准为 `805375e477c7dc3e460be9c1d21e83b6a897ecfc` 到当前工作区，包含未跟踪的 WindowLayerInfo 和测试文件。需求来源为 R06–R08、R13–R15 及本次对话确认的最新约定；不将初始化旧等待者失败隔离、窗口直接重复销毁终态或创建中销毁收敛重新列为新增需求。
+
+### Standards
+
+依据 AGENTS.md 及对应 Runtime 文档复核，未发现新增明确规范违规或必须整改的结构性气味。Runtime / Editor 边界、UI Root Inspector 的 WindowList 适配、ControllerManager 仅调度 IController 的职责边界保持正确。参数、监听、AfterEnter、实例事件和自定义 IController 的最新说明已匹配源码；本轮补充资源字典直接填充、宿主异常隔离范围及窗口复用措辞。
+
+### Spec
+
+| 任务 | 当前设计与复核结果 | 验证或限制 |
+| --- | --- | --- |
+| R06：批量退出 | 管理器统一调度，退出先移栈；批次捕获实例及进入轮次，旧批次跳过退出后重入或刷新进入的同一实例。单实例首错中断，批量尝试有效项后报告单个原异常或 AggregateException | ControllerManager 和直接实现 IController 的批次回归通过 |
+| R07：帧分发 | 入栈和新轮次标脏，Update / LateUpdate 共享稳定快照；管理器检查实例、轮次和 UpdateEnabled，Controller 内部保护组件分发。复核时另发现资格 getter 异常隔离缺口，现已修复 | 首次复核的两项故障注入失败记录保留下文；修复后两项及完整 Play Mode 95/95 通过，见修复记录 |
+| R08：批量原生实例化 | 所有原生分支统一等待 InstantiateAsync 完成后读取 Result；0 不加载并返回空数组，负数在加载前抛错 | 原工程 Play Mode 真实创建 5 个实例及父节点检查通过；Editor Bundle Shader 恢复及 Player / IL2CPP 未单独构建运行 |
+| R13：全局初始化 | 仅 ETask 和静态 EState，等待调用各自独立；首调用原异常向上传播，其他等待者在观察到 Exception 时得到通用异常，后续新调用自动重试 | 独立等待、真实本地无效 DLC 清单和失败后重试通过；旧等待者不隔离轮次为已接受限制 |
+| R14：窗口销毁与缓存 | 管理器核验实例身份，先删除匹配类型缓存再移除层关系并调用 Window.Destroy；Window 先 Close，打开 / 关闭快照按需分类，加载过滤及旧缓存保护保持有效 | 普通、超时互相销毁及旧缓存不误删新实例通过；直接 IWindow 重复销毁终态、创建中销毁迟到结果和清理首错后的完整释放仍暂缓 |
+| R15：重叠窗口加载 | IsLoading 在 finally 复位，管理器在修改层登记前拒绝重叠请求并返回 null；资源为空或初始化失败清理，后续可重建 | 同步 / 异步重叠、跨层请求、失败清理和成功后复用通过；窗口参数仍在入口写入，同类型应顺序等待 |
+| 关联优化：AssetBundleLoader | 直接 Clear 并填充 _abDict，不额外分配 bundles；全部条目处理成功后设置 Manifest | 源码和编译检查通过；中途部分条目保留、下次重试重新清空符合当前约定，不声称事务回滚或真实 CDN 故障验收 |
+
+Controller 当前公开使用方式为 X.Instance.EnterAsync 的 0–3 参数入口及 ExitAsync；管理器保留强类型泛型入口供 CustomController : IController 使用，不公开 DestroyAsync。组件发现、监听去重、AfterEnter、内部回调转发都在 Controller 内；Manager 不引用这些实现。完成事件仅由实例入口成功等待管理器后发送，支持事件内再次进入或退出；管理器直调和 ExitAll 不发送基类实例事件。异常只传播，复位管理器操作保护，不自动补偿 Exit、不引入 Faulted；已提交的结构不因业务失败回滚。
+
+WindowLayerInfo 保持即时重排设计：普通 Add / Remove 不主动排序，排序中变更立即嵌套重排，旧循环在当前窗口调用返回后经 UID 检查退出，finally 复位。窗口及组件逐次读取 Canvas.sortingOrder，删除后允许数值空洞，只要求相对顺序正确。OnLoadObject、组件 owner 注册、首次打开后排序、加载过滤和身份清理均由现有回归覆盖。
+
+**本次新增 P2（已修复）：UpdateEnabled getter 抛错会中断后续帧分发。** 位置：[ControllerManager.DispatchFrame](Runtime/Manager/ControllerManager/ControllerManager.cs#L312)。首次复核时资格检查在逐实例 try 之外，CustomController 或基类重写的 UpdateEnabled 抛错会逃出整个 DispatchFrame。最小复现：先进入 A、B，帧快照按 A、B 保存；A 的 UpdateEnabled getter 抛错，B 的 Update / LateUpdate 均未被调用，异常还可能中断 FBehaviour 的后续订阅者。新增 `CustomControllerTests.FrameEligibilityFailure_DoesNotSkipTheNextController(false/true)` 当时均复现：后续实例调用次数预期 1，实际 0。
+
+首次复核建议把资格检查移入已经存在的逐实例 try，保持原有回调隔离，不增加捕获层；当时只更新复核与文档，没有修改运行时。随后按用户要求完成该最小修正，资格 getter 与帧回调共用原有捕获范围，修复后的验证见下节。R07 原始空帧列表问题和这一追加边界均已修复。
+
+### 本轮验证
+
+原工程 Unity **2022.3.62f3** 命令行完整 Edit Mode **218/218 通过**；完整 Play Mode **93/95 通过，2 项失败、0 跳过**，失败均为上述新增 P2 的 Update / LateUpdate 复现。其余 93 项均通过：ControllerManager 36、CustomController 既有 6、生命周期 20、窗口组件 2、窗口诊断 18、窗口更新 11。测试和日志位于 `Library/Order4Validation/Order4Acceptance-20261104/`（`EditMode.xml`、`PlayMode.xml` 及同名 log）；Edit Mode 进程退出码 0，Play Mode 因诊断失败退出码 2。
+
+本轮更新 REVIEW 和对应模块文档，新增两条有意义的帧资格求值异常回归；未修改 Runtime、业务 Startup / MainController / MainWindow。测试前后 Runtime、业务脚本、ShaderVariant 和 ProjectSettings 哈希核对一致。未执行 Player / IL2CPP 构建、纯净安装、真实 CDN 初始化或 Inspector 视觉验收，未进行性能基准，未提交或推送。
+
+首次复核结论：Standards 无新增问题；Spec 新增 1 项 P2，R14 保留明确暂缓范围。该新增 P2 随后修复并通过验证，当前结论见下节；上述首次失败结果保留为修复前证据。
+
+## Controller 帧资格异常隔离修复（2026-11-04）
+
+按用户要求修复上一节确认的 P2。唯一运行时改动是将 DispatchFrame 中 IsCurrent / UpdateEnabled 资格判断及本地 Entry 获取移入已有的逐实例 try；不新增异常处理层，也不修改进入退出、组件、监听、事件或快照时机。自定义 UpdateEnabled getter 抛错时记录原异常，并继续本次 Update / LateUpdate 的后续 Controller，不向 FBehaviour 传播该实例异常。
+
+沿用前轮两条故障注入回归，现均通过：后续实例各执行 1 次，异常没有逃出分发，日志保留原异常实例。原工程 Unity **2022.3.62f3** 命令行完整 Play Mode **95/95 通过**、完整 Edit Mode **218/218 通过**，均 0 失败、0 跳过、进程退出码 0。Play Mode 包含 ControllerManager 36、CustomController 8、生命周期 20、窗口组件 2、窗口诊断 18、窗口更新 11。结果位于 `Library/Order4Validation/ControllerEligibilityFix-20261104/`（`PlayMode.xml`、`EditMode.xml` 及同名 log）。
+
+ControllerManager / FBehaviour 文档和当前任务状态已同步；修复前 93/95 的诊断记录仍保留在上节。业务 MainController / Startup / MainWindow、ShaderVariant、ProjectSettings，以及本轮开始时已存在的 PlayerBuilder 源码和文档改动均与快照哈希一致，未覆盖其他工作。未执行 Player / IL2CPP 构建，未提交或推送。
+
+当前约定的顺序 4 范围已通过复核及回归，新增 P2 关闭；R14 直接重复 IWindow.Destroy 终态、创建中销毁迟到对象和清理异常后的完整释放仍为明确暂缓范围，因此顺序 4 历史工作包继续标为部分完成。
+
 ## 历史全量审查范围与结论
 
 沿用上次 Review 的 `5a6c4e4361d98b1c7541a4f76a64c20bb3f70ca1` 为增量基准，差异命令为 `git diff 5a6c4e4361d98b1c7541a4f76a64c20bb3f70ca1...HEAD`；期间只有 `d20f791 同步文档` 一个提交。该提交修改文档、示例、AGENTS 和包的 Samples 注册，未修改 Runtime、Editor、Module 或 Tests 实现。
 
 本次除检查增量外，重点复核当前 ETask / Ticker、事件、网络缓存、Controller、Window、初始化、资源下载、DLC、Editor 构建、UPM 依赖及 Profiler。历史审查记录 **26 项源码问题：12 项 P1、14 项 P2**。在该审查基线中，上次记录的 5 项问题均仍存在，对应 R06、R07、R08、R09、R13；其余 21 项为该次新识别的历史问题，不能归因于文档提交。当前修复状态以上节和各项标记为准。
 
-P1 表示应优先修复的数据丢失、核心流程失效或发布可靠性问题；P2 表示需排期处理的条件性错误与生命周期问题。编号用于跟踪；Standards、Spec 两轴分别报告，后面的源码清单另按修复优先级组织。历史全量审查阶段仅更新报告；当前已完成顺序 1–3。下文保留原故障描述、诊断证据及验收标准，已修复项的历史症状不表示当前仍可复现。
+P1 表示应优先修复的数据丢失、核心流程失效或发布可靠性问题；P2 表示需排期处理的条件性错误与生命周期问题。编号用于跟踪；Standards、Spec 两轴分别报告，后面的源码清单另按修复优先级组织。历史全量审查阶段仅更新报告；当前已完成顺序 1–3，顺序 4 部分完成。下文保留原故障描述、诊断证据及验收标准，已修复项的历史症状不表示当前仍可复现。
 
 ## 历史审查：Standards
 
@@ -119,13 +267,13 @@ P1 表示应优先修复的数据丢失、核心流程失效或发布可靠性�
 
 仓库没有 `docs/agents/issue-tracker.md`，提交也没有原始 issue 引用，无法进行工单需求覆盖或 scope creep 判断。本次以公开文档与示例作为 API 契约；后续需要按工单审查时，可用 `/setup-matt-pocock-skills` 补齐 issue-tracker 工作流。
 
-**S01：窗口销毁契约与实际行为不一致。** [WindowManager.md:48](Documentation/Runtime/WindowManager.md#L48) 宣称 Destroy 会“销毁窗口实例及其 GameObject”，第 50 行说明“需要彻底释放实例时销毁”。历史基线中，销毁后静态容器仍返回原实例，直接销毁已打开窗口还保留 `IsOpen=true`；新增 [WindowExample.cs:35](Samples~/Basics/WindowExample.cs#L35) 使用 Close→Destroy，也会留下延时清理队列项，随后再次调用 OnDestroy。问题见 R14。当前项目本地已将容器迁入 WindowManager，并在 Destroy 中移除类型条目；直接销毁、关闭队列和重复释放尚未验收，S01/R14 仍未关闭。
+**S01：窗口销毁契约与实际行为不一致。** [WindowManager.md:48](Documentation/Runtime/WindowManager.md#L48) 宣称 Destroy 会“销毁窗口实例及其 GameObject”，第 50 行说明“需要彻底释放实例时销毁”。历史基线中，销毁后静态容器仍返回原实例，直接销毁已打开窗口还保留 `IsOpen=true`；新增 [WindowExample.cs:35](Samples~/Basics/WindowExample.cs#L35) 使用 Close→Destroy，也会留下延时清理队列项，随后再次调用 OnDestroy。问题见 R14。当前项目已保留容器和关闭队列修正，并在 Window.Destroy 中先调用 Close；重复销毁幂等与创建中销毁收敛仍未实现，S01/R14 保持部分待处理。
 
 Controller 帧分发、批量退出、初始化失败和宿主生命周期等限制已经在当前文档中明确说明，因此不重复记为新增规格偏差。
 
 **本轴：1 项 API 契约偏差，最严重项为 S01；映射到 R14，不额外计入 26 项源码问题。**
 
-## 历史问题清单：P1（当前 7 项已修复、5 项待处理）
+## 历史问题清单：P1（当前 10 项已修复、2 项待处理）
 
 ### R01 [P1] [已修复] DLC 清理误删应用数据根目录文件
 
@@ -177,29 +325,35 @@ Tick 对整个节点列表执行循环，没有逐节点异常隔离；ETask 外
 
 当前状态：已修复。Ticker 逐 Node 隔离 OnTick 异常，任务 tick 异常令对应任务失败，后续节点继续；移除只清理内部 Node，不通知 Target；Timer.Tick 错误不跳过 Ticker.Tick。未扩展 Timer 内部各节点隔离。等待条件抛错、普通节点、同 tick 增删、回收重入及 Timer 错误回归通过。
 
-### R06 [P1] Controller 批量退出跳过退出回调
+### R06 [P1] [已修复] Controller 批量退出跳过退出回调
 
-位置：[ControllerManager.cs:54](Runtime/Manager/ControllerManager/ControllerManager.cs#L54)、[Controller.cs:117](Runtime/Manager/ControllerManager/Controller.cs#L117)。状态：上次问题仍在，本次源码复核。
+位置：[当前批量退出](Runtime/Manager/ControllerManager/ControllerManager.cs#L228)、[当前退出阶段](Runtime/Manager/ControllerManager/ControllerManager.cs#L218)。下述症状属于历史基线，当前实现见本项状态及 2026-11-04 统一生命周期记录。
 
 ExitAllAsync 在调用 ExitAsync 前 RemoveAt，导致 Controller 的 IsEnter 为 false 并提前返回，跳过监听解绑、OnExit、OnExitAsync 和组件退出。ExitOtherBeforeEnter 复用同一路径。
 
 优化：让 ExitAsync 负责移栈，批量退出使用快照或受控循环，并定义回调内重入的处理方式。验收：两个 Controller 的退出与解绑均各一次，栈最终为空；覆盖异步退出和回调中进入/退出其他 Controller。
 
-### R07 [P1] Controller 帧更新列表始终为空
+当前状态：已修复。ControllerManager 统一移栈和调度退出；批量退出捕获实例与进入轮次，回调中新进入、退出后重入或刷新进入的轮次不被旧批次再次退出。单实例退出首错中断，finally 释放操作保护；批量尝试所有有效快照项后，单个错误保留原异常，多个错误以 AggregateException 向调用方报告。旧的“只记录错误”行为已由 2026-11-04 统一生命周期实现替代，相关真实 Play Mode 回归通过。
 
-位置：[ControllerManager.cs:28](Runtime/Manager/ControllerManager/ControllerManager.cs#L28)、[更新分发:60](Runtime/Manager/ControllerManager/ControllerManager.cs#L60)。状态：上次问题仍在，本次源码复核。
+### R07 [P1] [已修复] Controller 帧更新列表始终为空
+
+位置：[当前进入提交](Runtime/Manager/ControllerManager/ControllerManager.cs#L180)、[当前帧快照与分发](Runtime/Manager/ControllerManager/ControllerManager.cs#L297)。下述症状属于历史基线，当前实现见本项状态及 2026-11-04 统一生命周期记录。
 
 `_refresh` 默认 false，Enter 和 Remove 从未置 true，OnUpdate 不会填充 `_updateList`。成功进入的 Controller 也收不到 OnUpdate / OnLateUpdate。
 
 优化：栈变化时标脏，使用稳定快照分发，并保持激活状态一致。验收：进入后收到两种帧回调，退出后停止，帧回调内修改栈不导致漏调用或集合异常。
 
-### R08 [P1] 批量异步实例化未等待完成就读取 Result
+当前状态：已修复。管理器在入栈、刷新进入及移栈后标脏，Update 捕获实例与进入轮次，LateUpdate 复用同帧快照；调用 IController 前检查成员资格、轮次与 UpdateEnabled。已退出的轮次停止分发，帧中新进入或刷新进入的轮次下一帧生效；资格求值及 Update / LateUpdate 回调体的异常均被逐实例记录。组件帧调用及其重入保护由 Controller<T> 自己实现，管理器不依赖组件接口。2026-11-04 追加的 UpdateEnabled getter 隔离缺口已修复，两项故障注入及完整 Play Mode 95/95 通过。
 
-位置：[IResLoaderEx.cs:69](Runtime/Manager/ResLoader/IResLoaderEx.cs#L69)。状态：上次问题仍在，本次源码复核。
+### R08 [P1] [已修复] 批量异步实例化未等待完成就读取 Result
+
+位置：[原生实例化发起及等待](Runtime/Manager/ResLoader/IResLoaderEx.cs#L73)、[结果返回](Runtime/Manager/ResLoader/IResLoaderEx.cs#L83)。下述症状属于历史基线，当前等待路径经本轮源码及真实 Play Mode 复核。
 
 `UNITY_2022_3_OR_NEWER` 分支发起 InstantiateAsync 后，仅在 Editor 且使用 AssetBundleLoader 时 await。Player 和 Editor 资源桥接模式直接读取 Result，不能保证对象已创建，也可能留下调用方未获得的实例。
 
 优化：所有分支统一 await 完成，再做特定 Editor 分支的 Shader 恢复。验收：Editor 桥接、Editor Bundle 和 Player 三种路径返回的数组长度及有效实例数均等于 count；另测失败和 count 边界。
+
+当前状态：已修复。原生 InstantiateAsync 在所有编译分支统一等待，再执行 Editor Bundle Shader 恢复；0 返回空数组，负数在加载前失败。Play Mode 使用真实原生操作验证 5 个实例及父节点；Editor Bundle 和 Player 路径未单独构建运行。
 
 ### R09 [P1] UPM 清单缺少无条件 asmdef 依赖
 
@@ -237,35 +391,37 @@ AB 构建返回 null 时只打印错误，外层资源构建链继续运行 DLCB
 
 优化：各阶段显式返回失败或抛出异常并中断父链；全部产物验证成功后再提交索引、LatestVersion 和 StreamingAssets。验收：注入 AB 构建失败、源文件不可读和复制失败，版本不推进、可用底包不覆盖、后续 Player 构建不继续。
 
-## 历史问题清单：P2（当前 4 项已修复、10 项待处理）
+## 历史问题清单：P2（当前 6 项已修复、8 项待处理）
 
-### R13 [P2] 初始化异常后，后续调用永久等待
+### R13 [P2] [已修复] 初始化异常后，后续调用永久等待
 
-位置：[F.cs:64](Runtime/F.cs#L64)、[后续等待:82](Runtime/F.cs#L82)。状态：上次问题仍在，本次源码复核。
+位置：[初始化入口](Runtime/F.cs#L61)、[后续调用等待](Runtime/F.cs#L90)。下述症状属于历史基线，当前状态与已接受限制见本项状态及最新顺序 4 复核记录。
 
 状态在模块创建前置 Initializing，任何异常都没有失败状态或复位；后续调用只能等待 Initialized。历史基线中，加载器也可能仅记录失败后正常返回，再叠加当时的 R02，导致 Initialized 不代表 Manifest 有效。
 
-当前进度：ETask 异常传播前置已由顺序 2 修复；F 初始化自身的失败状态与重试策略尚未实现，R13 仍未关闭。
+当前状态：原始异常后永久停留 Initializing 的路径已修复。初始化只使用 ETask 和静态 EState；首调用的 try/catch 记录并重新抛出原异常，Initializing 的调用独立等待，恢复时若为 Exception 则抛出新的通用异常。Exception 入口立即自动重试，不保存原异常、没有等待者计数或轮次隔离，不保证重试前的等待者收到旧失败。DLC 失败及无效 Manifest 向上传播；资源字典直接填充，Manifest 只在全部条目成功后设置。当前契约及旧版本验证的适用范围见 F 初始化精简记录。
 
-优化：以可共享的初始化操作承载结果与错误，定义失败状态和重试规则；不要直接复用当前只能单次消费的 ETask 值。验收：任一步注入失败，并发和后续调用都能在有限时间内得到同一失败；允许重试时能恢复。
+历史优化与验收目标：用共享状态和原异常表达结果，每位调用者独立等待，不复用只能单次消费的 ETask；同轮调用者收到相同成功或失败，重试不覆盖旧失败。当前用户选定的简化实现以全局状态和等待者通用异常为准，不再承诺原异常共享或旧轮失败隔离。
 
-### R14 [P2] [本地部分修复，未验收] 窗口销毁没有完成关闭、队列清理和容器失效
+### R14 [P2] [部分修正，待处理] 窗口销毁没有完成关闭、队列清理和容器失效
 
-位置：[UIWindowBehaviour.cs:116](Runtime/Manager/WindowManager/Behaviour/UIWindowBehaviour.cs#L116)、[Destroy:149](Runtime/Manager/WindowManager/Behaviour/UIWindowBehaviour.cs#L149)、[Window.cs:93](Runtime/Manager/WindowManager/Window.cs#L93)、[当前 WindowManager.Destroy:180](Runtime/Manager/WindowManager/WindowManager.cs#L180)。验证：真实 Window / UIWindowBehaviour 源码隔离诊断。
+位置：[WindowManager.Close](Runtime/Manager/WindowManager/WindowManager.cs#L189)、[管理器身份校验与销毁](Runtime/Manager/WindowManager/WindowManager.cs#L350)、[Window.Destroy](Runtime/Manager/WindowManager/Window.cs#L70)。原 UIWindowBehaviour 逻辑现已合并到 WindowManager；历史诊断使用真实 Window / UIWindowBehaviour 源码。
 
 历史基线中，直接 Destroy 已打开窗口不先 Close，IsOpen 和监听保留；静态类型容器也不移除旧实例。历史诊断实测 GameObject 已清空，IsOpen 仍为 true。即使按示例 Close→Destroy，`_closeList` 仍有条目，超过 KeepAliveTime 后同一窗口再次执行 OnDestroy：实测计数由 1 变为 2。重复 Close 也可制造重复队列项。
 
 优化：销毁作为幂等终态，统一关闭、解绑、队列移除、状态失效、容器移除及持有资源释放；关闭队列去重。验收：直接 Destroy、Close→Destroy、重复调用和超时清理都只释放一次，旧实例不可查询；再次 Open 得到有效新实例。
 
-当前本地进度：WindowContainer 已删除，容器迁入 WindowManager，Destroy 已移除类型条目。这只覆盖容器失效的一部分；Window / UIWindowBehaviour 的关闭、去重、队列移除和幂等销毁尚未完成验证，R14 仍未关闭。上述历史复现未针对本地变动重新运行。
+当前状态：部分修正，仍待处理。Window.Destroy 先同步调用 Close，再执行窗口和组件 OnDestroy 及原生对象销毁。WindowManager 从类型缓存按层登记分类建立 _updateList / _closedList；关闭移除层登记但保留类型实例，超时经管理器销毁。销毁入口校验实例身份并先删除匹配类型缓存，再移除层关系、调用窗口销毁；旧关闭缓存不能误删同类型新实例。窗口更新与刷新跳过已移除或仍加载的实例。Window 本体没有已销毁终态，直接重复 IWindow.Destroy 仍可能重复回调，创建中销毁没有迟到对象清理，清理首错中断；这些仍为待处理范围。当前全套 Play Mode 已覆盖普通销毁、超时重入及旧缓存身份保护，旧版完整生命周期回归不替代当前范围。
 
-### R15 [P2] 同类型并发 OpenAsync 创建多个窗口对象
+### R15 [P2] [已修复] 同类型并发 OpenAsync 创建多个窗口对象
 
-位置：[Window.cs:64](Runtime/Manager/WindowManager/Window.cs#L64)、[UIWindowBehaviour.cs:103](Runtime/Manager/WindowManager/Behaviour/UIWindowBehaviour.cs#L103)、[当前窗口容器:208](Runtime/Manager/WindowManager/WindowManager.cs#L208)。验证：真实 Window.CreateAsync 源码隔离诊断。
+位置：[当前 Window.OpenAsync](Runtime/Manager/WindowManager/Window.cs#L113)、[WindowManager.OpenWindowAsync](Runtime/Manager/WindowManager/WindowManager.cs#L286)、[窗口容器](Runtime/Manager/WindowManager/WindowManager.cs#L363)。历史诊断使用当时的 Window.CreateAsync 源码。
 
 容器复用一个 Window，但 CreateAsync 只检查已完成的 WindowObject，没有“创建中”状态。两次调用在第一次创建完成前进入，会分别创建 GameObject，后完成者覆盖引用。实测创建请求 2 次、OnCreate 2 次，第一个对象未被销毁，最终只跟踪第二个。
 
 优化：每个窗口共享创建操作或串行化创建/打开，明确不同参数和目标层并发时的规则；销毁时处理进行中的创建结果。验收：同时打开两次仅一个 GameObject、OnCreate 一次，失败可重试，销毁期间完成的创建没有孤立对象。
+
+当前状态：重复创建问题按用户选定契约已修复。Window.OpenAsync 通过 IsLoading 保护对象创建；直接 IWindow 重叠打开抛出 InvalidOperationException，管理器入口则在修改层登记前记录错误并返回 null，保留原请求。finally 保证加载结束或失败后复位标记；空对象或初始化回调失败由管理器清理，后续打开可新建，成功对象直接复用，不使用共享 Task。窗口参数仍在入口写入，重叠请求可能已修改参数，因此同类型打开应顺序 await。创建中销毁后的收敛仍见 R14。
 
 ### R16 [P2] [已修复] DLC 换版本后仍返回旧哈希路径
 
@@ -372,7 +528,7 @@ OnUpdate 用 `lastValue == 0` 跳过赋值，导致 DrawCalls、GC 分配等指�
 | 1 | 已完成 | 保护用户数据和下载文件 | R01、R11、R16、R17 | 约束 DLC 文件所有权与清理根目录；临时下载、完整性校验后提交；版本快照及路径缓存一起切换 | 根目录存档不变；断网/取消不留下可用半包；换版本路径与内容一致 |
 | 2 | 已完成 | 稳定 ETask 与调度基础 | R02–R05 | 统一结果、异常、取消、continuation 和消费/回池协议；逐节点隔离 tick 异常；写清单次消费语义 | 真实 TaskAwaiter 回归覆盖异常、竞争、延后首次消费、回池复用及失败节点隔离 |
 | 3 | 已完成 | 修复网络与事件边界 | R10、R18、R19 | 统一 RingBuffer 满/空不变量、写入与扩容规则；事件重入策略；socket 无条件幂等释放 | 满容量/绕回字节测试、订阅变更测试及 native handle 释放测试通过 |
-| 4 | 待执行 | 统一初始化和业务生命周期 | R06–R08、R13–R15 | 初始化共享结果/失败策略；Controller 栈变更与回调配对；Window 创建中/已打开/已关闭/已销毁状态；统一最终清理入口 | Unity 场景验证退出/解绑各一次、帧分发正常、并发窗口只创建一次、失败能收敛 |
+| 4 | 部分完成 | 统一初始化和业务生命周期 | R06–R08、R13–R15 | 当前初始化、Controller 接口边界及实例事件、窗口加载与即时排序约定已通过；帧资格 getter 异常隔离 P2 已修复；R14 明确暂缓的最终销毁保护仍待处理 | 修复后 Edit Mode 218/218、Play Mode 95/95 通过；R14 暂缓范围及 Player / IL2CPP 未验收 |
 | 5 | 待执行 | 让构建失败可见且可恢复 | R12、R20–R22 | 构建阶段失败立即上抛；暂存全部产物并校验后发布；统一生命周期；每次执行读取当前配置 | 故障注入时 LatestVersion/底包保持原样；回调各一次；同会话修改目录立即生效 |
 | 6 | 待执行 | 完成可安装性与诊断隔离 | R09、R23–R26 | 明确最低 Unity 与必选依赖；隔离可选集成程序集；Profiler 遵循开关、主线程消费日志、恢复输入屏蔽、正确记录零值 | 纯净工程安装及集成组合编译通过；Profiler 开关/日志/输入/计数器场景通过 |
 

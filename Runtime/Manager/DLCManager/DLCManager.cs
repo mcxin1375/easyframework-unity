@@ -39,14 +39,17 @@ namespace EasyFramework
                     case EResLoaderMode.DLC_StreamingAssets:
                     
                         var url = $"{EasyFrameworkSettings.Instance.StreamingAssetsDLCPath}/{DLCVersionInfo.FileName}";
-                        await DLCUpdater.Instance.InitializeAsync(url);
+                        if (!await DLCUpdater.Instance.InitializeAsync(url))
+                            throw new InvalidOperationException("DLC manifest initialization failed.");
                     
                         break;
                     case EResLoaderMode.DLC_CDN:
                     
                         var versionUrl = EasyFrameworkSettings.AppSettings.AppVersionURL;
-                        await InitVersionAsync(versionUrl);
-                        await DLCUpdater.Instance.InitializeAsync();
+                        if (!await InitVersionAsync(versionUrl))
+                            throw new InvalidOperationException("DLC version initialization failed.");
+                        if (!await DLCUpdater.Instance.InitializeAsync())
+                            throw new InvalidOperationException("DLC manifest initialization failed.");
                     
                         break;
                 }
@@ -54,6 +57,7 @@ namespace EasyFramework
             catch (Exception e)
             {
                 FDebug.LogException(e);
+                throw;
             }
         }
 

@@ -202,8 +202,7 @@ namespace EasyFramework.Samples.Basics
             }
             finally
             {
-                if (controller.IsEnter) await controller.ExitAsync();
-                ExampleController.DestroyInstance();
+                await controller.ExitAsync();
             }
         }
     }
@@ -235,4 +234,4 @@ namespace EasyFramework.Samples.Basics.Editor
 
 ## 使用范围
 
-基础示例演示 API 与清理模式；发布前仍需配置 AppSettings、目标场景与 DLC 复制，检查资源构建与平台输出。Controller 示例逐个进入和退出，不使用当前有缺陷的 ExitAllAsync 或帧分发。MonoBehaviour 的销毁不会自动取消 ETask，资源与窗口示例显式处理 await 后已销毁的情况。
+基础示例演示 API 与清理模式；发布前仍需配置 AppSettings、目标场景与 DLC 复制，检查资源构建与平台输出。Controller 示例通过 Instance.EnterAsync 进入，并在 finally 中等待 ExitAsync 退出；基类只转发到管理器，退出后实例继续缓存在会话中，不提供公开 DestroyAsync。生命周期清理首错中断，业务应处理自身回调异常。MonoBehaviour 的销毁不会自动取消 ETask，资源与窗口示例显式处理 await 后已销毁的情况。

@@ -29,9 +29,7 @@ namespace EasyFramework
         ETask<IWindow> OpenAsync(Type type, UILayer uiLayer, object[] tParams = null);
 
         void Close(IWindow window);
-        ETask CloseAsync(IWindow window);
         void Close<T>() where T : class, IWindow, new();
-        ETask CloseAsync<T>() where T : class, IWindow, new();
         void CloseLayer(UILayer uiLayer);
         void CloseAll();
 

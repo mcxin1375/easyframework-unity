@@ -8,7 +8,8 @@ namespace EasyFramework
 {
     public interface IControllerComponent
     {
-        void Create(IController controller);
+        void Register(IController controller);
+        void OnCreate();
         ETask OnPreEnterAsync();
         ETask OnEnterAsync();
         ETask OnAfterEnterAsync();

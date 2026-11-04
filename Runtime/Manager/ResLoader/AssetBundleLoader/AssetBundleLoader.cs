@@ -42,11 +42,10 @@ namespace EasyFramework
             if (Manifest != null) return;
             
             var content = await LoadTextAsync(AssetBundleManifest.FileName);
-            Manifest = !content.IsNullOrWhiteSpace() ? ConfigHelper.LoadFromText<AssetBundleManifest>(content) : null;
-            if (Manifest == null)
+            var manifest = !content.IsNullOrWhiteSpace() ? ConfigHelper.LoadFromText<AssetBundleManifest>(content) : null;
+            if (manifest == null)
             {
-                FDebug.LogError($"LoadTextAsync: {AssetBundleManifest.FileName}, content is null or empty!");
-                return;
+                throw new InvalidDataException($"Invalid resource manifest: {AssetBundleManifest.FileName}");
             }
             
             // var manifestFile = await F.DLCManager.DownloadAndReturnFileAsync(AssetBundleManifest.FileName);
@@ -57,9 +56,10 @@ namespace EasyFramework
             //     return;
             // }
 
-            foreach (var abName in Manifest.abNames)
+            _abDict.Clear();
+            foreach (var abName in manifest.abNames)
             {
-                var deps = Manifest.GetAllDependencies(abName);
+                var deps = manifest.GetAllDependencies(abName);
                 var abFile = string.Empty;
                 var fileName = F.DLCManager.GetFileName(abName);
                 switch (EasyFrameworkSettings.Instance.resLoaderMode)
@@ -74,6 +74,7 @@ namespace EasyFramework
 
                 _abDict.Add(abName, new AssetBundleInfo(abName, deps, abFile));
             }
+            Manifest = manifest;
         }
 
         public async ETask<string> LoadTextAsync(string resName)

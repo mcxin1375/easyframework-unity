@@ -1,0 +1,9 @@
+{
+    "name": "EasyFramework.Lifecycle.Tests",
+    "references": [
+        "GUID:73325a7e2bce08341b61ab53f0f987ac"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

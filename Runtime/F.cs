@@ -5,6 +5,8 @@
 //----------------------------------------------------------------*/
 
 using UnityEngine;
+using System;
+using System.Runtime.ExceptionServices;
 
 namespace EasyFramework
 {
@@ -52,39 +54,46 @@ namespace EasyFramework
             None,
             Initializing,
             Initialized,
+            Exception,
         }
-        private static EState _state = EState.None;
-        
+        private static EState _state;
+
         public static async ETask InitializeAsync()
         {
             switch (_state)
             {
                 case EState.None:
-                    
+                case EState.Exception:
                     _state = EState.Initializing;
-            
-                    EasyFrameworkSettings.CreateInstance();
-                    FDebug.Debugger = UnityDebugger.Instance;
-                    FDebug.DebugLevel = EasyFrameworkSettings.Instance.debugLevel;
-            
-                    EasyFramework.WindowManager.CreateInstance();
-                    EasyFramework.SpriteLoader.CreateInstance();
-                    EasyFramework.ShaderLoader.CreateInstance();
-                    EasyFramework.SceneLoader.CreateInstance();
-                    EasyFramework.AudioPlayer.CreateInstance();
-                    
-                    await EasyFramework.DLCManager.Instance.InitializeAsync();
-                    await EasyFramework.AssetBundleLoader.Instance.InitializeAsync();
-            
-                    _state =  EState.Initialized;
-                    
+                    try
+                    {
+                        EasyFrameworkSettings.CreateInstance();
+                        FDebug.Debugger = UnityDebugger.Instance;
+                        FDebug.DebugLevel = EasyFrameworkSettings.Instance.debugLevel;
+                        EasyFramework.WindowManager.CreateInstance();
+                        EasyFramework.SpriteLoader.CreateInstance();
+                        EasyFramework.ShaderLoader.CreateInstance();
+                        EasyFramework.SceneLoader.CreateInstance();
+                        EasyFramework.AudioPlayer.CreateInstance();
+                        await EasyFramework.DLCManager.Instance.InitializeAsync();
+                        await EasyFramework.AssetBundleLoader.Instance.InitializeAsync();
+                        _state = EState.Initialized;
+                    }
+                    catch (Exception exception)
+                    {
+                        FDebug.LogException(exception);
+                        _state = EState.Exception;
+                        throw;
+                    }
+
                     break;
                 case EState.Initializing:
-                    await ETask.WaitUntil(() => _state == EState.Initialized);
+                    await ETask.WaitUntil(() => _state != EState.Initializing);
+                    if (_state == EState.Exception) throw new Exception($"F.InitializeAsync Error!");
                     break;
             }
         }
-        
+
         [RuntimeInitializeOnLoadMethod]
         private static void InitOnLoadMethod()
         {

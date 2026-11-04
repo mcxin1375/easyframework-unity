@@ -59,6 +59,8 @@ namespace EasyFramework
         
         public static async ETask<GameObject[]> CreateObjAsync(this IResLoader resLoader, string resName, int count, Transform parent = null, IResRequest request = null)
         {
+            if (count < 0) throw new System.ArgumentOutOfRangeException(nameof(count));
+            if (count == 0) return System.Array.Empty<GameObject>();
             var go = await resLoader.LoadAssetAsync<GameObject>(resName, request);
             if (go == null)
             {
@@ -70,11 +72,11 @@ namespace EasyFramework
 
             var asyncInstantiateOperation = Object.InstantiateAsync(go, count, parent);
             if (asyncInstantiateOperation == null) return null;
+            await asyncInstantiateOperation;
             
 #if UNITY_EDITOR
             if (resLoader is AssetBundleLoader)
             {
-                await asyncInstantiateOperation;
                 foreach (var obj in asyncInstantiateOperation.Result) AssetBundleHelper.ResetShaderEditorOnly(obj);
             }
 #endif

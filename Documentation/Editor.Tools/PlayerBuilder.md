@@ -45,6 +45,8 @@ AppSettings 通过 `Create > EasyFramework > AppSettings` 创建，并在 EasyFr
 5. 使用启用的 Build Settings 场景和当前 Build Target 生成输出。
 6. 调用 OnBuildReport 扩展；PostProcessBuild 按配置清理临时目录。
 
+构建结束后仅在 Unity 编辑器的非批处理模式下自动打开输出目录；Jenkins 等通过 `-batchmode` 执行的命令行构建不会启动外部进程打开目录。
+
 enabled 仅控制 Player 构建主体，前置资源构建仍可能执行。不要用 enabled 代替 assetBuilder 关闭资源构建。
 
 ## StreamingAssets

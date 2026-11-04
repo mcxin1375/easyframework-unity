@@ -18,6 +18,7 @@ namespace EasyFramework
         public bool IsTimerAlive => IsOpen;
         public bool NeedDestroy => !IsOpen && _closedTime > 0 && Time.time > _closedTime + KeepAliveTime;
         public bool IsOpen { get; private set; }
+        public bool IsLoading { get; private set; }
         public bool IsActive { get; private set; }
         public Type Type { get; }
         public UILayerBehaviour LayerBehaviour { get; private set; }
@@ -38,6 +39,7 @@ namespace EasyFramework
         {
             if (component == null || _componentList.Contains(component)) return;
             _componentList.Add(component);
+            component.Register(this);
         }
         private void InitWindowObject()
         {
@@ -57,43 +59,20 @@ namespace EasyFramework
             foreach (var ex in arr) RegisterComponent(ex);
             var comps = WindowObject.GetComponentsInChildren<IWindowComponent>();
             foreach (var comp in comps) RegisterComponent(comp);
-            
-            OnCreate();
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.Create(this);
-        }
-        public async ETask CreateAsync(UILayerBehaviour uiLayer)
-        {
-            LayerBehaviour = uiLayer;
-            if (WindowObject != null) return;
-            
-            // WindowObject = await F.ResLoader.CreateObjAsync(Type.Name, uiLayer.transform, this);
-            WindowObject = await CreateWindowObjectAsync(uiLayer.transform);
-            if (WindowObject == null)
-            {
-                Debug.LogError($"Failed to create window object of type {Type.Name}");
-                return;
-            }
 
-            InitWindowObject();
+            OnLoadObject();
+            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnLoadObject();
         }
-        void IWindow.Create(UILayerBehaviour uiLayer)
+        void IWindow.Create()
         {
-            LayerBehaviour = uiLayer;
-            if (WindowObject != null) return;
             
-            WindowObject = CreateWindowObject(uiLayer.transform);
-            if (WindowObject == null)
-            {
-                Debug.LogError($"Failed to create window object of type {Type.Name}");
-                return;
-            }
-            
-            InitWindowObject();
         }
         void IWindow.Destroy()
         {
+            ((IWindow)this).Close();
+            
             OnDestroy();
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.Destroy();
+            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnDestroy();
 
             _componentList.Clear();
             if (WindowObject != null)
@@ -102,33 +81,63 @@ namespace EasyFramework
                 WindowObject = null;
             }
         }
-        void IWindow.Open()
+        void IWindow.Open(UILayerBehaviour uiLayer)
         {
-            if (WindowObject != null) WindowObject.SetActive(true);
+            if (IsLoading) throw new InvalidOperationException("Window creation is already in loading.");
+            
+            LayerBehaviour = uiLayer;
+            if (WindowObject == null)
+            {
+                WindowObject = CreateWindowObject(uiLayer.transform);
+                if (WindowObject == null)
+                    throw new ArgumentNullException($"Window object is null. Type: {Type.Name}");
+                
+                InitWindowObject();
+            }
+            
+            WindowObject.SetActive(true);
         
             if (!IsOpen)
             {
-                _closedTime = 0;
                 IsOpen = true;
+                _closedTime = 0;
                 OnAddListeners();
-                if (_componentList.Count > 0) foreach (var ex in _componentList) ex.AddListeners();
+                if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnAddListeners();
             }
             
             OnOpen();
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.Open();
+            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnOpen();
             
             Refresh();
         }
-        async ETask IWindow.AfterOpenAsync()
+        async ETask IWindow.OpenAsync(UILayerBehaviour uiLayer)
         {
-            await OnAfterOpenAsync();
-            if (_componentList.Count > 0) foreach (var ex in _componentList) await ex.AfterOpenAsync();
+            if (IsLoading) throw new InvalidOperationException("Window creation is already in loading.");
+            
+            LayerBehaviour = uiLayer;
+            if (WindowObject == null)
+            {
+                IsLoading = true;
+
+                try
+                {
+                    WindowObject = await CreateWindowObjectAsync(uiLayer.transform);
+                }
+                catch (Exception e)
+                {
+                    FDebug.LogException(e);
+                }
+                finally { IsLoading = false; }
+                
+                if (WindowObject == null)
+                    throw new ArgumentNullException($"Window object is null. Type: {Type.Name}");
+                
+                InitWindowObject();
+            }
+            
+            (this as IWindow).Open(uiLayer);
         }
-        async ETask IWindow.BeforeCloseAsync()
-        {
-            await OnBeforeCloseAsync();
-            if (_componentList.Count > 0) foreach (var ex in _componentList) await ex.BeforeCloseAsync();
-        }
+
         void IWindow.Close()
         {
             if (!IsOpen) return;
@@ -136,10 +145,10 @@ namespace EasyFramework
             _closedTime = Time.time;
 
             OnRemoveListeners();
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.RemoveListeners();
+            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnRemoveListeners();
 
             OnClose();
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.Close();
+            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnClose();
             
             if (WindowObject) WindowObject.SetActive(false);
         }
@@ -150,12 +159,12 @@ namespace EasyFramework
             IsActive = value;
             WindowObject.SetActive(value);
             OnSetActive(value);
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.SetActive(value);
+            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnSetActive(value);
         }
         public void Refresh()
         {
             OnRefresh();
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.Refresh();
+            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnRefresh();
         }
         void IWindow.RefreshOrder(UILayerBehaviour uiLayer, int orderInLayer, int orderIndex)
         {
@@ -172,30 +181,27 @@ namespace EasyFramework
             RectTransform.SetSiblingIndex(orderIndex);
             WindowObject.SetLayerEx(LayerBehaviour.gameObject.layer);
 
-            OnRefreshOrderInLayer(orderInLayer);
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.RefreshOrderInLayer(orderInLayer);
+            OnRefreshOrderInLayer(Canvas.sortingOrder);
+            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnRefreshOrderInLayer(Canvas.sortingOrder);
         }
         void IWindow.Update()
         {
             OnUpdate();
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.Update();
+            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnUpdate();
         }
         void ButtonClick(Button button)
         {
             OnButtonClick(button);
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.ButtonClick(button);
+            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnButtonClick(button);
         }
 
         protected void Close() => F.WindowManager.Close(this);
-        protected ETask CloseAsync() => F.WindowManager.CloseAsync(this);
 
-        protected virtual void OnCreate() { }
+        protected virtual void OnLoadObject() { }
         protected virtual void OnDestroy() { }
         protected virtual void OnAddListeners() { }
         protected virtual void OnRemoveListeners() { }
         protected virtual void OnOpen() { }
-        protected virtual ETask OnAfterOpenAsync() => ETask.CompletedTask;
-        protected virtual ETask OnBeforeCloseAsync() => ETask.CompletedTask;
         protected virtual void OnClose() { }
         protected virtual void OnSetActive(bool value) { }
         protected virtual void OnRefresh() { }

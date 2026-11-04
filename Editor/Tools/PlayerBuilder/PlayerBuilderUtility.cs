@@ -7,6 +7,7 @@
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEngine;
 
 namespace EasyFramework.Editor
 {
@@ -34,7 +35,8 @@ namespace EasyFramework.Editor
 
             foreach (var ex in PlayerBuilder.Instance.ToolExtensions) ex.OnBuildReport(result);
 
-            if (Directory.Exists(locationDirectory)) System.Diagnostics.Process.Start(locationDirectory);
+            if (Application.isEditor && !Application.isBatchMode && Directory.Exists(locationDirectory))
+                System.Diagnostics.Process.Start(locationDirectory);
         }
         
         // public void BuildMainRes(string dlcVersion = "")
