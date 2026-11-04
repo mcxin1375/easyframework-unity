@@ -39,6 +39,8 @@ UI Root、各个 `UILayer` 和窗口资源也必须已经配置。`UILayer` 当�
 
 窗口入口在 Unity 主线程调用。Window 的对象在首次 Open / OpenAsync 时创建，IWindow.Create() 是管理器创建实例时的入口。异步加载由 IsLoading 标记保护，加载结束或抛错都会在 finally 中复位；仅在加载中直接重复调用 IWindow.Open / OpenAsync 时抛出 InvalidOperationException，已加载对象仍可复用。管理器在修改层登记前检查 IsLoading，重叠请求记录错误并返回 null，保留首个请求及其登记；打开过程抛错则清理对应实例并返回 null。资源对象为 null 也视为打开失败，后续请求可以重新创建。参数仍在管理器入口写入，拒绝的重叠请求也可能改变参数，因此同类型打开应顺序 await。
 
+Window 的 Alive 初始为 true，Close 后仍为 true，Destroy 入口将其置为 false；Create 不会重新激活已销毁的实例。Open / OpenAsync 在入口检查 Alive，为 false 时抛出包含窗口类型的 InvalidOperationException。通过管理器调用时，由管理器捕获并记录异常、返回 null；直接调用 IWindow 时由调用方处理异常。该入口检查不等于异步创建期间的取消或迟到对象回收。
+
 
 ## 关闭与销毁
 
@@ -53,7 +55,11 @@ UI Root、各个 `UILayer` 和窗口资源也必须已经配置。`UILayer` 当�
 
 管理器销毁前先验证类型缓存仍指向传入实例，再删除该缓存并移除层关系；旧关闭缓存不能删除同类型的新实例。Window.Destroy 先同步调用 Close，再执行窗口 OnDestroy、组件 OnDestroy 和原生对象销毁。窗口快照按需在后续 Update 刷新，本帧已无层映射的实例停止更新，回调中新开的实例从下一次快照刷新参与 Update。
 
-窗口销毁后不能继续使用原实例，再次通过管理器 Open 得到新实例。管理器拒绝不属于当前类型缓存的旧实例；Window 本体没有已销毁标记，直接重复调用 IWindow.Destroy 仍可能重复执行回调。创建中 Destroy 不会取消加载或处理迟到对象，业务应等待打开操作完成再销毁。清理回调抛错会中断该实例后续步骤，管理器记录异常。
+窗口销毁后不能继续使用原实例；经管理器销毁后，再次通过管理器 Open 得到新实例。管理器拒绝不属于当前类型缓存的旧实例。Window.Destroy 通过 Alive 防止重复及递归执行，销毁后的 SetActive、Refresh、RefreshOrder 和 Update 直接返回。直接调用 IWindow.Destroy 不会主动撤销管理器登记；下次通过管理器打开命中该旧实例时，打开失败并清除旧缓存，返回 null。创建中 Destroy 不会取消加载或回收迟到对象，业务应等待打开操作完成再销毁。
+
+Destroy 用一层 try/catch 包住 Close、窗口 OnDestroy 和组件 OnDestroy。普通生命周期回调抛错后，记录原异常并停止后续业务回调，随后仍清空组件列表、销毁 GameObject 并清空 WindowObject。Alive 在回调前已经置为 false，重复 Destroy 不重试业务清理。
+
+Destroy 不主动调用资源卸载。窗口作为 IResRequest 的 Alive=false 后，不再以活跃持有者身份阻止资源回收；AssetBundleLoader 在缓存期限到期且没有其他活跃持有者时，通过后续 Tick 回收请求。关闭窗口时 Alive 仍为 true，继续保留资源供重新打开使用。
 
 窗口帧更新由 FBehaviour 驱动，禁用 UI Root 不会停止管理器的更新和超时检查。窗口更新异常在管理器的帧入口统一记录，避免跳过宿主中后续模块；运行时层级和窗口调试信息显示在 UI Root 的 Inspector。
 

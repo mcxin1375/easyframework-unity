@@ -14,7 +14,7 @@ namespace EasyFramework
 {
     public abstract class Window : IWindow, ITimerObject, IResRequest
     {
-        public bool Alive => !NeedDestroy;
+        public bool Alive { get; private set; } = true;
         public bool IsTimerAlive => IsOpen;
         public bool NeedDestroy => !IsOpen && _closedTime > 0 && Time.time > _closedTime + KeepAliveTime;
         public bool IsOpen { get; private set; }
@@ -69,10 +69,20 @@ namespace EasyFramework
         }
         void IWindow.Destroy()
         {
-            ((IWindow)this).Close();
+            if (!Alive) return;
+            Alive = false;
+
+            try
+            {
+                ((IWindow)this).Close();
             
-            OnDestroy();
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnDestroy();
+                OnDestroy();
+                if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnDestroy();
+            }
+            catch (Exception e)
+            {
+                FDebug.LogException(e);
+            }
 
             _componentList.Clear();
             if (WindowObject != null)
@@ -83,6 +93,7 @@ namespace EasyFramework
         }
         void IWindow.Open(UILayerBehaviour uiLayer)
         {
+            if (!Alive) throw new InvalidOperationException($"Window.Open({Type.Name}): window has been destroyed.");
             if (IsLoading) throw new InvalidOperationException("Window creation is already in loading.");
             
             LayerBehaviour = uiLayer;
@@ -112,6 +123,7 @@ namespace EasyFramework
         }
         async ETask IWindow.OpenAsync(UILayerBehaviour uiLayer)
         {
+            if (!Alive) throw new InvalidOperationException($"Window.OpenAsync({Type.Name}): window has been destroyed.");
             if (IsLoading) throw new InvalidOperationException("Window creation is already in loading.");
             
             LayerBehaviour = uiLayer;
@@ -154,6 +166,7 @@ namespace EasyFramework
         }
         public void SetActive(bool value)
         {
+            if (!Alive) return;
             if (WindowObject == null) return;
 
             IsActive = value;
@@ -163,11 +176,15 @@ namespace EasyFramework
         }
         public void Refresh()
         {
+            if (!Alive) return;
+
             OnRefresh();
             if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnRefresh();
         }
         void IWindow.RefreshOrder(UILayerBehaviour uiLayer, int orderInLayer, int orderIndex)
         {
+            if (!Alive) return;
+
             LayerBehaviour = uiLayer;
             if (WindowObject == null) return;
             
@@ -186,6 +203,8 @@ namespace EasyFramework
         }
         void IWindow.Update()
         {
+            if (!Alive) return;
+            
             OnUpdate();
             if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnUpdate();
         }

@@ -49,6 +49,8 @@ public sealed class ResourceOwner : IResRequest
 
 长期使用资源时传入 Alive 为 true 的请求。无请求时仅按 resRequestAliveTime 保持缓存，每次加载刷新倒计时，不是无限持有或每次调用累加一个引用。释放时传相同请求；同一资源的其他活跃请求仍会阻止卸载。
 
+请求的 Alive 变为 false 后，也可以等待加载器自动回收：缓存期限到期且全部持有者均不再存活时，后续 Tick 移除请求、释放 Bundle 引用并清空持有者集合。Window.Destroy 使用这个约定，只结束自身 Alive 持有，不主动调用 Unload；其他活跃持有者和剩余缓存期限仍然有效。
+
 Unload 不负责 Destroy 已实例化的 GameObject。先停止使用并销毁实例，再释放请求。UnloadForce / UnloadAllForce 绕过持有关系，可选择卸载已加载对象，不应作为常规清理方式。
 
 批量 CreateObjAsync(resName, count, ...) 在所有分支都等待实例化完成后返回；Editor Bundle 模式随后恢复 Shader。count 为 0 返回空数组且不加载资源，负数抛出 ArgumentOutOfRangeException；资源加载失败返回 null。

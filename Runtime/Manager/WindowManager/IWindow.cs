@@ -11,6 +11,7 @@ namespace EasyFramework
 {
     public interface IWindow
     {
+        bool Alive { get; }
         bool IsLoading { get; }
         bool NeedDestroy { get; }
         UILayerBehaviour LayerBehaviour { get; }

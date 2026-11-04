@@ -279,6 +279,165 @@ namespace EasyFramework.Tests
             Assert.That(window.CleanupOrder, Is.EqualTo(new[] { "RemoveListeners", "Close", "Destroy" }));
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void DestroyedWindow_RejectsReopenWithoutLoading(bool asynchronous)
+        {
+            var window = new ProbeWindow();
+            IWindow api = window;
+            api.Open(_layer);
+            Track(window.WindowObject);
+            api.Destroy();
+
+            var failure = asynchronous
+                ? Assert.Throws<InvalidOperationException>(() => api.OpenAsync(_layer).GetAwaiter().GetResult())
+                : Assert.Throws<InvalidOperationException>(() => api.Open(_layer));
+
+            Assert.That(failure.Message, Does.Contain(nameof(ProbeWindow)).And.Contain("destroyed"));
+            Assert.That(failure.Message, Does.StartWith(asynchronous ? "Window.OpenAsync(" : "Window.Open("));
+            Assert.That(api.Alive, Is.False);
+            Assert.That(window.Requests, Is.EqualTo(1));
+            Assert.That(window.Creates, Is.EqualTo(1));
+            Assert.That(window.Destroys, Is.EqualTo(1));
+            Assert.That(window.WindowObject, Is.Null);
+            Assert.That(window.IsOpen, Is.False);
+            Assert.That(window.IsLoading, Is.False);
+        }
+
+        [Test]
+        public void Destroy_RecursiveAndRepeatedCallsReleaseTheWindowOnce()
+        {
+            var window = new ProbeWindow();
+            IWindow api = window;
+            Assert.That(api.Alive, Is.True);
+            api.Open(_layer);
+            Track(window.WindowObject);
+            api.Close();
+            Assert.That(api.Alive, Is.True, "Closing must retain the cached window's resource ownership.");
+            window.DestroyAction = () => api.Destroy();
+
+            api.Destroy();
+            api.Destroy();
+            api.Create();
+
+            Assert.That(api.Alive, Is.False, "Create must not revive a destroyed instance.");
+            Assert.That(((IResRequest)window).Alive, Is.False);
+            Assert.That(window.Removes, Is.EqualTo(1));
+            Assert.That(window.Closes, Is.EqualTo(1));
+            Assert.That(window.Destroys, Is.EqualTo(1));
+            Assert.That(window.WindowObject, Is.Null);
+            Assert.That(window.CleanupOrder, Is.EqualTo(new[] { "RemoveListeners", "Close", "Destroy" }));
+        }
+
+        [Test]
+        public void DestroyedWindow_StopsFrameRefreshAndActiveCallbacks()
+        {
+            var window = new ProbeWindow();
+            IWindow api = window;
+            api.Open(_layer);
+            Track(window.WindowObject);
+            api.Destroy();
+            int refreshes = window.Refreshes;
+
+            api.Update();
+            api.Refresh();
+            api.SetActive(true);
+
+            Assert.That(window.Updates, Is.Zero);
+            Assert.That(window.Refreshes, Is.EqualTo(refreshes));
+            Assert.That(window.ActiveChanges, Is.Zero);
+            Assert.That(window.WindowObject, Is.Null);
+        }
+
+        [UnityTest]
+        public IEnumerator Destroy_CallbackFailuresStillReleaseNativeObjectAndAlive()
+        {
+            foreach (var stage in new[] { "RemoveListeners", "Close", "Destroy", "ComponentDestroy" })
+            {
+                var window = new DestroyFailureWindow { FailureStage = stage };
+                IWindow api = window;
+                api.Open(_layer);
+                var obj = Track(window.WindowObject);
+
+                Assert.DoesNotThrow(() => api.Destroy(), stage);
+                Assert.That(((QuietDebugger)FDebug.Debugger).LastException, Is.SameAs(window.Failure), stage);
+                Assert.That(api.Alive, Is.False, stage);
+                Assert.That(((IResRequest)window).Alive, Is.False, stage);
+                Assert.That(window.IsOpen, Is.False, stage);
+                Assert.That(window.WindowObject, Is.Null, stage);
+                int calls = window.Calls.Count;
+                api.Destroy();
+                Assert.That(window.Calls.Count, Is.EqualTo(calls), "Repeated Destroy must not retry callbacks.");
+
+                yield return null;
+                Assert.That(obj == null, Is.True, stage + " left the native GameObject alive.");
+            }
+        }
+
+        [Test]
+        public void Destroy_EndsResourceOwnershipAndLoaderReclaimsAfterCacheAndOtherOwners()
+        {
+            var assembly = typeof(F).Assembly;
+            var requestType = assembly.GetType("EasyFramework.AssetBundleRequest", true);
+            var loaderType = assembly.GetType("EasyFramework.AssetBundleLoader", true);
+            var poolType = typeof(ObjectPool<>).MakeGenericType(requestType);
+            var pool = poolType.GetProperty("Shared").GetValue(null);
+            var request = poolType.GetMethod("Rent").Invoke(pool, null);
+            var loader = (ITickerNode)Activator.CreateInstance(loaderType);
+            var requests = (IDictionary)loaderType.GetField("_requestDict", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(loader);
+            var owners = (HashSet<IResRequest>)requestType.GetField("ReferList", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(request);
+            var aliveTime = requestType.GetProperty("AliveTime");
+            var first = new ProbeWindow();
+            var second = new ProbeWindow();
+            var info = new AssetBundleInfo("WindowDestroyOwnership", Array.Empty<string>(), null);
+            const string resourceName = "WindowDestroyOwnership";
+            bool returned = false;
+
+            try
+            {
+                requestType.GetField("AbName").SetValue(request, resourceName);
+                requestType.GetMethod("InitInfo").Invoke(request, new object[] { resourceName, info });
+                owners.Add(first);
+                requests.Add(resourceName, request);
+                aliveTime.SetValue(request, Time.time - 1);
+                loader.OnTick();
+                Assert.That(requests.Contains(resourceName), Is.True, "The live window must retain its resource.");
+
+                ((IWindow)first).Destroy();
+                Assert.That(first.Alive, Is.False);
+                Assert.That(requests.Contains(resourceName), Is.True, "Window.Destroy must not actively unload the resource.");
+                Assert.That(info.RefCount, Is.EqualTo(1));
+
+                aliveTime.SetValue(request, Time.time + 60);
+                loader.OnTick();
+                Assert.That(requests.Contains(resourceName), Is.True, "The loader must honor the cache lifetime.");
+
+                owners.Add(second);
+                aliveTime.SetValue(request, Time.time - 1);
+                loader.OnTick();
+                Assert.That(requests.Contains(resourceName), Is.True, "Another live owner must still retain the resource.");
+
+                ((IWindow)second).Destroy();
+                loader.OnTick();
+                returned = !requests.Contains(resourceName);
+                Assert.That(returned, Is.True, "Dead windows must not indefinitely retain the resource after cache expiry.");
+                Assert.That(info.RefCount, Is.Zero);
+                Assert.That(owners, Is.Empty, "Returning the request must clear its owner references.");
+            }
+            finally
+            {
+                ETask.RemoveTick(loader);
+                ((IWindow)first).Destroy();
+                ((IWindow)second).Destroy();
+                if (!returned)
+                {
+                    requests.Remove(resourceName);
+                    requestType.GetMethod("UnloadForce").Invoke(request, new object[] { false });
+                    poolType.GetMethod("Return").Invoke(pool, new[] { request });
+                }
+            }
+        }
+
         [UnityTest]
         public IEnumerator Initialization_WaitersObserveFailureAndLaterCallRetries()
         {
@@ -448,10 +607,32 @@ namespace EasyFramework.Tests
         }
         public sealed class First : ProbeController<First> { }
         public sealed class Second : ProbeController<Second> { }
+        public sealed class DestroyFailureWindow : Window
+        {
+            public string FailureStage;
+            public readonly Exception Failure = new InvalidOperationException("window cleanup failed");
+            public readonly List<string> Calls = new();
+            public readonly DestroyFailureComponent Component = new();
+            protected override GameObject CreateWindowObject(Transform parent) => new GameObject("DestroyFailureWindow", typeof(RectTransform));
+            public void Record(string stage)
+            {
+                Calls.Add(stage);
+                if (stage == FailureStage) throw Failure;
+            }
+            protected override void OnRemoveListeners() => Record("RemoveListeners");
+            protected override void OnClose() => Record("Close");
+            protected override void OnDestroy() => Record("Destroy");
+        }
+        public sealed class DestroyFailureComponent : WindowComponent<DestroyFailureWindow>
+        {
+            protected override void OnDestroy() => Window.Record("ComponentDestroy");
+        }
         public sealed class ProbeWindow : Window
         {
             public TaskCompletionSource<GameObject> Gate = new();
             public int Requests, Creates, Removes, Closes, Destroys;
+            public int Updates, Refreshes, ActiveChanges;
+            public Action DestroyAction;
             public readonly List<string> CleanupOrder = new();
             protected override float KeepAliveTime => -1;
             protected override GameObject CreateWindowObject(Transform parent)
@@ -467,7 +648,10 @@ namespace EasyFramework.Tests
             protected override void OnLoadObject() { Creates++; }
             protected override void OnRemoveListeners() { Removes++; CleanupOrder.Add("RemoveListeners"); }
             protected override void OnClose() { Closes++; CleanupOrder.Add("Close"); }
-            protected override void OnDestroy() { Destroys++; CleanupOrder.Add("Destroy"); }
+            protected override void OnDestroy() { Destroys++; CleanupOrder.Add("Destroy"); DestroyAction?.Invoke(); }
+            protected override void OnUpdate() { Updates++; }
+            protected override void OnRefresh() { Refreshes++; }
+            protected override void OnSetActive(bool value) { ActiveChanges++; }
         }
         private sealed class TemplateLoader : IResLoader
         {

@@ -8,7 +8,7 @@
 
 历史基线共 **26 项：12 项 P1、14 项 P2**。当前 **16 项已修复、10 项待处理**；待处理为 **2 项 P1、8 项 P2**。已关闭 R01–R08、R10、R11、R13、R15–R19；R14 保留部分修正，仍待处理。顺序 1–3 已完成，顺序 4 部分完成，顺序 5–6 尚未执行。
 
-上述数量仅统计历史 26 项。2026-11-04 顺序 4 全量复核另确认的 **P2：Controller 的 UpdateEnabled 求值未纳入帧异常隔离**现已修复，不混入历史问题计数。修复后完整 Edit Mode 218/218、Play Mode 95/95 通过；当前约定范围已通过，R14 已明确暂缓的窗口终态保护仍保留待处理，顺序 4 整体仍为部分完成。证据见“Controller 帧资格异常隔离修复（2026-11-04）”。
+上述数量仅统计历史 26 项。2026-11-04 顺序 4 全量复核另确认的 **P2：Controller 的 UpdateEnabled 求值未纳入帧异常隔离**现已修复，不混入历史问题计数。最新 Window Destroy 异常保护复测完整 **Edit Mode 218/218、Play Mode 103/103 通过**；窗口 Alive 防护、重复销毁、异常后的 GameObject 释放、资源请求按缓存和其他持有者条件自动回收均已验证，异步异常入口名称 P3 也已通过回归。按最新约定，Destroy 只结束 Alive 持有，不主动卸载资源。R14 的创建中销毁收敛及直接 IWindow.Destroy 的管理器登记仍待处理，顺序 4 整体仍为部分完成。证据见“Window Destroy 异常保护与资源持有复测（2026-11-04）”。
 
 ## Ticker Node 重构（2026-11-02）
 
@@ -249,6 +249,28 @@ ControllerManager / FBehaviour 文档和当前任务状态已同步；修复前 
 
 当前约定的顺序 4 范围已通过复核及回归，新增 P2 关闭；R14 直接重复 IWindow.Destroy 终态、创建中销毁迟到对象和清理异常后的完整释放仍为明确暂缓范围，因此顺序 4 历史工作包继续标为部分完成。
 
+## Window Alive 增量复核与回归（2026-11-04）
+
+复核原 EasyFramework.Unity2022 工程包的 dev 分支，固定基准为 `4f9034e2a8dac4bdca8034491082bf79d39a55c1` 到本轮开始时的工作区，命令为 `git diff 4f9034e2a8dac4bdca8034491082bf79d39a55c1 --`。运行时增量仅 IWindow.cs 和 Window.cs。按最新实际源码，Alive 初始为 true，Create 不赋值，Destroy 在清理前置为 false；已销毁实例的 Open / OpenAsync 抛出 InvalidOperationException，由管理器入口捕获并记录异常、返回 null。直接 IWindow 调用只传播异常，日志由调用方负责。
+
+**Standards：**依据 AGENTS.md 与对应 Runtime 文档，未发现新增明确规范违规或需要整改的结构性气味。短入口判断保留原有风格，不引入新抽象。同步窗口文档中仍称“没有销毁标记、重复 Destroy 会重复回调”的旧说明，明确当前入口防护和剩余限制。
+
+**Spec：**当前约定的 Alive 初值、关闭后保持存活、Destroy 防重复及递归、已销毁实例拒绝打开、帧/刷新/激活入口跳过均通过。复核发现的 **P3：Window.OpenAsync 已销毁异常入口名称错误，现已修复**；`Runtime/Manager/WindowManager/Window.cs:119` 已改为 `Window.OpenAsync({Type.Name}): window has been destroyed.`，同步入口继续显示 Window.Open。该修正只调整异常文本，完成静态核对，未重复执行 Unity 测试。创建中销毁的迟到对象、清理首错后继续释放，以及直接 IWindow.Destroy 主动撤销管理器缓存，仍属此前明确暂缓的 R14 范围，不重新计为新增问题。
+
+新增 6 项真实 Play Mode 回归：同步/异步拒绝重开且不重新加载（2）、关闭后存活及递归/重复销毁只清理一次（1）、销毁后不再执行帧/刷新/激活回调（1）、同步/异步管理器入口记录原异常并返回 null、移除旧缓存（2）。直接在原工程使用 Unity **2022.3.62f3** 命令行执行完整 **Edit Mode 218/218、Play Mode 101/101 通过**，均 0 失败、0 跳过、进程退出码 0。Play Mode 包含 ControllerManager 36、CustomController 8、生命周期 24、窗口组件 2、窗口诊断 20、窗口更新 11。
+
+报告与日志位于 `Library/Order4Validation/WindowAliveReview-20261104-173742/`（`EditMode.xml`、`PlayMode.xml` 及同名 log）。上述回归执行前后全部 208 个 Runtime C# 文件哈希一致；业务 MainController / Startup / MainWindow、ShaderVariant 与 ProjectSettings 哈希也一致。随后按用户要求修正 OpenAsync 异常文本并同步文档；218/218、101/101 是该文本修正前的回归结果。未执行 Player / IL2CPP、真实 AssetBundle 在途卸载或设备验收，未提交或推送。R14 仍为部分修正，顺序 4 仍为部分完成。
+
+## Window Destroy 异常保护与资源持有复测（2026-11-04）
+
+按用户最新源码和约定复测：Window.Destroy 在 Alive=false 后，用一层 try/catch 执行 Close、窗口 OnDestroy 及组件 OnDestroy；普通回调失败时记录原异常并停止后续业务回调，随后继续清空组件列表、销毁 GameObject 和清空 WindowObject。当前约定不要求每个失败阶段之后继续调用全部业务回调。Destroy 不主动调用资源卸载，只需窗口不再以 Alive=true 长期持有资源。
+
+新增 2 项 Play Mode 回归：一项对窗口解绑、窗口关闭、窗口销毁和组件销毁分别注入异常，验证不向外传播、日志保留原异常、Alive 持续为 false、重复销毁不重试、WindowObject 清空，并在下一帧确认原生 GameObject 已销毁；另一项使用真实 AssetBundleRequest、隔离 AssetBundleLoader Tick 和 Bundle=null 的 AssetBundleInfo，验证活跃窗口保留请求、Destroy 不立即移除资源请求、缓存期限和其他活跃持有者仍有效，最后一个窗口销毁且缓存到期后由加载器移除请求、将 RefCount 降为零并清空持有者引用。该测试没有读取真实 AssetBundle 文件，不代表原生 Bundle 卸载或设备验收。既有同步/异步拒绝重开测试同时补充入口名称断言，确认 OpenAsync 文本修正。
+
+直接在原 EasyFramework.Unity2022 工程使用 Unity **2022.3.62f3** 命令行执行完整 **Edit Mode 218/218、Play Mode 103/103 通过**，均 0 失败、0 跳过、进程退出码 0。Play Mode 包含 ControllerManager 36、CustomController 8、生命周期 26、窗口组件 2、窗口诊断 20、窗口更新 11。报告与日志位于 `Library/Order4Validation/WindowDestroyCatchRetest-20261104-175443/`（`EditMode.xml`、`PlayMode.xml` 及同名 log）。
+
+测试前后全部 208 个 Runtime C# 文件哈希一致；业务 MainController / Startup / MainWindow、ShaderVariant 和 ProjectSettings 哈希也一致。保留用户新增的 try/catch，本轮只补充测试和文档。未执行 Player / IL2CPP、真实 AssetBundle 在途卸载或设备验收，未提交或推送。R14 仍有创建中销毁的迟到对象及直接 IWindow.Destroy 不主动撤销管理器登记两项待处理；不再把“Destroy 主动卸载资源”或“逐回调继续全部业务清理”作为当前验收要求。
+
 ## 历史全量审查范围与结论
 
 沿用上次 Review 的 `5a6c4e4361d98b1c7541a4f76a64c20bb3f70ca1` 为增量基准，差异命令为 `git diff 5a6c4e4361d98b1c7541a4f76a64c20bb3f70ca1...HEAD`；期间只有 `d20f791 同步文档` 一个提交。该提交修改文档、示例、AGENTS 和包的 Samples 注册，未修改 Runtime、Editor、Module 或 Tests 实现。
@@ -267,7 +289,7 @@ P1 表示应优先修复的数据丢失、核心流程失效或发布可靠性�
 
 仓库没有 `docs/agents/issue-tracker.md`，提交也没有原始 issue 引用，无法进行工单需求覆盖或 scope creep 判断。本次以公开文档与示例作为 API 契约；后续需要按工单审查时，可用 `/setup-matt-pocock-skills` 补齐 issue-tracker 工作流。
 
-**S01：窗口销毁契约与实际行为不一致。** [WindowManager.md:48](Documentation/Runtime/WindowManager.md#L48) 宣称 Destroy 会“销毁窗口实例及其 GameObject”，第 50 行说明“需要彻底释放实例时销毁”。历史基线中，销毁后静态容器仍返回原实例，直接销毁已打开窗口还保留 `IsOpen=true`；新增 [WindowExample.cs:35](Samples~/Basics/WindowExample.cs#L35) 使用 Close→Destroy，也会留下延时清理队列项，随后再次调用 OnDestroy。问题见 R14。当前项目已保留容器和关闭队列修正，并在 Window.Destroy 中先调用 Close；重复销毁幂等与创建中销毁收敛仍未实现，S01/R14 保持部分待处理。
+**S01：窗口销毁契约与实际行为不一致。** [WindowManager.md:48](Documentation/Runtime/WindowManager.md#L48) 宣称 Destroy 会“销毁窗口实例及其 GameObject”，第 50 行说明“需要彻底释放实例时销毁”。历史基线中，销毁后静态容器仍返回原实例，直接销毁已打开窗口还保留 `IsOpen=true`；新增 [WindowExample.cs:35](Samples~/Basics/WindowExample.cs#L35) 使用 Close→Destroy，也会留下延时清理队列项，随后再次调用 OnDestroy。问题见 R14。当前项目已保留容器和关闭队列修正，Window.Destroy 先置 Alive=false，再调用 Close；重复销毁防护、普通清理异常后的 GameObject 释放及资源 Alive 持有结束已经通过回归，创建中销毁收敛及直接 IWindow 销毁登记仍待处理，S01/R14 保持部分待处理。
 
 Controller 帧分发、批量退出、初始化失败和宿主生命周期等限制已经在当前文档中明确说明，因此不重复记为新增规格偏差。
 
@@ -411,7 +433,7 @@ AB 构建返回 null 时只打印错误，外层资源构建链继续运行 DLCB
 
 优化：销毁作为幂等终态，统一关闭、解绑、队列移除、状态失效、容器移除及持有资源释放；关闭队列去重。验收：直接 Destroy、Close→Destroy、重复调用和超时清理都只释放一次，旧实例不可查询；再次 Open 得到有效新实例。
 
-当前状态：部分修正，仍待处理。Window.Destroy 先同步调用 Close，再执行窗口和组件 OnDestroy 及原生对象销毁。WindowManager 从类型缓存按层登记分类建立 _updateList / _closedList；关闭移除层登记但保留类型实例，超时经管理器销毁。销毁入口校验实例身份并先删除匹配类型缓存，再移除层关系、调用窗口销毁；旧关闭缓存不能误删同类型新实例。窗口更新与刷新跳过已移除或仍加载的实例。Window 本体没有已销毁终态，直接重复 IWindow.Destroy 仍可能重复回调，创建中销毁没有迟到对象清理，清理首错中断；这些仍为待处理范围。当前全套 Play Mode 已覆盖普通销毁、超时重入及旧缓存身份保护，旧版完整生命周期回归不替代当前范围。
+当前状态：部分修正，仍待处理。Window.Destroy 在入口通过 Alive 防止重复及递归调用，置为 false 后同步调用 Close，再执行窗口和组件 OnDestroy；这些业务回调共用一层 try/catch，首错记录后仍继续清空组件列表及销毁 GameObject。按最新用户约定，不要求逐回调继续，也不主动卸载资源；Alive=false 后，加载器在缓存期限到期且无其他活跃持有者时自动回收资源请求。WindowManager 从类型缓存按层登记分类建立 _updateList / _closedList；关闭移除层登记但保留类型实例，超时经管理器销毁。管理器销毁入口校验实例身份并先删除匹配类型缓存，再移除层关系、调用窗口销毁；旧关闭缓存不能误删同类型新实例。已销毁实例的 Open / OpenAsync 抛出异常，SetActive、Refresh、RefreshOrder 和 Update 直接返回。剩余范围为创建中销毁没有迟到对象回收，以及直接 IWindow.Destroy 不主动撤销管理器登记。最新 Edit Mode 218/218、Play Mode 103/103 通过，已覆盖普通回调异常后的原生对象释放及真实加载器请求回收调度，不代表 R14 已全部关闭。
 
 ### R15 [P2] [已修复] 同类型并发 OpenAsync 创建多个窗口对象
 
@@ -528,7 +550,7 @@ OnUpdate 用 `lastValue == 0` 跳过赋值，导致 DrawCalls、GC 分配等指�
 | 1 | 已完成 | 保护用户数据和下载文件 | R01、R11、R16、R17 | 约束 DLC 文件所有权与清理根目录；临时下载、完整性校验后提交；版本快照及路径缓存一起切换 | 根目录存档不变；断网/取消不留下可用半包；换版本路径与内容一致 |
 | 2 | 已完成 | 稳定 ETask 与调度基础 | R02–R05 | 统一结果、异常、取消、continuation 和消费/回池协议；逐节点隔离 tick 异常；写清单次消费语义 | 真实 TaskAwaiter 回归覆盖异常、竞争、延后首次消费、回池复用及失败节点隔离 |
 | 3 | 已完成 | 修复网络与事件边界 | R10、R18、R19 | 统一 RingBuffer 满/空不变量、写入与扩容规则；事件重入策略；socket 无条件幂等释放 | 满容量/绕回字节测试、订阅变更测试及 native handle 释放测试通过 |
-| 4 | 部分完成 | 统一初始化和业务生命周期 | R06–R08、R13–R15 | 当前初始化、Controller 接口边界及实例事件、窗口加载与即时排序约定已通过；帧资格 getter 异常隔离 P2 已修复；R14 明确暂缓的最终销毁保护仍待处理 | 修复后 Edit Mode 218/218、Play Mode 95/95 通过；R14 暂缓范围及 Player / IL2CPP 未验收 |
+| 4 | 部分完成 | 统一初始化和业务生命周期 | R06–R08、R13–R15 | 初始化、Controller、窗口加载与即时排序约定已通过；Alive、重复销毁、异常后的原生对象释放及资源持有结束已验证；P3 已修复，R14 迟到对象及直接销毁登记仍待处理 | 最新 Edit Mode 218/218、Play Mode 103/103 通过；真实 AssetBundle 在途卸载、R14 暂缓范围及 Player / IL2CPP 未验收 |
 | 5 | 待执行 | 让构建失败可见且可恢复 | R12、R20–R22 | 构建阶段失败立即上抛；暂存全部产物并校验后发布；统一生命周期；每次执行读取当前配置 | 故障注入时 LatestVersion/底包保持原样；回调各一次；同会话修改目录立即生效 |
 | 6 | 待执行 | 完成可安装性与诊断隔离 | R09、R23–R26 | 明确最低 Unity 与必选依赖；隔离可选集成程序集；Profiler 遵循开关、主线程消费日志、恢复输入屏蔽、正确记录零值 | 纯净工程安装及集成组合编译通过；Profiler 开关/日志/输入/计数器场景通过 |
 

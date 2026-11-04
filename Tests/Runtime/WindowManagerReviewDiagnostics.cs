@@ -383,6 +383,29 @@ namespace EasyFramework.Tests
                 Is.EqualTo(F.WindowManager.GetLayerData(UILayer.HUD).Canvas.sortingOrder));
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void DestroyedCachedWindow_OpenLogsFailureAndReturnsNull(bool asynchronous)
+        {
+            var window = F.WindowManager.Open<OrderWindowA>();
+            _windows.Add(window);
+            Track(window.WindowObject);
+            ((IWindow)window).Destroy();
+            var debugger = (QuietDebugger)FDebug.Debugger;
+
+            var result = asynchronous
+                ? F.WindowManager.OpenAsync<OrderWindowA>().GetAwaiter().GetResult()
+                : F.WindowManager.Open<OrderWindowA>();
+
+            Assert.That(result, Is.Null);
+            Assert.That(debugger.LastException, Is.TypeOf<InvalidOperationException>());
+            Assert.That(debugger.LastException.Message, Does.Contain(nameof(OrderWindowA)).And.Contain("destroyed"));
+            Assert.That(F.WindowManager.GetWindow<OrderWindowA>(), Is.Null);
+            Assert.That(F.WindowManager.GetWindows(UILayer.HUD), Has.No.Member(window));
+            Assert.That(window.Alive, Is.False);
+            Assert.That(window.WindowObject, Is.Null);
+        }
+
         private GameObject Track(GameObject obj) { _objects.Add(obj); return obj; }
         private static IEnumerator Wait(Func<bool> predicate)
         {
