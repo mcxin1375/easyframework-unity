@@ -7,6 +7,8 @@
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Build;
+using UnityEditor.Build.Reporting;
 using UnityEngine;
 
 namespace EasyFramework.Editor
@@ -20,10 +22,7 @@ namespace EasyFramework.Editor
 
             var buildSettings = PlayerBuilder.Instance.ToolSettings?.FirstOrDefault();
             if (buildSettings == null)
-            {
-                FDebug.LogError("BuildPlayerOptionsSettings is null");
-                return;
-            }
+                throw new BuildFailedException("BuildPlayerOptionsSettings is null");
 
             var options = buildSettings.BuildPlayerOptions;
             var locationDirectory = Path.GetDirectoryName(options.locationPathName);
@@ -31,9 +30,12 @@ namespace EasyFramework.Editor
 
             FDebug.Log($"BuildPlayer Start: {options.locationPathName}");
             var result = BuildPipeline.BuildPlayer(options);
+            if (result == null) throw new BuildFailedException("BuildPlayer did not return a build report.");
             FDebug.Log($"BuildPlayer End: {result.summary.result}");
 
             foreach (var ex in PlayerBuilder.Instance.ToolExtensions) ex.OnBuildReport(result);
+            if (result.summary.result != BuildResult.Succeeded)
+                throw new BuildFailedException($"Player build did not succeed: {result.summary.result}");
 
             if (Application.isEditor && !Application.isBatchMode && Directory.Exists(locationDirectory))
                 System.Diagnostics.Process.Start(locationDirectory);

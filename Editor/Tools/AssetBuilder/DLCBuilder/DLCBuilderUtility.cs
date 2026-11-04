@@ -22,84 +22,112 @@ namespace EasyFramework.Editor
             var versionList = ConfigHelper.LoadOrCreate<DLCBuilderVersionList>(file);
             return versionList.versions?.Length > 0 ? versionList.versions[0] : null;
         }
-        
+
         public static DLCVersion GetLatestVersion()
         {
             var file = $"{DLCBuilder.Instance.ProjectPlatformPath}/{DLCVersion.LatestFileName}";
             return ConfigHelper.LoadOrCreate<DLCVersion>(file);
         }
-        
+
         public static void BuildBySettings(string outputPath)
         {
-            var toolEvents = DLCBuilder.Instance.ToolEvents;
-            
-            foreach (var extension in toolEvents) extension.OnExecuteBefore();
-            
             var settings = DLCBuilderSettings.Instance;
             var versionName = GetBuildVersionNameId();
-            var outputDir = $"{outputPath}/{versionName}";
-            var sourceDirs = new string[]
+            var versionPath = GetVersionPath(outputPath, versionName);
+            var latestPath = Path.Combine(outputPath, DLCVersion.LatestFileName);
+            var listPath = Path.Combine(outputPath, DLCBuilderVersionList.FileName);
+            var outputDir = FileHelper.CreateTempPath(versionPath);
+            var lastVersionFile = FileHelper.CreateTempPath(latestPath);
+            var listFile = FileHelper.CreateTempPath(listPath);
+            var outputs = new List<(string tempPath, string targetPath)>
             {
-                AssetBundleBuilder.Instance.ProjectPlatformPath,
-                
-#if EF_HYBRIDCLR
-                HybridCLRBuilder.Instance.ProjectPlatformPath
-#endif
+                (outputDir, versionPath), (lastVersionFile, latestPath), (listFile, listPath)
             };
-            
-            var dlcVersionFile =  $"{outputDir}/{DLCVersion.FileName}";
-            DLCVersion dlcVersion = new();
-            dlcVersion.versionIndex = EasyFrameworkSettings.Instance.dlcVersionIndex;
-            dlcVersion.versionName = versionName;
-            dlcVersion.versionUid = Guid.NewGuid().ToString();
-            
-            if ((settings.buildMode & EDLCModeOptions.DLC) > 0)
+            try
             {
-                BuildDLC($"{outputDir}/{EDLCModeOptions.DLC}", sourceDirs, out dlcVersion.dlcVersionInfoUid);
-            }
-            ConfigHelper.Save(dlcVersion, dlcVersionFile, true);
-            
-            var lastVersionFile =  $"{outputPath}/{DLCVersion.LatestFileName}";
-            ConfigHelper.Save(dlcVersion, lastVersionFile, true);
-            
-            DLCBuilderVersion dlcBuilderVersion = new();
-            dlcBuilderVersion.dlcVersion = dlcVersion;
-            dlcBuilderVersion.SetToolVersion(DLCBuilder.Instance.Version);
-            dlcBuilderVersion.abBuilderVersion = AssetBundleBuilder.Instance.Version;
-            
+                Directory.CreateDirectory(outputDir);
+                var sourceDirs = new List<string>
+                {
+                    AssetBundleBuilder.Instance.ProjectPlatformPath,
+                };
 #if EF_HYBRIDCLR
-            dlcBuilderVersion.dllBuilderVersion = HybridCLRBuilder.Instance.Version;
+                if (HybridCLR.Editor.SettingsUtil.Enable) sourceDirs.Add(HybridCLRBuilder.Instance.ProjectPlatformPath);
 #endif
-            ConfigHelper.Save(dlcBuilderVersion, $"{outputDir}/{DLCBuilderVersion.FileName}", true);
-            
 
-            DLCBuilderVersionList.Refresh(outputPath, settings.maxCacheNum);
-            
-            foreach (var extension in toolEvents) extension.OnExecuteAfter();
+                var dlcVersionFile =  $"{outputDir}/{DLCVersion.FileName}";
+                DLCVersion dlcVersion = new();
+                dlcVersion.versionIndex = EasyFrameworkSettings.Instance.dlcVersionIndex;
+                dlcVersion.versionName = versionName;
+                dlcVersion.versionUid = Guid.NewGuid().ToString();
+
+                if ((settings.buildMode & EDLCModeOptions.DLC) > 0)
+                {
+                    BuildDLCContents($"{outputDir}/{EDLCModeOptions.DLC}", sourceDirs.ToArray(), out dlcVersion.dlcVersionInfoUid);
+                }
+                else throw new InvalidOperationException("A DLC build must include the base DLC mode.");
+                ConfigHelper.Save(dlcVersion, dlcVersionFile, true);
+
+                ConfigHelper.Save(dlcVersion, lastVersionFile, true);
+
+                DLCBuilderVersion dlcBuilderVersion = new();
+                dlcBuilderVersion.dlcVersion = dlcVersion;
+                dlcBuilderVersion.SetToolVersion(DLCBuilder.Instance.Version);
+                dlcBuilderVersion.abBuilderVersion = AssetBundleBuilder.Instance.Version;
+
+#if EF_HYBRIDCLR
+                dlcBuilderVersion.dllBuilderVersion = HybridCLRBuilder.Instance.Version;
+#endif
+                ConfigHelper.Save(dlcBuilderVersion, $"{outputDir}/{DLCBuilderVersion.FileName}", true);
+
+
+                ValidateVersion(outputDir);
+                var versionList = CreateVersionList(outputPath, dlcBuilderVersion, settings.maxCacheNum,
+                    settings.copyVersionToStreamingAssets ? settings.releaseVersion : null, out var obsoleteDirectories);
+                ConfigHelper.Save(versionList, listFile, true);
+                if (settings.copyVersionToStreamingAssets)
+                {
+                    var selectedPath = string.IsNullOrWhiteSpace(settings.releaseVersion) || settings.releaseVersion == versionName
+                        ? outputDir : GetVersionPath(outputPath, settings.releaseVersion);
+                    var target = EasyFrameworkSettings.Instance.StreamingAssetsDLCPath;
+                    var stage = FileHelper.CreateTempPath(target);
+                    outputs.Add((stage, target));
+                    PrepareStreamingAssets(selectedPath, stage);
+                }
+                FileHelper.ReplacePathsFromTemp(outputs.ToArray(), obsoleteDirectories);
+            }
+            finally
+            {
+                foreach (var output in outputs) FileHelper.DeleteDirectoryOrFile(output.tempPath);
+            }
         }
-        
+
         public static void BuildDLC(string outputDir, string[] sourceDirs, out string uid)
         {
-            // Debug.Log($"DLCBuilder - BuildDLCList");
-            
+            var stage = FileHelper.CreateTempPath(outputDir);
+            try
+            {
+                BuildDLCContents(stage, sourceDirs, out uid);
+                FileHelper.ReplacePathsFromTemp(new[] { (stage, outputDir) });
+            }
+            finally { FileHelper.DeleteDirectoryOrFile(stage); }
+        }
+
+        private static void BuildDLCContents(string outputDir, string[] sourceDirs, out string uid)
+        {
             uid = Guid.NewGuid().ToString();
             FileHelper.CreateDirectory(outputDir);
-            FileHelper.ClearDirectory(outputDir);
 
             HashSet<string> sourcesHashSet = new();
-            if (sourceDirs?.Length > 0)
+            if (sourceDirs == null || sourceDirs.Length == 0)
+                throw new InvalidOperationException("DLC source directories are required.");
+            foreach (var sourceDir in sourceDirs)
             {
-                foreach (var sourceDir in sourceDirs)
-                {
-                    if (!Directory.Exists(sourceDir)) continue;
-                    
-                    var files = Directory.GetFiles(sourceDir);
-                    foreach (var file in files) sourcesHashSet.Add(file);
-                }
+                if (!Directory.Exists(sourceDir)) throw new DirectoryNotFoundException($"DLC source does not exist: {sourceDir}");
+                foreach (var file in Directory.GetFiles(sourceDir)) sourcesHashSet.Add(file);
             }
 
             int index = 0;
-            List<HashFileInfo> hashFileList = new();
+            Dictionary<string, HashFileInfo> hashFiles = new(StringComparer.OrdinalIgnoreCase);
             try
             {
                 foreach (var resFile in sourcesHashSet)
@@ -110,20 +138,25 @@ namespace EasyFramework.Editor
                     var fi = new FileInfo(resFile);
                     var md5 = MD5Helper.MD5File(resFile);
                     var hashFileName = $"{md5}{Path.GetExtension(resFile)}";
-                    hashFileList.Add(new HashFileInfo
+                    var name = Path.GetFileName(resFile);
+                    var info = new HashFileInfo
                     {
-                        resName = Path.GetFileName(resFile),
+                        resName = name,
                         fileName = hashFileName,
                         length = fi.Length,
-                    });
+                    };
+                    if (hashFiles.TryGetValue(name, out var previous))
+                    {
+                        if (previous.fileName == hashFileName && previous.length == info.length) continue;
+                        throw new InvalidDataException($"Conflicting DLC resource name: {name}");
+                    }
 
                     var toFile = $"{outputDir}/{hashFileName}";
                     File.Copy(resFile, toFile, true);
+                    if (!FileHelper.VerifyFileIntegrity(toFile, info.length, md5))
+                        throw new InvalidDataException($"DLC copy verification failed: {resFile}");
+                    hashFiles.Add(name, info);
                 }
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
             }
             finally
             {
@@ -131,30 +164,116 @@ namespace EasyFramework.Editor
             }
             DLCVersionInfo versionInfo = new();
             versionInfo.uid = uid;
-            versionInfo.hashFiles = hashFileList.ToArray();
-            
+            versionInfo.hashFiles = hashFiles.Values.ToArray();
+
             ConfigHelper.Save(versionInfo, $"{outputDir}/{DLCVersionInfo.FileName}", true);
         }
-        
+
         public static void CopyVersionToStreamingAssets(string dlcVersion)
         {
-            FileHelper.ClearDirectory(EasyFrameworkSettings.Instance.StreamingAssetsDLCPath);
-
-            dlcVersion = dlcVersion.IsNullOrWhiteSpace()
-                ? DLCBuilder.Instance.LatestVersion?.versionName
-                : dlcVersion;
-
-            var versionPath = $"{DLCBuilder.Instance.ProjectPlatformPath}/{dlcVersion}";
-            if (!Directory.Exists(versionPath))
+            dlcVersion = string.IsNullOrWhiteSpace(dlcVersion) ? DLCBuilder.Instance.LatestVersion?.versionName : dlcVersion;
+            var source = GetVersionPath(DLCBuilder.Instance.ProjectPlatformPath, dlcVersion);
+            var target = EasyFrameworkSettings.Instance.StreamingAssetsDLCPath;
+            var stage = FileHelper.CreateTempPath(target);
+            try
             {
-                FDebug.LogError($"DLC list path {versionPath} does not exist.");
-                return;
+                PrepareStreamingAssets(source, stage);
+                FileHelper.ReplacePathsFromTemp(new[] { (stage, target) });
             }
-            
-            var files = Directory.GetFiles(versionPath,  "*.*", SearchOption.AllDirectories);
-            FileHelper.CopyFiles(files, EasyFrameworkSettings.Instance.StreamingAssetsDLCPath);
+            finally { FileHelper.DeleteDirectoryOrFile(stage); }
         }
-        
+
+        private static string GetVersionPath(string root, string versionName)
+        {
+            ValidateFileName(versionName);
+            return Path.Combine(root, versionName);
+        }
+
+        private static void ValidateFileName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name) || name.StartsWith(".") ||
+                name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name.Contains('/') || name.Contains('\\'))
+                throw new InvalidDataException($"Invalid DLC file/version name: {name}");
+        }
+
+        private static void ValidateVersion(string versionPath)
+        {
+            var version = ConfigHelper.Load<DLCVersion>($"{versionPath}/{DLCVersion.FileName}");
+            var builder = ConfigHelper.Load<DLCBuilderVersion>($"{versionPath}/{DLCBuilderVersion.FileName}");
+            if (version == null || string.IsNullOrWhiteSpace(version.versionUid) ||
+                builder?.dlcVersion?.versionUid != version.versionUid)
+                throw new InvalidDataException($"Invalid DLC version metadata: {versionPath}");
+            ValidateFileName(version.versionName);
+            ValidateManifest($"{versionPath}/{EDLCModeOptions.DLC}", version.dlcVersionInfoUid);
+        }
+
+        private static void ValidateManifest(string path, string expectedUid)
+        {
+            var info = ConfigHelper.Load<DLCVersionInfo>($"{path}/{DLCVersionInfo.FileName}");
+            if (info?.hashFiles == null || string.IsNullOrWhiteSpace(expectedUid) || info.uid != expectedUid)
+                throw new InvalidDataException($"Invalid DLC manifest: {path}");
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in info.hashFiles)
+            {
+                if (file == null) throw new InvalidDataException($"Null DLC manifest entry: {path}");
+                ValidateFileName(file.resName);
+                ValidateFileName(file.fileName);
+                var md5 = FileHelper.ExtractMD5FromFileName(file.fileName);
+                if (!names.Add(file.resName) || file.length < 0 || md5 == null ||
+                    !FileHelper.VerifyFileIntegrity(Path.Combine(path, file.fileName), file.length, md5))
+                    throw new InvalidDataException($"Invalid DLC resource: {path}/{file.fileName}");
+            }
+        }
+
+        private static void PrepareStreamingAssets(string source, string stage)
+        {
+            ValidateVersion(source);
+            Directory.CreateDirectory(stage);
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+            {
+                var name = Path.GetFileName(file);
+                if (!names.Add(name)) throw new InvalidDataException($"Duplicate StreamingAssets filename: {name}");
+                var copied = Path.Combine(stage, name);
+                var length = new FileInfo(file).Length;
+                var md5 = MD5Helper.MD5File(file);
+                File.Copy(file, copied);
+                if (!FileHelper.VerifyFileIntegrity(copied, length, md5))
+                    throw new InvalidDataException($"StreamingAssets copy verification failed: {file}");
+            }
+            var version = ConfigHelper.Load<DLCVersion>($"{stage}/{DLCVersion.FileName}");
+            ValidateManifest(stage, version.dlcVersionInfoUid);
+        }
+
+        private static DLCBuilderVersionList CreateVersionList(string root, DLCBuilderVersion current,
+            int maxCount, string releaseVersion, out string[] obsoleteDirectories)
+        {
+            var versions = new List<DLCBuilderVersion>();
+            foreach (var directory in Directory.GetDirectories(root))
+            {
+                var name = Path.GetFileName(directory);
+                if (name.StartsWith(".") || name == current.dlcVersion.versionName) continue;
+                var file = $"{directory}/{DLCBuilderVersion.FileName}";
+                if (!File.Exists(file)) continue;
+                var version = ConfigHelper.Load<DLCBuilderVersion>(file);
+                if (version?.dlcVersion?.versionName != name)
+                    throw new InvalidDataException($"Invalid historical DLC version: {directory}");
+                versions.Add(version);
+            }
+            versions = versions.OrderByDescending(item => item.dateTime).ToList();
+            versions.Insert(0, current);
+            var keep = maxCount > 0 ? versions.Take(maxCount).ToList() : versions.ToList();
+            var obsolete = new List<string>();
+            foreach (var version in versions)
+            {
+                if (keep.Contains(version)) continue;
+                if (version.dlcVersion.versionName == releaseVersion) keep.Add(version);
+                else obsolete.Add(GetVersionPath(root, version.dlcVersion.versionName));
+            }
+            obsoleteDirectories = obsolete.ToArray();
+            return new DLCBuilderVersionList { versions = keep.ToArray() };
+        }
+
         private static string GetBuildVersionNameId()
         {
             var settings = DLCBuilderSettings.Instance;
@@ -167,7 +286,7 @@ namespace EasyFramework.Editor
             }
             return DLCBuilder.Instance.Version.buildIndex.ToString();
         }
-        
+
         // private void BuildDLC(string outputDir, DLCResMode mode)
         // {
         //     var dirName = Path.GetFileName(outputDir);

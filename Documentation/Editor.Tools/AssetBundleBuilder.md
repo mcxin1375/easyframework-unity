@@ -72,6 +72,8 @@ internal sealed class GameAssetBundleBuildSettings : IAssetBundleBuilderSettings
 
 `BuildDirectories` 和 `BuildInfos` 可以返回 `null`。所有配置对象和代码扩展都会被自动发现，按 `Order` 升序收集；同名 Bundle 的资源列表会合并并去重。
 
+每次收集构建配置都会重新发现配置资产，默认目录通过实时 getter 读取当前设置。同一 Editor 会话内修改目录，以及新增、禁用或删除 `AssetBundleBuildSettings`，下一次构建立即生效。
+
 ## 目录扫描规则
 
 - 跳过 `Editor` 目录和 `.meta` 文件。
@@ -85,9 +87,9 @@ internal sealed class GameAssetBundleBuildSettings : IAssetBundleBuilderSettings
 
 ## 输出与检查
 
-正式构建输出到 `AssetBundleBuilder.ProjectPlatformPath`，并写入 `AssetBundleManifest.json` 及依赖关系。构建过程中会删除输出目录中不再属于当前构建列表的旧 Bundle。
+正式构建先写入输出目录旁的暂存目录，验证非空构建结果、各 Bundle 文件和 `AssetBundleManifest.json` 后，再替换 `AssetBundleBuilder.ProjectPlatformPath`。新输出只包含当前构建产物；构建失败抛异常，保留旧目录并阻止后续 DLC / Player 构建。
 
-`BuildManifestOnly` 使用 Dry Run，在 `AssetBundleBuilder.AssetsPlatformPath` 下生成 `<平台名>.asset`，便于编辑器查询构建结果。正式构建前建议先执行 `CheckVerifyValidity`，处理所有重复资源错误后再发布。
+`BuildManifestOnly` 带 Dry Run 标志，在隔离目录运行管线，再于 `AssetBundleBuilder.AssetsPlatformPath` 下更新 `<平台名>.asset`，保留已有 GUID。当前 SBP 兼容入口仍可能生成 Bundle，这些临时产物会被删除，不覆盖正式输出。正式发布配置含 `DryRunBuild` 时直接失败，避免父链发布旧资源。正式构建前建议先执行 `CheckVerifyValidity`，处理所有重复资源错误后再发布。
 
 ## 构建链路
 

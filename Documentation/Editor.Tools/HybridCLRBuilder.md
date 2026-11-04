@@ -27,13 +27,13 @@
 
 ## 输出
 
-工具会清空并重建当前平台的 `HybridCLRBuilder` 工具输出目录：
+Utility 先暂存当前平台的 `HybridCLRBuilder` 工具输出，全部文件复制成功后才替换旧目录；本次替换失败时恢复旧目录。发布完成后，后续工具失败不回退这里的产物。此前 `GenerateAll` 对工程的写入不自动恢复：
 
 - 热更新 DLL 输出为 `<程序集名>.bytes`。
 - PDB 输出为 `<程序集名>.pdb.bytes`。
 - 裁剪程序集输出为 `<程序集名>.bytes`，用于补充元数据。
 - 写入 `HybridCLRBuilderVersion.json`，记录程序集列表、加载列表和工具版本。
 
-输出目录会被 `DLCBuilder` 作为 DLC 来源之一收集。构建前应确保 HybridCLR 已完成安装、当前平台配置有效，并确认程序集文件确实生成。
+HybridCLR 已启用时，输出目录会被 `DLCBuilder` 作为 DLC 来源之一收集；禁用时不收集旧目录。构建前应确保 HybridCLR 已完成安装、当前平台配置有效，并确认程序集文件确实生成。
 
 源码：[HybridCLRBuilder.cs](../../Editor/Tools/AssetBuilder/HybridCLRBuilder/HybridCLRBuilder.cs)、[HybridCLRBuilderSettings.cs](../../Editor/Tools/AssetBuilder/HybridCLRBuilder/HybridCLRBuilderSettings.cs)、[HybridCLRBuilderUtility.cs](../../Editor/Tools/AssetBuilder/HybridCLRBuilder/HybridCLRBuilderUtility.cs)。

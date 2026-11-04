@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.Build.Pipeline;
 using UnityEngine;
 using UnityEngine.Build.Pipeline;
@@ -19,9 +20,28 @@ namespace EasyFramework.Editor
         public static void BuildBySettings(string outputPath)
         {
             var settings = AssetBundleBuilderSettings.Instance;
-            if (settings.createManifestFile) BuildManifestOnly();
-            var bundleManifest = BuildAssetBundle(outputPath, settings.buildAssetBundleOptions);
-            if (bundleManifest == null) Debug.LogError("CompatibilityAssetBundleManifest is null!");
+            if ((settings.buildAssetBundleOptions & BuildAssetBundleOptions.DryRunBuild) != 0)
+                throw new BuildFailedException("DryRunBuild cannot publish AssetBundles. Use BuildManifestOnly instead.");
+
+            var stage = FileHelper.CreateTempPath(outputPath);
+            CompatibilityAssetBundleManifest bundleManifest = null;
+            try
+            {
+                if (settings.createManifestFile) BuildManifestOnly();
+                bundleManifest = BuildAssetBundle(stage, settings.buildAssetBundleOptions);
+                var manifest = ConfigHelper.Load<AssetBundleManifest>($"{stage}/{AssetBundleManifest.FileName}");
+                if (manifest?.abNames == null || !manifest.abNames.SequenceEqual(bundleManifest.GetAllAssetBundles()))
+                    throw new BuildFailedException("AssetBundleManifest.json does not match the completed build.");
+                // SBP names its diagnostic manifest after the output directory; keep the published name stable.
+                File.Move(Path.Combine(stage, Path.GetFileName(stage) + ".manifest"),
+                    Path.Combine(stage, new DirectoryInfo(outputPath).Name + ".manifest"));
+                FileHelper.ReplacePathsFromTemp(new[] { (stage, outputPath) });
+            }
+            finally
+            {
+                if (bundleManifest != null) Object.DestroyImmediate(bundleManifest);
+                FileHelper.DeleteDirectoryOrFile(stage);
+            }
         }
         
         private static CompatibilityAssetBundleManifest BuildAssetBundle(string outputPath, BuildAssetBundleOptions buildOptions)
@@ -32,28 +52,27 @@ namespace EasyFramework.Editor
             FileHelper.CreateDirectory(outputPath);
 
             var bundleManifest = CompatibilityBuildPipeline.BuildAssetBundles(outputPath, assetBundleBuilds, buildOptions, buildTarget);
+            if (bundleManifest == null)
+                throw new BuildFailedException($"AssetBundle build failed: {outputPath}");
             if ((buildOptions & BuildAssetBundleOptions.DryRunBuild) != 0) return bundleManifest;
 
-            if (bundleManifest != null)
+            try
             {
-                var buildNameList = assetBundleBuilds.Select(item => item.assetBundleName).ToHashSet();
-                string[] assetFiles = Directory.GetFiles(outputPath, $"*{EasyFrameworkSettings.Instance.abSuffix}", SearchOption.AllDirectories);
-
-                // Debug.Log("------------------------ delete unused asset");
-                foreach (string assetFile in assetFiles)
-                {
-                    string name = Path.GetFileName(assetFile);
-                    if (!buildNameList.Contains(name))
-                    {
-                        File.Delete(assetFile);
-                        Debug.Log($"[AB Delete] {name}");
-                    }
-                }
-
                 var abManifest = new AssetBundleManifest();
                 abManifest.abNames = bundleManifest.GetAllAssetBundles();
+                var bundleNames = abManifest.abNames.ToHashSet();
+                foreach (var build in assetBundleBuilds)
+                    if (!bundleNames.Contains(build.assetBundleName))
+                        throw new BuildFailedException($"Built manifest is missing AssetBundle: {build.assetBundleName}");
+
                 foreach (var bundle in abManifest.abNames)
                 {
+                    var fileName = (buildOptions & BuildAssetBundleOptions.AppendHashToAssetBundleName) != 0
+                        ? $"{bundle}_{bundleManifest.GetAssetBundleHash(bundle)}"
+                        : bundle;
+                    var bundleFile = Path.Combine(outputPath, fileName);
+                    if (!File.Exists(bundleFile) || new FileInfo(bundleFile).Length == 0)
+                        throw new BuildFailedException($"Built AssetBundle is missing or empty: {bundleFile}");
                     var deps = bundleManifest.GetAllDependencies(bundle);
                     if (deps.Length == 0) continue;
                     abManifest.depDict[bundle] = deps;
@@ -62,6 +81,11 @@ namespace EasyFramework.Editor
                 var manifestFile = $"{outputPath}/{AssetBundleManifest.FileName}";
                 ConfigHelper.Save(abManifest, manifestFile, true);
             }
+            catch
+            {
+                Object.DestroyImmediate(bundleManifest);
+                throw;
+            }
 
             return bundleManifest;
         }
@@ -69,16 +93,37 @@ namespace EasyFramework.Editor
         public static void BuildManifestOnly()
         {
             var settings = AssetBundleBuilderSettings.Instance;
-            var bundleManifest = BuildAssetBundle(AssetBundleBuilder.Instance.ProjectPlatformPath, settings.buildAssetBundleOptions | BuildAssetBundleOptions.DryRunBuild);
-            if (bundleManifest != null)
+            var stage = FileHelper.CreateTempPath(AssetBundleBuilder.Instance.ProjectPlatformPath);
+            var manifestFile = $"{AssetBundleBuilder.Instance.AssetsPlatformPath}/{PlatformHelper.PlatformName}.asset";
+            var manifestTempFile = FileHelper.CreateTempPath(manifestFile);
+            var manifestTempMeta = FileHelper.CreateTempPath(manifestFile + ".meta");
+            var temporaryAsset = $"{AssetBundleBuilder.Instance.AssetsPlatformPath}/__Manifest_{System.Guid.NewGuid():N}.asset";
+            CompatibilityAssetBundleManifest bundleManifest = null;
+            try
             {
+                bundleManifest = BuildAssetBundle(stage, settings.buildAssetBundleOptions | BuildAssetBundleOptions.DryRunBuild);
                 FileHelper.CreateDirectory(AssetBundleBuilder.Instance.AssetsPlatformPath);
-                var manifestFile = $"{AssetBundleBuilder.Instance.AssetsPlatformPath}/{PlatformHelper.PlatformName}.asset";
-                if (File.Exists(manifestFile)) AssetDatabase.DeleteAsset(manifestFile);
-                AssetDatabase.CreateAsset(bundleManifest, manifestFile);
-                FDebug.Log($"BuildManifestOnly: {manifestFile}");
-                
+                AssetDatabase.CreateAsset(bundleManifest, temporaryAsset);
                 AssetDatabase.SaveAssets();
+                File.Copy(temporaryAsset, manifestTempFile);
+                var replacements = new List<(string tempPath, string targetPath)> { (manifestTempFile, manifestFile) };
+                if (!File.Exists(manifestFile + ".meta"))
+                {
+                    File.Copy(temporaryAsset + ".meta", manifestTempMeta);
+                    replacements.Add((manifestTempMeta, manifestFile + ".meta"));
+                }
+                AssetDatabase.DeleteAsset(temporaryAsset);
+                FileHelper.ReplacePathsFromTemp(replacements.ToArray());
+                AssetDatabase.ImportAsset(manifestFile);
+                FDebug.Log($"BuildManifestOnly: {manifestFile}");
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(temporaryAsset);
+                if (bundleManifest != null) Object.DestroyImmediate(bundleManifest);
+                FileHelper.DeleteDirectoryOrFile(stage);
+                FileHelper.DeleteFile(manifestTempFile);
+                FileHelper.DeleteFile(manifestTempMeta);
                 AssetDatabase.Refresh();
             }
         }
@@ -109,6 +154,7 @@ namespace EasyFramework.Editor
         
         public static AssetBundleBuild[] CreateAssetBundleBuildBySettings()
         {
+            ToolExtension<IAssetBundleBuilderSettings>.Refresh();
             var settings = AssetBundleBuilderSettings.Instance;
             
             List<AssetBundleBuild> buildList = new List<AssetBundleBuild>();

@@ -50,7 +50,6 @@ namespace EasyFramework.Editor
             Version.buildIndex++;
             Version.dateTime = DateTime.Now.ToFileTime();
             // SVNCommand.TryGetRevision(EasyFrameworkPreferences.ProjectFullPath, out Version.revision);
-            ConfigHelper.Save(Version, VersionFilePath, true);
         }
 
         public void Execute()
@@ -58,15 +57,31 @@ namespace EasyFramework.Editor
             var timeDebug = FDebug.StartTime();
             FDebug.Log($"[{GetType().Name} - {typeof(T).Name}] Execute");
 
-            Refresh();
-            foreach (var extension in ToolEvents) extension.OnExecuteBefore();
-            UpgradeVersion();
-            foreach (var extension in ToolEvents) extension.OnExecute();
-            foreach (var extension in ToolEvents) extension.OnExecuteAfter();
+            var previousVersion = new ToolVersion();
+            previousVersion.SetToolVersion(Version);
+            string versionTempFile = null;
+            try
+            {
+                Refresh();
+                var toolEvents = ToolEvents;
+                foreach (var extension in toolEvents) extension.OnExecuteBefore();
+                UpgradeVersion();
+                foreach (var extension in toolEvents) extension.OnExecute();
+                foreach (var extension in toolEvents) extension.OnExecuteAfter();
+                versionTempFile = FileHelper.CreateTempPath(VersionFilePath);
+                ConfigHelper.Save(Version, versionTempFile, true);
+                AssetDatabase.Refresh();
+                FileHelper.ReplaceFileFromTemp(versionTempFile, VersionFilePath);
+            }
+            catch
+            {
+                Version.SetToolVersion(previousVersion);
+                throw;
+            }
+            finally { if (versionTempFile != null) FileHelper.DeleteFile(versionTempFile); }
             
             FDebug.Log($"[{GetType().Name} - {typeof(T).Name}] Execute Completed! Time: {TimeSpan.FromSeconds(timeDebug.StopToSeconds()):hh\\:mm\\:ss\\.fff}");
             
-            AssetDatabase.Refresh();
         }
         
         public void Refresh()

@@ -16,12 +16,6 @@ namespace EasyFramework.Editor
         public DLCVersion LatestVersion => DLCBuilderUtility.GetLatestVersion();
         
         protected override void OnSelfExecute() => DLCBuilderUtility.BuildBySettings(ProjectPlatformPath);
-        protected override void OnSelfExecuteAfter()
-        {
-            if (!DLCBuilderSettings.Instance.copyVersionToStreamingAssets) return;
-            
-            DLCBuilderUtility.CopyVersionToStreamingAssets(DLCBuilderSettings.Instance.releaseVersion);
-        }
 
         [MenuItem("EasyFramework/Tools/DLCBuilder - Execute", priority = ToolOrder.DLCBuilder)]
         public static void MenuItem1()

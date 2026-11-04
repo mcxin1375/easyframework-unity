@@ -83,6 +83,87 @@ namespace EasyFramework
             else File.Move(tempFile, targetFile);
         }
 
+        public static string CreateTempPath(string targetPath)
+        {
+            var fullPath = Path.GetFullPath(targetPath);
+            var directory = Path.GetDirectoryName(fullPath);
+            if (string.IsNullOrEmpty(directory)) throw new IOException($"Cannot replace a filesystem root: {fullPath}");
+            CreateDirectory(directory);
+            return Path.Combine(directory, $".{Path.GetFileName(fullPath)}.{Guid.NewGuid():N}.tmp");
+        }
+
+        /// <summary>Replace one prepared group of files/directories; restore this group if a move fails.</summary>
+        public static void ReplacePathsFromTemp((string tempPath, string targetPath)[] replacements, string[] obsoleteDirectories = null)
+        {
+            var paths = replacements.Select(item => (tempPath: Path.GetFullPath(item.tempPath), targetPath: Path.GetFullPath(item.targetPath)))
+                .Concat((obsoleteDirectories ?? Array.Empty<string>()).Select(path => (tempPath: (string)null, targetPath: Path.GetFullPath(path))))
+                .ToArray();
+            var targets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var path in paths)
+            {
+                if (!targets.Add(path.targetPath)) throw new IOException($"Duplicate replacement target: {path.targetPath}");
+                if (path.tempPath == null)
+                {
+                    if (File.Exists(path.targetPath)) throw new IOException($"Expected an obsolete directory: {path.targetPath}");
+                    continue;
+                }
+                bool directory = Directory.Exists(path.tempPath);
+                if (!directory && !File.Exists(path.tempPath)) throw new IOException($"Temporary output is missing: {path.tempPath}");
+                if (directory ? File.Exists(path.targetPath) : Directory.Exists(path.targetPath))
+                    throw new IOException($"Output has an unexpected filesystem type: {path.targetPath}");
+            }
+
+            var backups = new List<(string target, string backup)>();
+            var installed = new List<string>();
+            try
+            {
+                foreach (var path in paths)
+                {
+                    if (Directory.Exists(path.targetPath) || File.Exists(path.targetPath))
+                    {
+                        var backup = CreateTempPath(path.targetPath);
+                        MovePath(path.targetPath, backup);
+                        backups.Add((path.targetPath, backup));
+                    }
+                    if (path.tempPath == null) continue;
+                    MovePath(path.tempPath, path.targetPath);
+                    installed.Add(path.targetPath);
+                }
+            }
+            catch (Exception error)
+            {
+                var errors = new List<Exception> { error };
+                for (int i = installed.Count - 1; i >= 0; i--)
+                {
+                    try { DeletePath(installed[i]); }
+                    catch (Exception restoreError) { errors.Add(restoreError); }
+                }
+                for (int i = backups.Count - 1; i >= 0; i--)
+                {
+                    try { MovePath(backups[i].backup, backups[i].target); }
+                    catch (Exception restoreError)
+                    {
+                        errors.Add(new IOException($"Could not restore {backups[i].target}; backup: {backups[i].backup}", restoreError));
+                    }
+                }
+                if (errors.Count > 1) throw new AggregateException("Output replacement and restoration failed; backups have been preserved.", errors);
+                throw;
+            }
+            foreach (var backup in backups) DeleteDirectoryOrFile(backup.backup);
+        }
+
+        private static void MovePath(string from, string to)
+        {
+            if (Directory.Exists(from)) Directory.Move(from, to);
+            else File.Move(from, to);
+        }
+
+        private static void DeletePath(string path)
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, true);
+            else if (File.Exists(path)) File.Delete(path);
+        }
+
         public static string ExtractMD5FromFileName(string fileName)
         {
             string md5 = Path.GetFileNameWithoutExtension(fileName);

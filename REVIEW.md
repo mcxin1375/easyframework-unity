@@ -6,9 +6,9 @@
 
 当前文件同步自 `D:\WorkGIT\easyframework-unity\REVIEW.md` 的完整 26 项报告；原独立仓库报告保持原样。当前修复目标为 `D:\WorkCookie\easyframework-projects\EasyFramework.Unity2022\Packages\easyframework-unity`；下文顺序 1、2 保留当时的项目路径。
 
-历史基线共 **26 项：12 项 P1、14 项 P2**。当前 **16 项已修复、10 项待处理**；待处理为 **2 项 P1、8 项 P2**。已关闭 R01–R08、R10、R11、R13、R15–R19；R14 保留部分修正，仍待处理。顺序 1–3 已完成，顺序 4 部分完成，顺序 5–6 尚未执行。
+历史基线共 **26 项：12 项 P1、14 项 P2**。当前 **20 项已修复、6 项待处理**；待处理为 **1 项 P1、5 项 P2**。已关闭 R01–R08、R10–R13、R15–R22；R14 保留部分修正及两项暂缓事项。顺序 1–3、5 已完成，顺序 4 **已完成（当前约定范围）**，顺序 6 尚未执行。阶段完成与历史问题全量关闭分别统计。
 
-上述数量仅统计历史 26 项。2026-11-04 顺序 4 全量复核另确认的 **P2：Controller 的 UpdateEnabled 求值未纳入帧异常隔离**现已修复，不混入历史问题计数。最新 Window Destroy 异常保护复测完整 **Edit Mode 218/218、Play Mode 103/103 通过**；窗口 Alive 防护、重复销毁、异常后的 GameObject 释放、资源请求按缓存和其他持有者条件自动回收均已验证，异步异常入口名称 P3 也已通过回归。按最新约定，Destroy 只结束 Alive 持有，不主动卸载资源。R14 的创建中销毁收敛及直接 IWindow.Destroy 的管理器登记仍待处理，顺序 4 整体仍为部分完成。证据见“Window Destroy 异常保护与资源持有复测（2026-11-04）”。
+上述数量仅统计历史 26 项。2026-11-04 顺序 4 全量复核另确认的 **P2：Controller 的 UpdateEnabled 求值未纳入帧异常隔离**现已修复，不混入历史问题计数。最新 Window Destroy 异常保护复测完整 **Edit Mode 218/218、Play Mode 103/103 通过**；窗口 Alive 防护、重复销毁、异常后的 GameObject 释放、资源请求按缓存和其他持有者条件自动回收均已验证，异步异常入口名称 P3 也已通过回归。按最新约定，Destroy 只结束 Alive 持有，不主动卸载资源。R14 的创建中销毁收敛及直接 IWindow.Destroy 的管理器登记继续明确暂缓，不作为当前阶段的关闭条件，顺序 4 标记为已完成（当前约定范围）。验证证据见“Window Destroy 异常保护与资源持有复测（2026-11-04）”，状态口径见“顺序 4 当前范围验收结论（2026-11-04）”。
 
 ## Ticker Node 重构（2026-11-02）
 
@@ -271,6 +271,35 @@ ControllerManager / FBehaviour 文档和当前任务状态已同步；修复前 
 
 测试前后全部 208 个 Runtime C# 文件哈希一致；业务 MainController / Startup / MainWindow、ShaderVariant 和 ProjectSettings 哈希也一致。保留用户新增的 try/catch，本轮只补充测试和文档。未执行 Player / IL2CPP、真实 AssetBundle 在途卸载或设备验收，未提交或推送。R14 仍有创建中销毁的迟到对象及直接 IWindow.Destroy 不主动撤销管理器登记两项待处理；不再把“Destroy 主动卸载资源”或“逐回调继续全部业务清理”作为当前验收要求。
 
+## 顺序 4 当前范围验收结论（2026-11-04）
+
+按当前对话确认的实现范围及最新复测结果，顺序 4 标记为 **已完成（当前约定范围）**。R06、R07、R08、R13、R15 和当前选定的 R14 处理方式均已有实现及相应验证；Controller 帧资格异常隔离 P2、OpenAsync 异常入口文本 P3 均已修复。最新完整回归为 Edit Mode 218/218、Play Mode 103/103，0 失败、0 跳过、进程退出码 0。
+
+R14 的历史问题仍保持“部分修正”，仅保留两项明确暂缓事项：创建中销毁的迟到 GameObject 收敛，以及直接 IWindow.Destroy 主动撤销管理器登记。这两项不计入当前阶段完成门槛，不能把阶段完成解读为已实现全部历史销毁保护。Destroy 不主动卸载资源、生命周期回调首错后停止而继续原生对象销毁，属于当前选定契约。业务通过 F.WindowManager 管理窗口，并等待打开完成后再销毁。
+
+前文按历史全量问题范围写下的“顺序 4 部分完成”保留为当时执行记录；当前状态以本节、顶部汇总和实施方案表为准。Player / IL2CPP、真实 AssetBundle 在途卸载及设备验收未执行，继续保留验证限制。本次仅同步完成状态，没有修改运行时代码或重新执行测试。
+
+## 顺序 5 执行记录（2026-11-04）
+
+执行项目为 `D:\WorkCookie\easyframework-projects\EasyFramework.Unity2022`，框架包分支为 `dev`。本轮完成 R12、R20、R21、R22。保留原有顺序 4 文档改动及项目业务、ShaderVariant、PlayerSettings 改动，没有提交或推送。
+
+| 问题 | 实现与验收 |
+| --- | --- |
+| R12：构建失败继续发布 | AB 管线 null Manifest 直接抛错；真实 Bundle、JSON Manifest 校验后才替换目录。DLC 只将复制并通过长度/MD5 校验的资源加入清单；源缺失、不可读、名称冲突、复制或提交失败直接上抛。Player 前置资源失败不进入主体；另补齐 Player 缺少设置、null/失败/取消报告的失败传播。 |
+| R20：无效版本清空底包 | 先验证版本、清单 UID 和全部资源，再平铺复制到暂存目录、复核并替换 StreamingAssets。DLC Utility 显式管理 LatestVersion、历史列表、版本目录、历史裁剪与自动底包复制，本次替换失败恢复本组旧产物。选定历史 releaseVersion 会额外保留，避免被本次裁剪删除。 |
+| R21：配置缓存 | 默认目录改实时 getter；每次收集 Bundle 配置重新发现 ScriptableObject。覆盖同会话 A→B、配置资产新增/修改/禁用/删除及 null；真实 SBP 两次构建确认旧 Bundle 被移除、新 Bundle 可加载。 |
+| R22：生命周期重复 | 删除 DLC Utility 内部重复 Before/After；ToolBase 每次捕获同一扩展数组，按 Before→Execute→After 各一次。直接 Utility 不派发事件；直接工具和 AssetBuilder 所用的父接口入口均已验证。 |
+
+按用户确认的 Tool 设计调整，删除初版 `BuildOutputTransaction` 及 ThreadStatic 父子事务。ToolBase 保持生命周期编排，只管理自己的版本文件：执行中提供本次编号，本工具全部阶段成功后才保存，失败恢复本工具的旧编号和时间。AB、DLC、HybridCLR 各 BuilderUtility 自行暂存、校验、显式替换和清理本次产物，复用 FileHelper 的纯静态文件操作；禁用 HybridCLR 时 DLC 不读取其旧目录。已成功完成的工具不因后续工具或 After 回调失败而隐式撤销。
+
+设计调整后，对原项目使用 Unity **2022.3.62f3** 命令行 `-batchmode -nographics -runTests -testPlatform EditMode -testFilter EasyFramework.Tests`。最新完整回归 **265/265 通过、0 失败、0 跳过，进程退出码 0**。其中顺序 5 新增 47 项：AB 5、构建链 4、FileHelper 文件替换 12、发布/复制 20、配置刷新 6；已删除初版面向内部事务类的 10 项测试，改为公开文件操作和独立调用行为回归。报告：[EditMode.xml](../../Library/Order5Validation/ToolDesignFinal/EditMode.xml)，日志：[EditMode.log](../../Library/Order5Validation/ToolDesignFinal/EditMode.log)。
+
+AB 测试包含真实 SBP 回调返回 Canceled 后得到 null Manifest、实际构建/重建并加载 TextAsset，以及 BuildManifestOnly 保留已有资产 GUID。发布测试包含 Windows 独占文件锁、LatestVersion/历史列表提交故障、无效版本/文件校验失败保护，以及直接工具和父接口入口回调各一次。FileHelper 测试通过公开方法验证本组替换失败恢复、历史裁剪保护和独立调用没有隐式回滚。DLC After 失败测试明确验证异常传播、本工具版本不推进，而此前已经完成的 DLC/底包发布保持有效。未使用独立临时 Unity 工程。
+
+测试前后 MainController、Startup、MainWindow、Mcxin.shadervariants、ProjectSettings.asset 的 SHA256 全部一致。未执行 Play Mode、完整 Player / IL2CPP、实际 HybridCLR GenerateAll 或设备验收；Player 失败报告分支完成编译和源码核对，未注入真实 Player 打包失败。SBP 当前兼容入口不真正跳过 DryRun 的 Bundle 生成，因此 BuildManifestOnly 将其隔离到临时目录，正式发布配置含 DryRunBuild 时明确失败。
+
+恢复范围限于各 Utility 当前这一次文件替换，不覆盖后续工具或回调的失败。DLC Utility 返回后，After 失败会令 ToolVersion 保留旧值，但已发布资源保持新版本；重试仍由该 Utility 负责重新生成和替换。Player 生成目录、PlayerSettings、自定义扩展副作用与 HybridCLR GenerateAll 的工程写入不自动恢复。文件系统阻止恢复时抛聚合异常并保留备份；进程崩溃/断电恢复未实现。AppendHashToAssetBundleName 与运行时逻辑名的既有兼容性未纳入本轮。
+
 ## 历史全量审查范围与结论
 
 沿用上次 Review 的 `5a6c4e4361d98b1c7541a4f76a64c20bb3f70ca1` 为增量基准，差异命令为 `git diff 5a6c4e4361d98b1c7541a4f76a64c20bb3f70ca1...HEAD`；期间只有 `d20f791 同步文档` 一个提交。该提交修改文档、示例、AGENTS 和包的 Samples 注册，未修改 Runtime、Editor、Module 或 Tests 实现。
@@ -295,7 +324,7 @@ Controller 帧分发、批量退出、初始化失败和宿主生命周期等限
 
 **本轴：1 项 API 契约偏差，最严重项为 S01；映射到 R14，不额外计入 26 项源码问题。**
 
-## 历史问题清单：P1（当前 10 项已修复、2 项待处理）
+## 历史问题清单：P1（当前 11 项已修复、1 项待处理）
 
 ### R01 [P1] [已修复] DLC 清理误删应用数据根目录文件
 
@@ -405,7 +434,7 @@ HttpClient 下载直接写最终文件，流中断后返回 false，但不删除
 
 当前状态：已修复。HTTP 与 UnityWebRequest 使用目标同目录唯一临时文件，完成并校验后原子提交；DLC 验证清单长度和 MD5，并按文件合并批量与按需下载。失败、取消、坏内容或提交失败保留旧文件，后续请求可重试；真实 Unity 回归通过。
 
-### R12 [P1] 资源构建失败仍继续生成并发布 DLC 版本
+### R12 [P1] [已修复] 资源构建失败仍继续生成并发布 DLC 版本
 
 位置：[AssetBundleBuilderUtility.cs:23](Editor/Tools/AssetBuilder/AssetBundleBuilder/AssetBundleBuilderUtility.cs#L23)、[DLCBuilderUtility.cs:124](Editor/Tools/AssetBuilder/DLCBuilder/DLCBuilderUtility.cs#L124)、[版本发布:60](Editor/Tools/AssetBuilder/DLCBuilder/DLCBuilderUtility.cs#L60)。验证：源码调用链，尚未运行 Unity 故障构建。
 
@@ -413,7 +442,9 @@ AB 构建返回 null 时只打印错误，外层资源构建链继续运行 DLCB
 
 优化：各阶段显式返回失败或抛出异常并中断父链；全部产物验证成功后再提交索引、LatestVersion 和 StreamingAssets。验收：注入 AB 构建失败、源文件不可读和复制失败，版本不推进、可用底包不覆盖、后续 Player 构建不继续。
 
-## 历史问题清单：P2（当前 6 项已修复、8 项待处理）
+当前状态：已修复。AB / DLC 阶段失败直接上抛；各 Utility 独立保护自己的输出，DLC 本次版本元数据、历史裁剪及自动底包复制作为同组文件替换，失败恢复本组旧产物。真实 SBP null Manifest、不可读源、文件锁发布失败及重试回归通过。后续工具或 After 失败中断父链，不隐式撤销之前已完成的工具。Player 报告失败分支为源码和编译验证，完整 Player / IL2CPP 未执行。
+
+## 历史问题清单：P2（当前 9 项已修复、5 项待处理）
 
 ### R13 [P2] [已修复] 初始化异常后，后续调用永久等待
 
@@ -485,7 +516,7 @@ Dispose 只调用 Disconnect，后者在 IsConnected=false 时直接返回，soc
 
 当前状态：已修复。Dispose 无条件关闭句柄并终止连接等待；同步与异步完成共同持有事件参数及池化缓冲区，回调退出后统一幂等清理。12 项真实 Socket/loopback 回归及 Unity Edit Mode 完整回归通过。
 
-### R20 [P2] 无效发布版本会先清空可用 StreamingAssets
+### R20 [P2] [已修复] 无效发布版本会先清空可用 StreamingAssets
 
 位置：[DLCBuilderUtility.cs:139](Editor/Tools/AssetBuilder/DLCBuilder/DLCBuilderUtility.cs#L139)。验证：源码路径。
 
@@ -493,7 +524,9 @@ CopyVersionToStreamingAssets 先 ClearDirectory，到后面才验证源版本目
 
 优化：先验证源版本和全部文件，复制到暂存目录后再替换目标；失败传播给父构建链。验收：选择不存在版本或注入复制失败，原目标内容完整保留且构建明确失败。
 
-### R21 [P2] 构建设置缓存使修改目录后仍打旧资源
+当前状态：已修复。先校验元数据、UID、文件长度与 MD5，暂存复制并复核后替换目标。无效版本、路径越界、资源缺失/损坏/不可读及发布提交失败均保留原底包；真实文件系统及 Unity 回归通过。
+
+### R21 [P2] [已修复] 构建设置缓存使修改目录后仍打旧资源
 
 位置：[AssetBundleBuilderSettings.cs:15](Editor/Tools/AssetBuilder/AssetBundleBuilder/AssetBundleBuilderSettings.cs#L15)、[ToolExtensionObjectPool.cs:24](Editor/Tools/ToolExtensionObjectPool.cs#L24)、[ToolBase.cs:72](Editor/Tools/ToolBase.cs#L72)。验证：源码缓存路径。
 
@@ -501,13 +534,17 @@ AssetBundleBuildSettingExtension 构造时快照 buildDirectories，普通扩展
 
 优化：设置通过实时 getter 读取，每次构建前刷新需要重新发现的配置扩展；避免把配置值作为永久实例状态。验收：同一 Editor 会话先构建 A，再改为 B 并新增配置 C，下一次产物仅包含新配置要求的资源。
 
-### R22 [P2] DLC 扩展 Before / After 每次执行两遍
+当前状态：已修复。默认扩展通过 getter 读取当前目录，每次配置收集强制重扫配置资产；同会话新增/修改/禁用/删除均生效。6 项配置测试及真实 SBP A→B 产物重建/加载回归通过。
+
+### R22 [P2] [已修复] DLC 扩展 Before / After 每次执行两遍
 
 位置：[DLCBuilderUtility.cs:36](Editor/Tools/AssetBuilder/DLCBuilder/DLCBuilderUtility.cs#L36)、[After:78](Editor/Tools/AssetBuilder/DLCBuilder/DLCBuilderUtility.cs#L78)、[ToolBase.cs:62](Editor/Tools/ToolBase.cs#L62)。验证：源码调用链。
 
 ToolBase.Execute 已分发 Before/Execute/After，BuildBySettings 又分发同一组 Before/After。默认 StreamingAssets 复制因此运行两次，自定义生成、清理或发布扩展也可能重复执行，内层 After 还可能早于其他扩展的 Execute。
 
 优化：生命周期只由 ToolBase 管理，具体 Utility 只负责构建工作。验收：直接执行及经 AssetBuilder 调用时，记录扩展的顺序均为 Before→Execute→After，各一次。
+
+当前状态：已修复。移除 DLC Utility 内部生命周期派发和工具 After 的重复底包复制入口，改为 Utility 内一次显式发布。直接工具与 AssetBuilder 使用的同一父接口入口各一次，Utility 零次；事件失败中断后续，本工具版本保持原值，已完成发布的产物不自动撤销。
 
 ### R23 [P2] Profiler 的 autoInitialize 开关无效
 
@@ -550,8 +587,8 @@ OnUpdate 用 `lastValue == 0` 跳过赋值，导致 DrawCalls、GC 分配等指�
 | 1 | 已完成 | 保护用户数据和下载文件 | R01、R11、R16、R17 | 约束 DLC 文件所有权与清理根目录；临时下载、完整性校验后提交；版本快照及路径缓存一起切换 | 根目录存档不变；断网/取消不留下可用半包；换版本路径与内容一致 |
 | 2 | 已完成 | 稳定 ETask 与调度基础 | R02–R05 | 统一结果、异常、取消、continuation 和消费/回池协议；逐节点隔离 tick 异常；写清单次消费语义 | 真实 TaskAwaiter 回归覆盖异常、竞争、延后首次消费、回池复用及失败节点隔离 |
 | 3 | 已完成 | 修复网络与事件边界 | R10、R18、R19 | 统一 RingBuffer 满/空不变量、写入与扩容规则；事件重入策略；socket 无条件幂等释放 | 满容量/绕回字节测试、订阅变更测试及 native handle 释放测试通过 |
-| 4 | 部分完成 | 统一初始化和业务生命周期 | R06–R08、R13–R15 | 初始化、Controller、窗口加载与即时排序约定已通过；Alive、重复销毁、异常后的原生对象释放及资源持有结束已验证；P3 已修复，R14 迟到对象及直接销毁登记仍待处理 | 最新 Edit Mode 218/218、Play Mode 103/103 通过；真实 AssetBundle 在途卸载、R14 暂缓范围及 Player / IL2CPP 未验收 |
-| 5 | 待执行 | 让构建失败可见且可恢复 | R12、R20–R22 | 构建阶段失败立即上抛；暂存全部产物并校验后发布；统一生命周期；每次执行读取当前配置 | 故障注入时 LatestVersion/底包保持原样；回调各一次；同会话修改目录立即生效 |
+| 4 | 已完成（当前约定范围） | 统一初始化和业务生命周期 | R06–R08、R13–R15 | 初始化、Controller、窗口加载与即时排序约定已通过；Alive、重复销毁、异常后的原生对象释放及资源持有结束已验证；追加 P2/P3 已修复；R14 迟到对象及直接销毁登记明确暂缓，不阻塞本阶段关闭 | 最新 Edit Mode 218/218、Play Mode 103/103 通过；真实 AssetBundle 在途卸载、R14 暂缓范围及 Player / IL2CPP 未验收 |
+| 5 | 已完成 | 让构建失败可见且可恢复 | R12、R20–R22 | 各 BuilderUtility 独立暂存、校验、发布及本次替换失败恢复；ToolBase 单次生命周期与自身版本；配置实时读取和重扫 | 最新完整 Edit Mode 265/265；真实 SBP 构建/失败、文件锁、元数据发布保护和同会话配置更新通过；工具调用之间无隐式事务；完整 Player / IL2CPP 未执行 |
 | 6 | 待执行 | 完成可安装性与诊断隔离 | R09、R23–R26 | 明确最低 Unity 与必选依赖；隔离可选集成程序集；Profiler 遵循开关、主线程消费日志、恢复输入屏蔽、正确记录零值 | 纯净工程安装及集成组合编译通过；Profiler 开关/日志/输入/计数器场景通过 |
 
 测试组织建议：在现有 Tests/Editor 中补充真实 ETask / Ticker、RingBuffer、Event 和构建失败传播测试；增加 Play Mode 的 Controller / Window / 初始化测试；独立临时工程进行 UPM 安装及 Player 冒烟构建。现有 ETaskCoroutineTests、EVoidTests 的部分路径使用自制 ManualAwaiter，不能替代真实 TaskAwaiter 的异常、竞争和回池回归。

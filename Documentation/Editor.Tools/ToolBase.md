@@ -57,12 +57,18 @@ public interface IToolEvent<T> : IToolExtension
 
 1. `Refresh()`，重新发现普通对象和 ScriptableObject 扩展。
 2. 按 `Order` 顺序调用所有扩展的 `OnExecuteBefore()`。
-3. 增加工具 `Version.buildIndex` 并保存版本文件。
+3. 增加本次执行的 `Version.buildIndex` 和时间；扩展可读取本次版本，暂不覆盖磁盘版本文件。
 4. 按 `Order` 顺序调用所有扩展的 `OnExecute()`。
 5. 按 `Order` 顺序调用所有扩展的 `OnExecuteAfter()`。
-6. 记录耗时并调用 `AssetDatabase.Refresh()`。
+6. 暂存本工具版本文件，刷新 `AssetDatabase`，成功后替换版本文件，再记录耗时。
 
 工具的实际工作放在 OnSelfExecute()，或通过 IToolEvent<T> 注册扩展。直接执行工具会升级该工具版本；内置子构建工具作为 AssetBuilder 扩展时，也通过公开 OnExecute() 进入自己的 Execute() 并升级版本。具体取决于所实现接口和方法绑定。
+
+任一阶段抛异常都会立即向调用者传播，停止剩余阶段；`OnExecuteAfter` 是成功阶段，不作为异常清理的 finally。每次执行捕获一份扩展数组，Before / Execute / After 由 ToolBase 各派发一次，Utility 不再派发生命周期。
+
+ToolBase 只编排生命周期并管理自身版本，不管理构建产物，不建立父子工具事务。本工具失败时保留原版本文件并恢复内存中的版本字段；已经成功完成的子工具保持自己的版本和产物。
+
+AB、DLC、HybridCLR 的暂存、校验、替换及清理由各自 BuilderUtility 显式完成。工具调用之间没有隐藏的全局状态；后续工具或 After 回调失败会中断调用链，不会自动撤销此前已完成的资源发布。
 
 ## 路径属性
 

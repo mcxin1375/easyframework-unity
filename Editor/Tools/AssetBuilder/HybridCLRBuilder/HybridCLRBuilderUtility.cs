@@ -19,39 +19,43 @@ namespace EasyFramework.Editor
             if (!HybridCLR.Editor.SettingsUtil.Enable) return;
             HybridCLR.Editor.Commands.PrebuildCommand.GenerateAll();
 
-            FileHelper.CreateDirectory(outputPath);
-            FileHelper.ClearDirectory(outputPath);
-
-            var dllDir = HybridCLR.Editor.SettingsUtil.GetHotUpdateDllsOutputDirByTarget(EditorUserBuildSettings.activeBuildTarget);
-            var dllStripDir = HybridCLR.Editor.SettingsUtil.GetAssembliesPostIl2CppStripDir(EditorUserBuildSettings.activeBuildTarget);
-
-            var info = CreateHybridCLRVersionInfo();
-            if (info.allDlls?.Length > 0)
+            var stage = FileHelper.CreateTempPath(outputPath);
+            try
             {
-                foreach (string dll in info.allDlls)
-                {
-                    string fromFile = $"{dllDir}/{dll}.dll";
-                    string toFile = $"{outputPath}/{dll}{HybridCLRManager.FileExtension}";
-                    File.Copy(fromFile, toFile, true);
-                
-                    string fromPdbFile = $"{dllDir}/{dll}.pdb";
-                    string toPdbFile = $"{outputPath}/{dll}.pdb{HybridCLRManager.FileExtension}";
-                    File.Copy(fromPdbFile, toPdbFile, true);
-                }
-            }
+                FileHelper.CreateDirectory(stage);
+                var dllDir = HybridCLR.Editor.SettingsUtil.GetHotUpdateDllsOutputDirByTarget(EditorUserBuildSettings.activeBuildTarget);
+                var dllStripDir = HybridCLR.Editor.SettingsUtil.GetAssembliesPostIl2CppStripDir(EditorUserBuildSettings.activeBuildTarget);
 
-            if (info.stripDlls?.Length > 0)
-            {
-                foreach (var stripDll in info.stripDlls)
+                var info = CreateHybridCLRVersionInfo();
+                if (info.allDlls?.Length > 0)
                 {
-                    string fromFile = $"{dllStripDir}/{stripDll}.dll";
-                    string toFile = $"{outputPath}/{stripDll}{HybridCLRManager.FileExtension}";
-                    File.Copy(fromFile, toFile, true);
-                }
-            }
+                    foreach (string dll in info.allDlls)
+                    {
+                        string fromFile = $"{dllDir}/{dll}.dll";
+                        string toFile = $"{stage}/{dll}{HybridCLRManager.FileExtension}";
+                        File.Copy(fromFile, toFile, true);
 
-            info.SetToolVersion(HybridCLRBuilder.Instance.Version);
-            ConfigHelper.Save(info, $"{outputPath}/{HybridCLRBuilderVersion.FileName}", true);
+                        string fromPdbFile = $"{dllDir}/{dll}.pdb";
+                        string toPdbFile = $"{stage}/{dll}.pdb{HybridCLRManager.FileExtension}";
+                        File.Copy(fromPdbFile, toPdbFile, true);
+                    }
+                }
+
+                if (info.stripDlls?.Length > 0)
+                {
+                    foreach (var stripDll in info.stripDlls)
+                    {
+                        string fromFile = $"{dllStripDir}/{stripDll}.dll";
+                        string toFile = $"{stage}/{stripDll}{HybridCLRManager.FileExtension}";
+                        File.Copy(fromFile, toFile, true);
+                    }
+                }
+
+                info.SetToolVersion(HybridCLRBuilder.Instance.Version);
+                ConfigHelper.Save(info, $"{stage}/{HybridCLRBuilderVersion.FileName}", true);
+                FileHelper.ReplacePathsFromTemp(new[] { (stage, outputPath) });
+            }
+            finally { FileHelper.DeleteDirectoryOrFile(stage); }
         }
 
         public static HybridCLRBuilderVersion CreateHybridCLRVersionInfo()

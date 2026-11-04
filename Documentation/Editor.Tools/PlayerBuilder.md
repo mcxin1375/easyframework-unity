@@ -47,6 +47,8 @@ AppSettings 通过 `Create > EasyFramework > AppSettings` 创建，并在 EasyFr
 
 构建结束后仅在 Unity 编辑器的非批处理模式下自动打开输出目录；Jenkins 等通过 `-batchmode` 执行的命令行构建不会启动外部进程打开目录。
 
+资源前置阶段失败会立即中断，不调用 Player 构建。Player 缺少构建设置、没有返回报告或报告为 Failed / Cancelled 时抛 `BuildFailedException`，停止后续阶段；失败报告仍先传给 `OnBuildReport` 扩展。PlayerBuilder 仅保留自身原工具版本，已经成功完成的资源构建保持其版本和产物。Player 生成目录、PlayerSettings 以及自定义扩展副作用不自动恢复。
+
 enabled 仅控制 Player 构建主体，前置资源构建仍可能执行。不要用 enabled 代替 assetBuilder 关闭资源构建。
 
 ## StreamingAssets

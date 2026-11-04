@@ -4,7 +4,6 @@
 // describe:
 //----------------------------------------------------------------*/
 
-using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,19 +11,7 @@ namespace EasyFramework.Editor
 {
     class AssetBundleBuildSettingExtension : IAssetBundleBuilderSettings
     {
-        public string[] BuildDirectories { get; }
-
-        public AssetBundleBuildSettingExtension()
-        {
-            List<string> tmpList = new();
-            
-            if (AssetBundleBuilderSettings.Instance.buildDirectories?.Length > 0)
-            {
-                tmpList.AddRange(AssetBundleBuilderSettings.Instance.buildDirectories);
-            }
-
-            BuildDirectories = tmpList.ToArray();
-        }
+        public string[] BuildDirectories => AssetBundleBuilderSettings.Instance.buildDirectories;
     }
     
     [ProjectSettings(ProjectSettingsAttribute.ETag.Editor)]
