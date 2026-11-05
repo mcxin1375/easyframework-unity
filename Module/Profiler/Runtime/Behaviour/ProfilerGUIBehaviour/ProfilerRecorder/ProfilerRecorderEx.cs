@@ -4,10 +4,13 @@
 // describe??
 //----------------------------------------------------------------*/
 
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using Unity.Profiling;
+using Unity.Profiling.LowLevel;
+using Unity.Profiling.LowLevel.Unsafe;
 using UnityEngine;
 
 namespace EasyFramework.Profiler
@@ -157,21 +160,37 @@ namespace EasyFramework.Profiler
         
         
         private readonly Dictionary<string, ProfilerRecorder> _profilerRecorderDict = new();
-        private PropertyInfo[] _propertyInfos;
+        private readonly Dictionary<string, RecorderBinding> _bindings = new();
 
         public ProfilerRecorderEx()
         {
-            _propertyInfos = GetType().GetProperties();
-            foreach (PropertyInfo propertyInfo in _propertyInfos)
+            HashSet<(ProfilerCategory, string)> releaseCounters = null;
+            if (!Application.isEditor && !Debug.isDebugBuild)
+            {
+                releaseCounters = new HashSet<(ProfilerCategory, string)>();
+                var handles = new List<ProfilerRecorderHandle>();
+                ProfilerRecorderHandle.GetAvailable(handles);
+                foreach (var handle in handles)
+                {
+                    var description = ProfilerRecorderHandle.GetDescription(handle);
+                    if ((description.Flags & MarkerFlags.AvailabilityNonDevelopment) != 0)
+                        releaseCounters.Add((description.Category, description.Name));
+                }
+            }
+
+            foreach (PropertyInfo propertyInfo in GetType().GetProperties())
             {
                 var recorderInfo = propertyInfo.GetCustomAttribute<RecorderInfoAttribute>();
                 if (recorderInfo == null) continue;
                 if (recorderInfo.EditorOnly && !Application.isEditor) continue;
+                if (releaseCounters != null &&
+                    !releaseCounters.Contains((recorderInfo.ProfilerCategory, recorderInfo.StatName))) continue;
                 
-                if (!_profilerRecorderDict.ContainsKey(recorderInfo.StatName))
-                {
-                    _profilerRecorderDict.Add(propertyInfo.Name, ProfilerRecorder.StartNew(recorderInfo.ProfilerCategory, recorderInfo.StatName));
-                }
+                _profilerRecorderDict.Add(propertyInfo.Name, ProfilerRecorder.StartNew(recorderInfo.ProfilerCategory, recorderInfo.StatName));
+                _bindings.Add(propertyInfo.Name, new RecorderBinding(
+                    (Func<long>)Delegate.CreateDelegate(typeof(Func<long>), this, propertyInfo.GetGetMethod()),
+                    (Action<long>)Delegate.CreateDelegate(typeof(Action<long>), this, propertyInfo.GetSetMethod(true)),
+                    recorderInfo.ProfilerCategory == ProfilerCategory.Render));
             }
         }
 
@@ -182,19 +201,25 @@ namespace EasyFramework.Profiler
                 recorder.Dispose();
             }
             _profilerRecorderDict.Clear();
+            foreach (var binding in _bindings.Values) binding.SetValue(0);
         }
 
-        public void OnUpdate()
+        public void OnUpdate() => ReadCounters(false);
+
+        // Per-frame render counters are reset before Update on some Editor frames.
+        // Read their current values only after rendering has actually completed.
+        public void OnRender() => ReadCounters(true);
+
+        private void ReadCounters(bool rendered)
         {
-            if (_propertyInfos?.Length > 0)
+            foreach (var entry in _bindings)
             {
-                foreach (PropertyInfo propertyInfo in _propertyInfos)
-                {
-                    var lastValue = _profilerRecorderDict.TryGetValue(propertyInfo.Name, out var recorder) && recorder.Valid
-                        ? recorder.LastValue
-                        : 0;
-                    propertyInfo.SetValue(this, lastValue);
-                }
+                var binding = entry.Value;
+                if (binding.IsRender != rendered) continue;
+                long value = _profilerRecorderDict.TryGetValue(entry.Key, out var recorder) && recorder.Valid
+                    ? (rendered ? recorder.CurrentValue : recorder.LastValue)
+                    : 0;
+                binding.SetValue(value);
             }
         }
 
@@ -215,7 +240,21 @@ namespace EasyFramework.Profiler
 
         private long GetValue(string propertyName)
         {
-            return (long)GetType().GetProperty(propertyName).GetValue(this);
+            return _bindings[propertyName].GetValue();
+        }
+
+        private readonly struct RecorderBinding
+        {
+            public readonly Func<long> GetValue;
+            public readonly Action<long> SetValue;
+            public readonly bool IsRender;
+
+            public RecorderBinding(Func<long> getValue, Action<long> setValue, bool isRender)
+            {
+                GetValue = getValue;
+                SetValue = setValue;
+                IsRender = isRender;
+            }
         }
 
         public string MemoryToString()

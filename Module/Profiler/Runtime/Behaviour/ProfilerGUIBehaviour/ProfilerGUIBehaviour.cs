@@ -4,8 +4,10 @@
 // describe:
 //----------------------------------------------------------------*/
 
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace EasyFramework.Profiler
 {
@@ -26,6 +28,8 @@ namespace EasyFramework.Profiler
         private string _renderStr;
         private string _deviceStr;
         private float _time;
+        private float _renderTime;
+        private int _renderFrame = -1;
 
         private bool _drawDetails;
         private Texture2D _bgTexture;
@@ -58,9 +62,20 @@ namespace EasyFramework.Profiler
             ProfilerDeviceEx.StartBatteryLevel = SystemInfo.batteryLevel < 0 ? 100 : (int)(SystemInfo.batteryLevel * 100);
         }
 
-        private void OnEnable() => UpdateInputBlocker();
+        private void OnEnable()
+        {
+            UpdateInputBlocker();
+            _renderTime = 0;
+            RenderPipelineManager.endContextRendering += OnContextRendered;
+            Camera.onPostRender += OnCameraRendered;
+        }
 
-        private void OnDisable() => SetInputBlocked(false);
+        private void OnDisable()
+        {
+            RenderPipelineManager.endContextRendering -= OnContextRendered;
+            Camera.onPostRender -= OnCameraRendered;
+            SetInputBlocked(false);
+        }
 
         private void OnDestroy()
         {
@@ -71,11 +86,11 @@ namespace EasyFramework.Profiler
         void Update()
         {
             FPSEx.OnUpdate();
-            ProfilerRecorderEx.OnUpdate();
             
-            if (Time.time > _time)
+            if (Time.unscaledTime > _time)
             {
-                _time = Time.time + UpdateInterval;
+                _time = Time.unscaledTime + UpdateInterval;
+                ProfilerRecorderEx.OnUpdate();
 
                 StringBuilder sb = new StringBuilder();
                 sb.Append($"FPS: <color=yellow>{FPSEx.FPS}</color>");
@@ -92,6 +107,34 @@ namespace EasyFramework.Profiler
                 _renderStr = ProfilerRecorderEx.RenderToString();
                 _deviceStr = ProfilerDeviceEx.DeviceToString();
             }
+        }
+
+        private void OnContextRendered(ScriptableRenderContext context, List<Camera> cameras)
+        {
+            foreach (var camera in cameras)
+            {
+                if (camera.cameraType != CameraType.Game) continue;
+                SampleRenderCounters();
+                break;
+            }
+        }
+
+        private void OnCameraRendered(Camera camera)
+        {
+            if (GraphicsSettings.currentRenderPipeline == null && camera.cameraType == CameraType.Game)
+                SampleRenderCounters();
+        }
+
+        private void SampleRenderCounters()
+        {
+            if (_renderFrame != Time.frameCount)
+            {
+                if (Time.unscaledTime < _renderTime) return;
+                _renderTime = Time.unscaledTime + UpdateInterval;
+                _renderFrame = Time.frameCount;
+            }
+            // Multiple cameras in the sampled frame overwrite the cumulative snapshot.
+            ProfilerRecorderEx.OnRender();
         }
 
         private GUIContent _labelContent1 = new();

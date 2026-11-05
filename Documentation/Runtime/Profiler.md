@@ -54,7 +54,11 @@ public static class ProfilerExample
 
 ## 数据与事件边界
 
-面板通过 ProfilerRecorder 收集帧率、内存和渲染统计，可用计数器随 Unity 版本、平台与构建方式变化，不能假设所有数值在 Player 中都有效。有效计数器的 0 会正常更新；不可用计数器清除旧数值，文本显示 `N/A`。直接读取 long 属性时，可结合 `ProfilerRecorderEx.IsAvailable(nameof(ProfilerRecorderEx.DrawCallsCount))` 判断可用性；`FormatNumber` / `FormatByte` 也按属性名区分 0 和不可用。详情及头部按原有 0.5 秒间隔刷新文本。
+性能面板通过 ProfilerRecorder 收集内存、CPU 和渲染统计，FPS 保留原 FPSEx 实现。内存等普通指标在刷新时读取上一完整帧的 `LastValue`；渲染指标在 Game 相机完成渲染后读取 `CurrentValue` 并缓存，避免编辑器限帧时 Update 的空采样将渲染数据覆盖为 0。
+
+SRP 使用 `RenderPipelineManager.endContextRendering`，内置管线使用 `Camera.onPostRender`。按 0.5 秒间隔选取渲染帧，同帧后续相机继续覆盖累计值；没有新渲染时保留最近一次渲染快照，实际渲染采样为 0 时仍正常更新。普通指标和文本也按 0.5 秒刷新，不受 Time.timeScale 影响。初始化时缓存属性 getter / setter 委托，采样和格式化不再逐项反射访问或装箱；SRP 回调使用现有 Camera 列表，避免相机数组复制。
+
+支持 Editor、Development Player 及非 Development Player，不依赖 UnityEditor.UnityStats。正式包初始化时依据计数器的 `AvailabilityNonDevelopment` 标记过滤不可用项；其他平台差异继续以 Recorder 有效性判断。不可用指标显示 `N/A`，不伪装成有效的 0。直接读取 long 属性时，可结合 `ProfilerRecorderEx.IsAvailable(nameof(ProfilerRecorderEx.DrawCallsCount))` 判断可用性；`FormatNumber` / `FormatByte` 也区分 0 和不可用。
 
 `Application.logMessageReceivedThreaded` 回调只向并发队列写入错误、断言和异常日志。ProfilerManager.Update 在 Unity 主线程消费队列、解析和去重 Shader 错误、更新错误面板，再派发 `OnShaderVariantError`；日志到界面与事件之间有帧延迟。原 ProfilerBehaviour 单例宿主已移除，功能组件只通过 Manager 协调。
 
@@ -62,8 +66,8 @@ OnShaderVariantError 参数为 ShaderVariantInfo，订阅者在主线程执行�
 
 ## 验证范围
 
-2026-11-05 在当前 EasyFramework.Unity2022 工程使用 Unity 2022.3.62f3 验证：完整 Edit Mode 269/269、Play Mode 130/130，均为 0 失败、0 跳过。覆盖自动/显式启动、Settings 切换与同帧关闭再开启、800 条多线程 Unity 错误日志、共享遮罩缓存及合成鼠标/触摸指针、真实 Recorder 非零→零→非零及面板文本同步。
+2026-11-05 在当前 EasyFramework.Unity2022 工程使用 Unity 2022.3.62f3 验证：完整 Edit Mode 271/271、Play Mode 133/133，均为 0 失败、0 跳过。新增真实相机与几何体渲染回归，覆盖不限帧、60 FPS、SRP 和内置双相机，避免只用内存计数器验证渲染指标。采样循环预热后连续执行 1,000 次普通/渲染读取组合，托管分配为 0 字节；该结果不包含文本生成，也不代表整块面板零分配。
 
-射线测试使用 EventSystem.RaycastAll 和合成 PointerEventData，不代表物理鼠标、真机触摸或 IMGUI 外观验收。未执行 Player、Android 或 IL2CPP 构建；完整进度与剩余 R09、R14 范围见 [REVIEW](../../REVIEW.md)。
+射线测试使用 EventSystem.RaycastAll 和合成 PointerEventData，不代表物理鼠标、真机触摸或 IMGUI 外观验收。Windows Mono Player 的 Development 与正式包已做独立渲染冒烟验证；Android 和 IL2CPP 尚未验收，完整记录与剩余 R09、R14 范围见 [REVIEW](../../REVIEW.md)。
 
-源码：[ProfilerManager.cs](../../Module/Profiler/Runtime/Unity/ProfilerManager.cs)、[ProfilerSettings.cs](../../Module/Profiler/Runtime/Unity/ProfilerSettings.cs)、[ProfilerProvider.cs](../../Module/Profiler/Editor/ProfilerProvider.cs)。
+源码：[ProfilerManager.cs](../../Module/Profiler/Runtime/Manager/ProfilerManager.cs)、[ProfilerSettings.cs](../../Module/Profiler/Runtime/Manager/ProfilerSettings.cs)、[ProfilerGUIBehaviour.cs](../../Module/Profiler/Runtime/Behaviour/ProfilerGUIBehaviour/ProfilerGUIBehaviour.cs)、[ProfilerRecorderEx.cs](../../Module/Profiler/Runtime/Behaviour/ProfilerGUIBehaviour/ProfilerRecorder/ProfilerRecorderEx.cs)、[ProfilerProvider.cs](../../Module/Profiler/Editor/ProfilerProvider.cs)。

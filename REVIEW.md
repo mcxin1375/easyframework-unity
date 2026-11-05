@@ -10,7 +10,21 @@
 
 上述数量仅统计历史 26 项。2026-11-04 顺序 4 全量复核另确认的 **P2：Controller 的 UpdateEnabled 求值未纳入帧异常隔离**现已修复，不混入历史问题计数。最新 Window Destroy 异常保护复测完整 **Edit Mode 218/218、Play Mode 103/103 通过**；窗口 Alive 防护、重复销毁、异常后的 GameObject 释放、资源请求按缓存和其他持有者条件自动回收均已验证，异步异常入口名称 P3 也已通过回归。按最新约定，Destroy 只结束 Alive 持有，不主动卸载资源。R14 的创建中销毁收敛及直接 IWindow.Destroy 的管理器登记继续明确暂缓，不作为当前阶段的关闭条件，顺序 4 标记为已完成（当前约定范围）。验证证据见“Window Destroy 异常保护与资源持有复测（2026-11-04）”，状态口径见“顺序 4 当前范围验收结论（2026-11-04）”。
 
-## Profiler R23–R26 与架构整理（2026-11-05）
+## Profiler 渲染零值复现与采样优化（2026-11-05）
+
+用户在编辑器 Play Mode 发现：FPS 和内存正常，但 SC / DC / B / T / V 持续为 0，而 Unity Stats 显示实际渲染数据。此前 269/269、130/130 回归主要用真实内存计数器验证零值切换，没有覆盖限帧下的真实渲染计数，因此不足以确认这一场景。
+
+在 Unity 2022.3.62f3 / Direct3D 11 中创建相机和立方体复现：不限帧时 Update 的 Draw Calls LastValue 为 7；限制 60 FPS 后，相机继续渲染，但 Update 的 LastValue / GetSample 经常为 0，同次渲染完成回调的 CurrentValue 为 7。原来的非零缓存确实能避开这些空采样，但也会保留已经归零的旧值。最终按实际渲染完成时机更新快照，区分空 Update 与有效渲染零值。
+
+- SRP 在 endContextRendering 读取渲染计数 CurrentValue；内置管线在 Camera.onPostRender 读取。只处理 Game 相机，0.5 秒选取一个采样帧，同帧后续相机继续覆盖累计值；无新渲染时保留旧快照，有效 0 仍会写入。未替换为 Editor 专用 UnityStats，也未用窗口最大值或永久跳过零值掩盖数据。
+- 内存等普通计数器继续读取 LastValue，移至 0.5 秒刷新阶段。初始化缓存 getter / setter 委托，移除采样和格式化中的反射 GetValue / SetValue 与 long 装箱。SRP 采用 Camera 列表回调，避免旧 Camera[] 事件的数组复制。
+- 支持 Development 与正式非 Development Player。正式包只创建标记 AvailabilityNonDevelopment 的 Recorder，其他项显示 N/A；无需 UnityEditor 类型或额外编辑器桥接。窗口尚未渲染或 GPU / 管线初始化期间的 0 不视为稳定阶段性能数据，运行时验收从首次取得有效快照并预热后开始。
+
+最新完整回归为 **Edit Mode 271/271、Play Mode 133/133**，0 失败、0 跳过。包含不限帧/60 FPS、SRP/内置双相机的真实渲染测试、空 Update 保留渲染快照、有效 0 更新及不可用指标。1,000 次预热后的普通/渲染采样组合为 **0 字节托管分配、6.52 ms**；这是本机采样循环结果，不包含字符串和 GUI，也不是整块面板的性能承诺。
+
+Windows x64 / Mono 独立最小场景使用 60 FPS 做发布冒烟：Development 构建 Debug.isDebugBuild=true，正式构建 BuildOptions.None 且 Debug.isDebugBuild=false；均在有效渲染预热后检查连续 181 帧的五项指标，验证运行时取数与正式包 N/A 边界。此结果仅代表 Windows / Mono；Android、IL2CPP、物理触摸及完整业务项目验收仍未执行。临时场景和构建脚本不进入交付源码，验证报告保留在本机临时输出目录。本轮不修改 WindowManager、未提交或推送。
+
+## Profiler R23–R26 与架构整理（2026-11-05，前一阶段）
 
 执行位置为当前 Unity 项目的 Packages/easyframework-unity，保留主仓库 main、包仓库 dev。本轮完成 R23–R26，以及用户追加的 Profiler 架构整理；不修改 WindowManager，不处理 R09。
 
@@ -562,7 +576,7 @@ ToolBase.Execute 已分发 Before/Execute/After，BuildBySettings 又分发同�
 
 ### R23 [P2] [已修复] Profiler 的 autoInitialize 开关无效
 
-历史位置：[ProfilerManager.cs:82](Module/Profiler/Runtime/Unity/ProfilerManager.cs#L82)、[ProfilerSettings.cs:15](Module/Profiler/Runtime/Unity/ProfilerSettings.cs#L15)。历史审查时通过源码确认，原文档曾公开该限制；当前实现和文档均已修正，行号仅保留原审查定位。
+历史位置：[ProfilerManager.cs:82](Module/Profiler/Runtime/Manager/ProfilerManager.cs#L82)、[ProfilerSettings.cs:15](Module/Profiler/Runtime/Manager/ProfilerSettings.cs#L15)。历史审查时通过源码确认，原文档曾公开该限制；当前实现和文档均已修正，文件链接随目录整理更新，行号仅保留原审查定位。
 
 历史表现：运行时初始化回调无条件 CreateInstance，未读取默认 false 的 autoInitialize。取消自动初始化仍会创建宿主、默认性能面板及日志订阅。
 
@@ -572,7 +586,7 @@ ToolBase.Execute 已分发 Before/Execute/After，BuildBySettings 又分发同�
 
 ### R24 [P2] [已修复] 工作线程日志直接读写非线程安全集合
 
-历史位置：[ProfilerManager.cs:48](Module/Profiler/Runtime/Unity/ProfilerManager.cs#L48)、[线程回调:60](Module/Profiler/Runtime/Unity/ProfilerManager.cs#L60)、[ErrorGUIBehaviour.cs:68](Module/Profiler/Runtime/Unity/Behaviour/ErrorGUIBehaviour.cs#L68)、[Push:107](Module/Profiler/Runtime/Unity/Behaviour/ErrorGUIBehaviour.cs#L107)。历史审查只核对源码线程访问路径，尚未运行并发 Unity 日志压力测试；本轮已完成 800 条真实日志回归，见当前状态与执行记录。行号仅保留原审查定位。
+历史位置：[ProfilerManager.cs:48](Module/Profiler/Runtime/Manager/ProfilerManager.cs#L48)、[线程回调:60](Module/Profiler/Runtime/Manager/ProfilerManager.cs#L60)、[ErrorGUIBehaviour.cs:68](Module/Profiler/Runtime/Behaviour/ErrorGUIBehaviour.cs#L68)、[Push:107](Module/Profiler/Runtime/Behaviour/ErrorGUIBehaviour.cs#L107)。历史审查只核对源码线程访问路径，尚未运行并发 Unity 日志压力测试；本轮已完成 800 条真实日志回归，见当前状态与执行记录。行号仅保留原审查定位。
 
 历史表现：logMessageReceivedThreaded 直接读写普通 HashSet，并向错误面板的普通 Stack 写入；主线程 OnGUI 同时 Peek/Pop/Clear。并发错误日志可丢失或破坏集合，Shader 错误事件也直接在日志产生线程派发。
 
@@ -582,7 +596,7 @@ ToolBase.Execute 已分发 Before/Execute/After，BuildBySettings 又分发同�
 
 ### R25 [P2] [已修复] 关闭已展开的 Profiler 面板后 UI 仍被禁用
 
-历史位置：[ProfilerGUIBehaviour.cs:98](Module/Profiler/Runtime/Unity/Behaviour/ProfilerGUIBehaviour/ProfilerGUIBehaviour.cs#L98)、[OnDestroy:61](Module/Profiler/Runtime/Unity/Behaviour/ProfilerGUIBehaviour/ProfilerGUIBehaviour.cs#L61)。原审查验证为源码生命周期路径；当前已通过遮罩输入及生命周期回归，行号仅保留原审查定位。
+历史位置：[ProfilerGUIBehaviour.cs:98](Module/Profiler/Runtime/Behaviour/ProfilerGUIBehaviour/ProfilerGUIBehaviour.cs#L98)、[OnDestroy:61](Module/Profiler/Runtime/Behaviour/ProfilerGUIBehaviour/ProfilerGUIBehaviour.cs#L61)。原审查验证为源码生命周期路径；当前已通过遮罩输入及生命周期回归，行号仅保留原审查定位。
 
 历史表现：展开详情会设置 EventSystemEnabled=false；展开时关闭 ProfilerGUIBehaviour 会销毁组件，但 OnDestroy 只释放 Recorder，没有恢复事件系统，面板消失后游戏 UI 仍无法点击。
 
@@ -592,13 +606,13 @@ ToolBase.Execute 已分发 Before/Execute/After，BuildBySettings 又分发同�
 
 ### R26 [P2] [已修复] Profiler 计数器归零后仍显示旧值
 
-历史位置：[ProfilerRecorderEx.cs:192](Module/Profiler/Runtime/Unity/Behaviour/ProfilerGUIBehaviour/ProfilerRecorder/ProfilerRecorderEx.cs#L192)。原审查验证为源码更新逻辑；当前已通过真实 Recorder 与面板缓存回归，行号仅保留原审查定位。
+历史位置：[ProfilerRecorderEx.cs:192](Module/Profiler/Runtime/Behaviour/ProfilerGUIBehaviour/ProfilerRecorder/ProfilerRecorderEx.cs#L192)。原审查验证为源码更新逻辑；当前已通过真实 Recorder 与面板缓存回归，行号仅保留原审查定位。
 
 历史表现：OnUpdate 用 `lastValue == 0` 跳过赋值，导致 DrawCalls、GC 分配等指标从非零归零后保留上次数据，可能误导性能判断。
 
 优化：将 Recorder 的有效性与数值分开处理，有效的 0 也必须更新；不可用指标显示独立状态。验收：输入 N→0→M，字段和面板同步变化。
 
-当前状态：已修复。有效 0 正常更新，不可用指标显示 N/A；真实非零→零→非零及实际面板文本缓存同步回归通过。
+当前状态：已修复。追加渲染复测后改为实际渲染结束时读取 CurrentValue 并缓存，空 Update 不覆盖渲染快照，真实 0 正常更新，不可用项显示 N/A。普通计数器继续读取 LastValue；Editor 限帧、双相机及 Windows Mono Player 取数见最新执行记录。
 
 ## 优化实施方案
 
@@ -611,15 +625,15 @@ ToolBase.Execute 已分发 Before/Execute/After，BuildBySettings 又分发同�
 | 3 | 已完成 | 修复网络与事件边界 | R10、R18、R19 | 统一 RingBuffer 满/空不变量、写入与扩容规则；事件重入策略；socket 无条件幂等释放 | 满容量/绕回字节测试、订阅变更测试及 native handle 释放测试通过 |
 | 4 | 已完成（当前约定范围） | 统一初始化和业务生命周期 | R06–R08、R13–R15 | 初始化、Controller、窗口加载与即时排序约定已通过；Alive、重复销毁、异常后的原生对象释放及资源持有结束已验证；追加 P2/P3 已修复；R14 迟到对象及直接销毁登记明确暂缓，不阻塞本阶段关闭 | 最新 Edit Mode 218/218、Play Mode 103/103 通过；真实 AssetBundle 在途卸载、R14 暂缓范围及 Player / IL2CPP 未验收 |
 | 5 | 已完成 | 让构建失败可见且可恢复 | R12、R20–R22 | 各 BuilderUtility 独立暂存、校验、发布及本次替换失败恢复；ToolBase 单次生命周期与自身版本；配置实时读取和重扫 | 最新完整 Edit Mode 265/265；真实 SBP 构建/失败、文件锁、元数据发布保护和同会话配置更新通过；工具调用之间无隐式事务；完整 Player / IL2CPP 未执行 |
-| 6 | 部分完成（Profiler 已完成） | 完成可安装性与诊断隔离 | R09、R23–R26 | R23–R26 及 Profiler 唯一 Manager 宿主、按设置管理普通组件、缓存透明遮罩已完成；R09 最低 Unity、必选依赖及可选程序集隔离待执行 | Profiler 完整 Edit Mode 269/269、Play Mode 130/130；纯净工程安装、集成组合、Player / IL2CPP 及设备验收未执行 |
+| 6 | 部分完成（Profiler 已完成） | 完成可安装性与诊断隔离 | R09、R23–R26 | R23–R26、唯一 Manager、缓存遮罩与真实渲染采样已完成；R09 最低 Unity、必选依赖及可选程序集隔离待执行 | 最新 Edit Mode 271/271、Play Mode 133/133；Profiler 的 Windows Mono Development / 正式包冒烟已执行；纯净安装、完整业务 Player、Android / IL2CPP 及设备验收未执行 |
 
 测试组织建议：在现有 Tests/Editor 中补充真实 ETask / Ticker、RingBuffer、Event 和构建失败传播测试；增加 Play Mode 的 Controller / Window / 初始化测试；独立临时工程进行 UPM 安装及 Player 冒烟构建。现有 ETaskCoroutineTests、EVoidTests 的部分路径使用自制 ManualAwaiter，不能替代真实 TaskAwaiter 的异常、竞争和回池回归。
 
-性能优化应在行为修复后度量：关闭 Profiler 的基线与开启后的开销分别采样，覆盖高频事件、批量创建、资源加载和 UI 打开。以 GC Alloc、帧耗时分位数、峰值内存及构建耗时为指标；本次未做性能基准，不据此承诺性能收益，也不优先进行大范围抽象重写。
+完整性能评估仍需分别测量关闭与开启 Profiler 的开销，覆盖高频事件、批量创建、资源加载和 UI 打开，并记录 GC Alloc、帧耗时分位数、峰值内存及构建耗时。最新仅验证采样循环的分配和本机耗时，不包含整个面板或业务场景对比，不据此承诺整体性能收益。
 
 ## 历史全量审查的验证与限制
 
-以下为 2026-11-01 历史全量审查的复现证据：诊断在原仓库外临时目录执行，当时没有修改或切换正在打开的 Unity 工程。后续修复验证分别见各阶段执行记录，最新完整回归见“Profiler R23–R26 与架构整理（2026-11-05）”：Edit Mode 269/269、Play Mode 130/130。下文的历史未验证项不覆盖后续已完成的验收。
+以下为 2026-11-01 历史全量审查的复现证据：诊断在原仓库外临时目录执行，当时没有修改或切换正在打开的 Unity 工程。后续修复验证分别见各阶段执行记录，最新完整回归见“Profiler 渲染零值复现与采样优化（2026-11-05）”：Edit Mode 271/271、Play Mode 133/133，并包含 Windows Mono Development / 正式包最小渲染场景验证。下文的历史未验证项不覆盖后续已完成的验收。
 
 | 验证组 | 方式 | 历史结果 |
 | --- | --- | --- |
@@ -630,9 +644,9 @@ ToolBase.Execute 已分发 Before/Execute/After，BuildBySettings 又分发同�
 | 包依赖 | 对照本机 Unity 2022.3.62f3 PackageCache 内原始 asmdef.meta | TMP / HybridCLR / URP 的 GUID 引用与缺失清单声明再次确认；未据此声称纯净导入已实测 |
 | Review 文件 | 检查源码链接、问题编号、严重度计数及 git diff --check | 仅更新 REVIEW.md；诊断复现的是现存缺陷，不能视为修复后的测试通过 |
 
-历史全量审查当时未执行 Unity Edit Mode / Play Mode 测试、纯净工程导入、目标平台 Player 构建、HybridCLR 热更新或实际 CDN 更新。后续顺序 1 完成真实 Unity Edit Mode 验证：首次交互式 TestRunnerApi 67/67、virtual 可读性整理后原项目命令行 67/67，以及最终合并 FileHelper 后原项目命令行 67/67；顺序 2 修复后原项目命令行 115/115，可读性精简后同一原项目 125/125，枚举状态整理后同一原项目 128/128，以上均为 0 失败、0 跳过。上述早期阶段当时尚未验证 Play Mode；后续已完成完整 Play Mode 130/130，最新 Edit Mode 为 269/269。Editor 构建故障回归见顺序 5，Profiler 日志、输入和计数器验收见 2026-11-05 执行记录，不再以原历史源码诊断代替当前状态。
+历史全量审查当时未执行 Unity Edit Mode / Play Mode 测试、纯净工程导入、目标平台 Player 构建、HybridCLR 热更新或实际 CDN 更新。后续顺序 1 完成真实 Unity Edit Mode 验证：首次交互式 TestRunnerApi 67/67、virtual 可读性整理后原项目命令行 67/67，以及最终合并 FileHelper 后原项目命令行 67/67；顺序 2 修复后原项目命令行 115/115，可读性精简后同一原项目 125/125，枚举状态整理后同一原项目 128/128，以上均为 0 失败、0 跳过。上述早期阶段当时尚未验证 Play Mode；随后架构整理完成 Play Mode 130/130、Edit Mode 269/269；追加渲染采样修复后，当前完整回归为 Play Mode 133/133、Edit Mode 271/271。Editor 构建故障回归见顺序 5，Profiler 日志、输入和计数器验收见 2026-11-05 执行记录，不再以原历史源码诊断代替当前状态。
 
-隔离诊断只验证状态、文件或缓冲区逻辑，不等于 Unity 原生对象、目标平台或设备验收。纯净工程导入、完整目标平台 Player / WebGL / IL2CPP 构建、HybridCLR 热更新和实际 CDN 更新仍未完成；Profiler 的物理鼠标、真机触摸及 IMGUI 外观也未验收。
+隔离诊断只验证状态、文件或缓冲区逻辑，不等于 Unity 原生对象、目标平台或设备验收。Profiler 已追加 Windows Mono 最小场景 Player 验证；纯净工程导入、完整业务 Player / WebGL / IL2CPP 构建、HybridCLR 热更新和实际 CDN 更新仍未完成。物理鼠标、真机触摸及完整 IMGUI 外观也未验收。
 
 ## 历史记录
 

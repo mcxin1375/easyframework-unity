@@ -17,14 +17,19 @@ namespace EasyFramework.Tests
             {
                 var recorders = GetRecorders(profiler);
                 DisposeAndClear(recorders);
-                var recorder = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "Total Used Memory");
-                recorder.Reset();
+                bool renderCounter = propertyName == nameof(ProfilerRecorderEx.DrawCallsCount);
+                var recorder = renderCounter
+                    ? ProfilerRecorder.StartNew(ProfilerCategory.Render, "Draw Calls Count")
+                    : ProfilerRecorder.StartNew(ProfilerCategory.Memory, "Total Used Memory");
+                if (!renderCounter) recorder.Reset();
                 recorders.Add(propertyName, recorder);
                 Assert.That(recorder.Valid, Is.True, "The test requires a real available Unity counter.");
-                Assert.That(recorder.LastValue, Is.Zero, "Reset must expose a valid zero sample.");
+                Assert.That(renderCounter ? recorder.CurrentValue : recorder.LastValue, Is.Zero,
+                    "The test must exercise a valid zero value.");
                 SetValue(profiler, propertyName, 123);
 
-                profiler.OnUpdate();
+                if (renderCounter) profiler.OnRender();
+                else profiler.OnUpdate();
 
                 Assert.That(GetValue(profiler, propertyName), Is.Zero);
                 Assert.That(profiler.IsAvailable(propertyName), Is.True);
@@ -53,6 +58,7 @@ namespace EasyFramework.Tests
                 SetValue(profiler, nameof(ProfilerRecorderEx.DrawCallsCount), 123);
 
                 profiler.OnUpdate();
+                profiler.OnRender();
 
                 Assert.That(profiler.DrawCallsCount, Is.Zero);
                 Assert.That(profiler.IsAvailable(nameof(ProfilerRecorderEx.DrawCallsCount)), Is.False);
@@ -64,6 +70,39 @@ namespace EasyFramework.Tests
             {
                 profiler.Dispose();
             }
+        }
+
+        [Test]
+        public void OnUpdate_PreservesRenderSnapshotUntilAnotherRenderCompletes()
+        {
+            var profiler = new ProfilerRecorderEx();
+            try
+            {
+                SetValue(profiler, nameof(ProfilerRecorderEx.DrawCallsCount), 123);
+                profiler.OnUpdate();
+                Assert.That(profiler.DrawCallsCount, Is.EqualTo(123),
+                    "An Editor Update without rendering must not clear the last rendered snapshot.");
+            }
+            finally { profiler.Dispose(); }
+        }
+
+        [Test]
+        public void CounterSampling_AfterWarmup_DoesNotAllocateManagedMemory()
+        {
+            var profiler = new ProfilerRecorderEx();
+            try
+            {
+                for (int i = 0; i < 10; i++) { profiler.OnUpdate(); profiler.OnRender(); }
+                long before = System.GC.GetAllocatedBytesForCurrentThread();
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                long afterWatch = System.GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 1000; i++) { profiler.OnUpdate(); profiler.OnRender(); }
+                long allocated = System.GC.GetAllocatedBytesForCurrentThread() - afterWatch;
+                watch.Stop();
+                TestContext.WriteLine($"1000 counter sampling pairs: {allocated} bytes, {watch.Elapsed.TotalMilliseconds:F2} ms; timer allocation={afterWatch - before} bytes.");
+                Assert.That(allocated, Is.Zero, "Sampling must not box values or invoke reflection setters.");
+            }
+            finally { profiler.Dispose(); }
         }
 
         [Test]

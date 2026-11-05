@@ -129,4 +129,4 @@ Editor 工具代码只能放在 Editor 目录或程序集，引用 EasyFramework
 - Tests/Editor/：ETask 等现有编辑器测试。
 - Plugins/、Res/、Resources/：生成器与框架资源。
 
-当前 Review 历史 26 项已关闭 24 项；R09 安装依赖问题及 R14 两项暂缓范围仍待处理。本轮 R23–R26 与 Profiler 架构整理已完成，验证为 Edit Mode 269/269、Play Mode 130/130；不包含 Player / IL2CPP 或真机验收。详细进度见 [REVIEW.md](REVIEW.md)。许可证见 [LICENSE](LICENSE)。
+当前 Review 历史 26 项已关闭 24 项；R09 安装依赖问题及 R14 两项暂缓范围仍待处理。Profiler 限帧渲染采样已追加修正，最新验证为 Edit Mode 271/271、Play Mode 133/133，并完成 Windows Mono Development / 正式包最小场景冒烟；不代表完整业务 Player、Android / IL2CPP 或真机验收。详细进度见 [REVIEW.md](REVIEW.md)。许可证见 [LICENSE](LICENSE)。
