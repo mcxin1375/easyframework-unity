@@ -24,7 +24,7 @@ package.json 声明 Newtonsoft.Json 与 Scriptable Build Pipeline 依赖，未�
 - Controller、泛型事件、FSM、对象池、输入、音频、场景、Sprite 与 Shader 管理。
 - DLC 基础版本、文件下载和资源发布；DLC 独立分包下载暂不可用。
 - 可选 HybridCLR 集成，需要安装插件并配置、验证项目热更新流程。
-- Profiler：独立程序集的运行时性能与错误面板、Shader 变体错误通知。
+- Profiler：独立程序集，以 ProfilerManager 为唯一运行时单例，按设置管理性能/错误面板、多摄像机检查和缓存的点击遮罩，Shader 错误在主线程通知。
 - Editor 工具链：资源导入、资源生成、AssetBundle、DLC 与 Player 构建及扩展。
 
 ECS 类型仍保留，但当前没有公开 WorldManager / F.WorldManager，FWorld 构造函数为 internal。当前 Controller 帧更新和批量退出也有实现限制，见 [Review](REVIEW.md)。
@@ -103,7 +103,7 @@ public static class GameBuild
 | [InputManager](Documentation/Runtime/InputManager.md) / [PoolManager](Documentation/Runtime/PoolManager.md) / [AudioPlayer](Documentation/Runtime/AudioPlayer.md) | 输入、对象池、音频 |
 | [HybridCLRManager](Documentation/Runtime/HybridCLRManager.md) | 可选热更新 |
 | [ECS（当前边界）](Documentation/Runtime/WorldManager.md) | 保留类型与缺少的入口 |
-| [Profiler](Documentation/Runtime/Profiler.md) | 独立 EasyFramework.Profiler 程序集 |
+| [Profiler](Documentation/Runtime/Profiler.md) | 独立 EasyFramework.Profiler 程序集、Manager 入口与模块开关 |
 
 ## Editor.Tools
 
@@ -129,4 +129,4 @@ Editor 工具代码只能放在 Editor 目录或程序集，引用 EasyFramework
 - Tests/Editor/：ETask 等现有编辑器测试。
 - Plugins/、Res/、Resources/：生成器与框架资源。
 
-文档基于当前源码核对；审查发现与验证范围见 [REVIEW.md](REVIEW.md)。许可证见 [LICENSE](LICENSE)。
+当前 Review 历史 26 项已关闭 24 项；R09 安装依赖问题及 R14 两项暂缓范围仍待处理。本轮 R23–R26 与 Profiler 架构整理已完成，验证为 Edit Mode 269/269、Play Mode 130/130；不包含 Player / IL2CPP 或真机验收。详细进度见 [REVIEW.md](REVIEW.md)。许可证见 [LICENSE](LICENSE)。

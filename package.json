@@ -1,15 +1,15 @@
 {
   "name": "com.cookie.easyframework",
   "displayName": "Easy Framework",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Easy Framework",
   "author": {
     "name": "Cookie"
   },
   "samples": [
     {
-      "displayName": "基础示例",
-      "description": "资源持有与释放、窗口、事件、Controller 生命周期和 Editor 构建入口。",
+      "displayName": "\u57fa\u7840\u793a\u4f8b",
+      "description": "\u8d44\u6e90\u6301\u6709\u4e0e\u91ca\u653e\u3001\u7a97\u53e3\u3001\u4e8b\u4ef6\u3001Controller \u751f\u547d\u5468\u671f\u548c Editor \u6784\u5efa\u5165\u53e3\u3002",
       "path": "Samples~/Basics"
     }
   ],

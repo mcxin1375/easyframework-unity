@@ -181,6 +181,7 @@ namespace EasyFramework.Profiler
             {
                 recorder.Dispose();
             }
+            _profilerRecorderDict.Clear();
         }
 
         public void OnUpdate()
@@ -189,44 +190,64 @@ namespace EasyFramework.Profiler
             {
                 foreach (PropertyInfo propertyInfo in _propertyInfos)
                 {
-                    var lastValue = _profilerRecorderDict.ContainsKey(propertyInfo.Name) ? _profilerRecorderDict[propertyInfo.Name].LastValue : 0;
-                    if (lastValue == 0) continue;
-                    
+                    var lastValue = _profilerRecorderDict.TryGetValue(propertyInfo.Name, out var recorder) && recorder.Valid
+                        ? recorder.LastValue
+                        : 0;
                     propertyInfo.SetValue(this, lastValue);
                 }
             }
+        }
+
+        public bool IsAvailable(string propertyName)
+        {
+            return _profilerRecorderDict.TryGetValue(propertyName, out var recorder) && recorder.Valid;
+        }
+
+        public string FormatNumber(string propertyName)
+        {
+            return IsAvailable(propertyName) ? GetValue(propertyName).FormatNumber() : "N/A";
+        }
+
+        public string FormatByte(string propertyName)
+        {
+            return IsAvailable(propertyName) ? GetValue(propertyName).FormatByte() : "N/A";
+        }
+
+        private long GetValue(string propertyName)
+        {
+            return (long)GetType().GetProperty(propertyName).GetValue(this);
         }
 
         public string MemoryToString()
         {
             StringBuilder sb = new StringBuilder();
             
-            sb.Append($"MainThread: {MainThread/1000000:N1}ms\n");
-            sb.Append($"TotalMemory(Used/Reserve): {TotalUsedMemory.FormatByte()} / {TotalReservedMemory.FormatByte()}\n");
+            sb.Append($"MainThread: {(IsAvailable(nameof(MainThread)) ? $"{MainThread/1000000:N1}ms" : "N/A")}\n");
+            sb.Append($"TotalMemory(Used/Reserve): {FormatByte(nameof(TotalUsedMemory))} / {FormatByte(nameof(TotalReservedMemory))}\n");
             // string color = TotalUsedMemory > setting.TotalUsedMemory ? "red" : "white";
             // string color1 = TotalReservedMemory > setting.TotalReservedMemory ? "red" : "white";
-            sb.Append($"TotalMemory(Used/Reserve): {TotalUsedMemory.FormatByte()} / {TotalReservedMemory.FormatByte()}\n");
-            sb.Append($"GC: {GCUsedMemory.FormatByte()} / {GCReservedMemory.FormatByte()}\n");
-            sb.Append($"Audio: {AudioUsedMemory.FormatByte()} / {AudioReservedMemory.FormatByte()}\n");
-            sb.Append($"Video: {VideoUsedMemory.FormatByte()} / {VideoReservedMemory.FormatByte()}\n");
-            sb.Append($"Profiler: {ProfilerUsedMemory.FormatByte()} / {ProfilerReservedMemory.FormatByte()}\n");
+            sb.Append($"TotalMemory(Used/Reserve): {FormatByte(nameof(TotalUsedMemory))} / {FormatByte(nameof(TotalReservedMemory))}\n");
+            sb.Append($"GC: {FormatByte(nameof(GCUsedMemory))} / {FormatByte(nameof(GCReservedMemory))}\n");
+            sb.Append($"Audio: {FormatByte(nameof(AudioUsedMemory))} / {FormatByte(nameof(AudioReservedMemory))}\n");
+            sb.Append($"Video: {FormatByte(nameof(VideoUsedMemory))} / {FormatByte(nameof(VideoReservedMemory))}\n");
+            sb.Append($"Profiler: {FormatByte(nameof(ProfilerUsedMemory))} / {FormatByte(nameof(ProfilerReservedMemory))}\n");
             if (Application.isEditor)
             {
-                sb.Append($"Gfx: {FormatHelper.FormatByte(GfxUsedMemory)} / {FormatHelper.FormatByte(GfxReservedMemory)}\n");
+                sb.Append($"Gfx: {FormatByte(nameof(GfxUsedMemory))} / {FormatByte(nameof(GfxReservedMemory))}\n");
             }
-            sb.Append($"SystemUsedMemory: {SystemUsedMemory.FormatByte()}\n\n");
+            sb.Append($"SystemUsedMemory: {FormatByte(nameof(SystemUsedMemory))}\n\n");
 
             if (Application.isEditor)
             {
-                sb.Append($"Textures: {TextureCount.FormatNumber()} / {FormatHelper.FormatByte(TextureMemory)}\n");
-                sb.Append($"Meshes: {MeshCount.FormatNumber()} / {FormatHelper.FormatByte(MeshMemory)}\n");
-                sb.Append($"Materials: {MaterialCount.FormatNumber()} / {FormatHelper.FormatByte(MaterialMemory)}\n");
-                sb.Append($"AnimationClips: {AnimationClipCount.FormatNumber()} / {FormatHelper.FormatByte(AnimationClipMemory)}\n");
-                sb.Append($"AssetCount: {AssetCount.FormatNumber()}\n");
-                sb.Append($"GameObjectCount: {GameObjectCount.FormatNumber()}\n");
-                sb.Append($"SceneObjectCount: {SceneObjectCount.FormatNumber()}\n");
-                sb.Append($"ObjectCount: {ObjectCount.FormatNumber()}\n\n");
-                sb.Append($"GC Allocated In Frame: {GCAllocationInFrameCount.FormatNumber()} / {FormatHelper.FormatByte(GCAllocatedInFrame)}\n");
+                sb.Append($"Textures: {FormatNumber(nameof(TextureCount))} / {FormatByte(nameof(TextureMemory))}\n");
+                sb.Append($"Meshes: {FormatNumber(nameof(MeshCount))} / {FormatByte(nameof(MeshMemory))}\n");
+                sb.Append($"Materials: {FormatNumber(nameof(MaterialCount))} / {FormatByte(nameof(MaterialMemory))}\n");
+                sb.Append($"AnimationClips: {FormatNumber(nameof(AnimationClipCount))} / {FormatByte(nameof(AnimationClipMemory))}\n");
+                sb.Append($"AssetCount: {FormatNumber(nameof(AssetCount))}\n");
+                sb.Append($"GameObjectCount: {FormatNumber(nameof(GameObjectCount))}\n");
+                sb.Append($"SceneObjectCount: {FormatNumber(nameof(SceneObjectCount))}\n");
+                sb.Append($"ObjectCount: {FormatNumber(nameof(ObjectCount))}\n\n");
+                sb.Append($"GC Allocated In Frame: {FormatNumber(nameof(GCAllocationInFrameCount))} / {FormatByte(nameof(GCAllocatedInFrame))}\n");
             }
             return sb.ToString();
         }
@@ -234,28 +255,28 @@ namespace EasyFramework.Profiler
         public string RenderToString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append($"SetPass Calls: {SetPassCallsCount.FormatNumber()}\n");
-            sb.Append($"Draw Calls: {DrawCallsCount.FormatNumber()}\n");
-            sb.Append($"Batches: {BatchesCount.FormatNumber()}\n");
-            sb.Append($"Tris: {TrianglesCount.FormatNumber()}\n");
-            sb.Append($"Verts: {VerticesCount.FormatNumber()}\n\n");
+            sb.Append($"SetPass Calls: {FormatNumber(nameof(SetPassCallsCount))}\n");
+            sb.Append($"Draw Calls: {FormatNumber(nameof(DrawCallsCount))}\n");
+            sb.Append($"Batches: {FormatNumber(nameof(BatchesCount))}\n");
+            sb.Append($"Tris: {FormatNumber(nameof(TrianglesCount))}\n");
+            sb.Append($"Verts: {FormatNumber(nameof(VerticesCount))}\n\n");
             
-            sb.Append($"Render Textures: {RenderTexturesCount.FormatNumber()} / {FormatHelper.FormatByte(RenderTexturesBytes)}\n");
-            sb.Append($"RenderTexturesChanges: {RenderTexturesChangesCount.FormatNumber()}\n");
-            sb.Append($"UsedBuffers: {UsedBuffersCount.FormatNumber()} / {FormatHelper.FormatByte(UsedBuffersBytes)}\n");
-            sb.Append($"VertexBufferUploadInFrame: {VertexBufferUploadInFrameCount.FormatNumber()} / {FormatHelper.FormatByte(VertexBufferUploadInFrameBytes)}\n");
-            sb.Append($"IndexBufferUploadInFrame: {IndexBufferUploadInFrameCount.FormatNumber()} / {FormatHelper.FormatByte(IndexBufferUploadInFrameBytes)}\n");
+            sb.Append($"Render Textures: {FormatNumber(nameof(RenderTexturesCount))} / {FormatByte(nameof(RenderTexturesBytes))}\n");
+            sb.Append($"RenderTexturesChanges: {FormatNumber(nameof(RenderTexturesChangesCount))}\n");
+            sb.Append($"UsedBuffers: {FormatNumber(nameof(UsedBuffersCount))} / {FormatByte(nameof(UsedBuffersBytes))}\n");
+            sb.Append($"VertexBufferUploadInFrame: {FormatNumber(nameof(VertexBufferUploadInFrameCount))} / {FormatByte(nameof(VertexBufferUploadInFrameBytes))}\n");
+            sb.Append($"IndexBufferUploadInFrame: {FormatNumber(nameof(IndexBufferUploadInFrameCount))} / {FormatByte(nameof(IndexBufferUploadInFrameBytes))}\n");
             if (Application.isEditor)
             {
-                sb.Append($"UsedTextures: {UsedTexturesCount.FormatNumber()} / {FormatHelper.FormatByte(UsedTexturesBytes)}\n");
+                sb.Append($"UsedTextures: {FormatNumber(nameof(UsedTexturesCount))} / {FormatByte(nameof(UsedTexturesBytes))}\n");
             }
-            sb.Append($"ShadowCasters: {ShadowCastersCount.FormatNumber()}\n\n");
+            sb.Append($"ShadowCasters: {FormatNumber(nameof(ShadowCastersCount))}\n\n");
             
             if (Application.isEditor)
             {
-                sb.Append($"(Dynamic)\nDC: {DynamicBatchedDrawCallsCount.FormatNumber()} Batches: {DynamicBatchesCount.FormatNumber()} Tris: {DynamicBatchedTrianglesCount.FormatNumber()} Verts: {DynamicBatchedVerticesCount.FormatNumber()} Time: {DynamicBatchingTime}\n");
-                sb.Append($"(Static)\nDC: {StaticBatchedDrawCallsCount.FormatNumber()} Batches: {StaticBatchesCount.FormatNumber()} Tris: {StaticBatchedTrianglesCount.FormatNumber()} Verts: {StaticBatchedVerticesCount.FormatNumber()}\n");
-                sb.Append($"(Instancing)\nDC: {InstancedBatchedDrawCallsCount.FormatNumber()} Batches: {InstancedBatchesCount.FormatNumber()} Tris: {InstancedBatchedTrianglesCount.FormatNumber()} Verts: {InstancedBatchedVerticesCount.FormatNumber()}\n");
+                sb.Append($"(Dynamic)\nDC: {FormatNumber(nameof(DynamicBatchedDrawCallsCount))} Batches: {FormatNumber(nameof(DynamicBatchesCount))} Tris: {FormatNumber(nameof(DynamicBatchedTrianglesCount))} Verts: {FormatNumber(nameof(DynamicBatchedVerticesCount))} Time: {(IsAvailable(nameof(DynamicBatchingTime)) ? DynamicBatchingTime.ToString() : "N/A")}\n");
+                sb.Append($"(Static)\nDC: {FormatNumber(nameof(StaticBatchedDrawCallsCount))} Batches: {FormatNumber(nameof(StaticBatchesCount))} Tris: {FormatNumber(nameof(StaticBatchedTrianglesCount))} Verts: {FormatNumber(nameof(StaticBatchedVerticesCount))}\n");
+                sb.Append($"(Instancing)\nDC: {FormatNumber(nameof(InstancedBatchedDrawCallsCount))} Batches: {FormatNumber(nameof(InstancedBatchesCount))} Tris: {FormatNumber(nameof(InstancedBatchedTrianglesCount))} Verts: {FormatNumber(nameof(InstancedBatchedVerticesCount))}\n");
             }
             return sb.ToString();
         }

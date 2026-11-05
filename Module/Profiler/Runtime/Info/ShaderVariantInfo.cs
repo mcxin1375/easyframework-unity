@@ -37,7 +37,7 @@ namespace EasyFramework.Profiler
             var keywordsStr = log.Extract("variant ", " not found");
             if (string.IsNullOrEmpty(shaderName) || string.IsNullOrEmpty(passStr) || string.IsNullOrEmpty(keywordsStr)) return false;
 
-            int pass = int.Parse(passStr);
+            if (!int.TryParse(passStr, out int pass)) return false;
             string[] keywords = keywordsStr == "<no keywords>" ? null : keywordsStr.Split(' ').Where(e => !string.IsNullOrEmpty(e)).ToArray();
             shaderVariantInfo = new ShaderVariantInfo(shaderName, pass, keywords, log);
             return true;

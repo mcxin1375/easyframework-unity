@@ -13,6 +13,10 @@ namespace EasyFramework.Profiler
     {
         [Header("初始化")] 
         public bool autoInitialize;
+
+        [Header("输入遮罩")]
+        [Tooltip("阻止性能详情和错误面板上的鼠标、触摸点击穿透到下层 UI")]
+        public bool blockUIInput = true;
         
         [Header("错误弹窗")]
         public bool errorGUIBehaviour = true;

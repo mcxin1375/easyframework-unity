@@ -110,4 +110,4 @@ DLC 独立分包下载暂不可用。HybridCLR 是可选集成，需要安装插
 
 当前没有 F.WorldManager，ECS 的包外入口尚不完整；Controller 的帧分发与 ExitAllAsync 有实现问题，基础示例不依赖这些路径，见 [Controller 文档](Runtime/ControllerManager.md)。
 
-文档核对不能替代目标 Unity 场景运行和平台构建。包内 Profiler 默认启动行为及计数器边界见 [Profiler](Runtime/Profiler.md)。
+文档核对不能替代目标 Unity 场景运行和平台构建。包内 Profiler 的唯一 Manager 入口、启动配置、模块开关、缓存点击遮罩及计数器边界见 [Profiler](Runtime/Profiler.md)；自动启动遵循已保存的 autoInitialize 设置。

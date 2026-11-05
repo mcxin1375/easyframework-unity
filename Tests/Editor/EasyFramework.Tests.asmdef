@@ -3,7 +3,8 @@
     "rootNamespace": "",
     "references": [
         "GUID:73325a7e2bce08341b61ab53f0f987ac",
-        "GUID:f739d2667768ec241b089fc181e6bb76"
+        "GUID:f739d2667768ec241b089fc181e6bb76",
+        "GUID:32c47e60511973e47b558c8d444d91ba"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"

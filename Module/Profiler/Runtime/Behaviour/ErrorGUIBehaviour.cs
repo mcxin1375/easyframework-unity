@@ -58,8 +58,13 @@ namespace EasyFramework.Profiler
             F.InputManager.OnInputEvent += OnInputAction;
         }
 
+        private void OnEnable() => UpdateInputBlocker();
+
+        private void OnDisable() => SetInputBlocked(false);
+
         void OnDestroy()
         {
+            SetInputBlocked(false);
             F.InputManager.OnInputEvent -= OnInputAction;
         }
 
@@ -83,18 +88,18 @@ namespace EasyFramework.Profiler
                 OnCloseLog();
             if (GUI.Button(new Rect(Screen.width - 350, 50, 130, 50), $"Clear({_logStack.Count})", _buttonStyle))
                 OnClearLog();
-            
-            F.WindowManager.EventSystemEnabled = _logStack.Count == 0;
         }
 
         private void OnClearLog()
         {
             _logStack.Clear();
+            UpdateInputBlocker();
         }
 
         private void OnCloseLog()
         {
             if (_logStack.Count > 0) _logStack.TryPop(out _);
+            UpdateInputBlocker();
         }
 
         public void AddLog(string condition, string stackTrace, LogType type)
@@ -105,8 +110,16 @@ namespace EasyFramework.Profiler
                 case LogType.Assert:
                 case LogType.Exception:
                     _logStack.Push(new Message(condition, stackTrace, type));
+                    UpdateInputBlocker();
                     break;
             }
+        }
+
+        private void UpdateInputBlocker() => SetInputBlocked(_logStack.Count > 0 && isActiveAndEnabled);
+
+        private void SetInputBlocked(bool blocked)
+        {
+            if (ProfilerManager.HasInstance()) ProfilerManager.Instance.SetInputBlocked(this, blocked);
         }
 
         private void OnInputAction(EInputType type, int value, Vector2 pos)

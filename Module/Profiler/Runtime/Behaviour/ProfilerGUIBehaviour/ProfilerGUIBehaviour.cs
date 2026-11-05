@@ -58,8 +58,13 @@ namespace EasyFramework.Profiler
             ProfilerDeviceEx.StartBatteryLevel = SystemInfo.batteryLevel < 0 ? 100 : (int)(SystemInfo.batteryLevel * 100);
         }
 
+        private void OnEnable() => UpdateInputBlocker();
+
+        private void OnDisable() => SetInputBlocked(false);
+
         private void OnDestroy()
         {
+            SetInputBlocked(false);
             ProfilerRecorderEx.Dispose();
         }
 
@@ -74,12 +79,12 @@ namespace EasyFramework.Profiler
 
                 StringBuilder sb = new StringBuilder();
                 sb.Append($"FPS: <color=yellow>{FPSEx.FPS}</color>");
-                sb.Append($" M(U/R): {ProfilerRecorderEx.TotalUsedMemory.FormatByte()}/{ProfilerRecorderEx.TotalReservedMemory.FormatByte()}");
-                sb.Append($" SC: {ProfilerRecorderEx.SetPassCallsCount.FormatNumber()}");
-                sb.Append($" DC: {ProfilerRecorderEx.DrawCallsCount.FormatNumber()}");
-                sb.Append($" B: {ProfilerRecorderEx.BatchesCount.FormatNumber()}");
-                sb.Append($" T: {ProfilerRecorderEx.TrianglesCount.FormatNumber()}");
-                sb.Append($" V: {ProfilerRecorderEx.VerticesCount.FormatNumber()}");
+                sb.Append($" M(U/R): {ProfilerRecorderEx.FormatByte(nameof(ProfilerRecorderEx.TotalUsedMemory))}/{ProfilerRecorderEx.FormatByte(nameof(ProfilerRecorderEx.TotalReservedMemory))}");
+                sb.Append($" SC: {ProfilerRecorderEx.FormatNumber(nameof(ProfilerRecorderEx.SetPassCallsCount))}");
+                sb.Append($" DC: {ProfilerRecorderEx.FormatNumber(nameof(ProfilerRecorderEx.DrawCallsCount))}");
+                sb.Append($" B: {ProfilerRecorderEx.FormatNumber(nameof(ProfilerRecorderEx.BatchesCount))}");
+                sb.Append($" T: {ProfilerRecorderEx.FormatNumber(nameof(ProfilerRecorderEx.TrianglesCount))}");
+                sb.Append($" V: {ProfilerRecorderEx.FormatNumber(nameof(ProfilerRecorderEx.VerticesCount))}");
                 // sb.Append($" Main: {ProfilerRecorderEx.MainThread/1000000:N1}ms");
                 
                 _headerStr = sb.ToString();
@@ -92,13 +97,25 @@ namespace EasyFramework.Profiler
         private GUIContent _labelContent1 = new();
         private GUIContent _labelContent2 = new();
         private GUIContent _labelContent3 = new();
+
+        private void SetDetailsVisible(bool value)
+        {
+            _drawDetails = value;
+            UpdateInputBlocker();
+        }
+
+        private void UpdateInputBlocker() => SetInputBlocked(_drawDetails && isActiveAndEnabled);
+
+        private void SetInputBlocked(bool blocked)
+        {
+            if (ProfilerManager.HasInstance()) ProfilerManager.Instance.SetInputBlocked(this, blocked);
+        }
         
         void OnGUI()
         {
             if (GUI.Button(new Rect(0, 0, Screen.width, 30), _headerStr, _headerStyle))
             {
-                _drawDetails = !_drawDetails;
-                F.WindowManager.EventSystemEnabled = !_drawDetails;
+                SetDetailsVisible(!_drawDetails);
             }
 
             if (_drawDetails)
