@@ -1,0 +1,13 @@
+{
+    "name": "EasyFramework.Samples.Modules.Editor",
+    "rootNamespace": "EasyFramework.Samples.Modules.Editor",
+    "references": ["EasyFramework", "EasyFramework.Editor", "HybridCLR.Editor"],
+    "includePlatforms": ["Editor"],
+    "versionDefines": [
+        {
+            "name": "com.code-philosophy.hybridclr",
+            "expression": "",
+            "define": "EF_HYBRIDCLR"
+        }
+    ]
+}

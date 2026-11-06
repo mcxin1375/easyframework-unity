@@ -14,7 +14,7 @@
 根据当前任务选择需要阅读的文档，不要求每次任务都读取 `Documentation` 目录下的全部文档：
 
 - 涉及整体架构或框架初始化时，阅读 `Documentation/Runtime/F.md`。
-- 涉及安装或示例时，阅读 `Documentation/GettingStarted.md` 和 `Documentation/Examples.md`；可导入代码在 `Samples~/Basics/`。
+- 涉及安装或示例时，阅读 `Documentation/GettingStarted.md` 和 `Documentation/Examples.md`；可导入示例类位于 `Samples~/Runtime/` 和 `Samples~/Editor/`。
 - 涉及 Controller 或 ECS 时，先核对对应文档的当前实现限制，再选择可用入口。
 - 涉及某个 `F.xxx` 模块时，阅读对应的 Runtime 文档。
 - 涉及 Editor 工具时，先阅读 `Documentation/Editor.Tools/ToolBase.md`。

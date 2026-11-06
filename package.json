@@ -8,9 +8,9 @@
   },
   "samples": [
     {
-      "displayName": "\u57fa\u7840\u793a\u4f8b",
-      "description": "\u8d44\u6e90\u6301\u6709\u4e0e\u91ca\u653e\u3001\u7a97\u53e3\u3001\u4e8b\u4ef6\u3001Controller \u751f\u547d\u5468\u671f\u548c Editor \u6784\u5efa\u5165\u53e3\u3002",
-      "path": "Samples~/Basics"
+      "displayName": "EasyFramework Samples",
+      "description": "按 Runtime 与 Editor 分类的简短示例类，调用前提和清理方式直接写在代码注释中。",
+      "path": "Samples~"
     }
   ],
   "dependencies": {

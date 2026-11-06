@@ -1,7 +1,0 @@
-{
-    "name": "EasyFramework.Samples.Basics",
-    "references": [
-        "EasyFramework",
-        "UnityEngine.UI"
-    ]
-}

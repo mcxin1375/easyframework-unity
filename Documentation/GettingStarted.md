@@ -19,13 +19,13 @@ https://github.com/mcxin1375/easyframework-unity.git
 - Universal RP：com.unity.render-pipelines.universal。
 - HybridCLR：通过 Git URL https://github.com/focus-creative-games/hybridclr_unity.git 安装，并按其要求配置。
 
-不使用这些集成的项目，需要在项目维护的包中拆分相应 asmdef 引用；当前包还没有完全隔离可选依赖。不要只删除 GUID 而忽略实际代码引用。业务 asmdef 引用 EasyFramework，UI 示例还引用 UnityEngine.UI；Editor 工具单独引用 EasyFramework.Editor。
+不使用这些集成的项目，需要在项目维护的包中拆分相应 asmdef 引用；当前包还没有完全隔离可选依赖。不要只删除 GUID 而忽略实际代码引用。业务 asmdef 引用 EasyFramework；Editor 工具单独引用 EasyFramework.Editor。Profiler 示例另外引用 EasyFramework.Profiler。
 
-在 Package Manager 的 Samples 中导入“基础示例”。新建空场景，在 GameObject 上挂载 EventExample、ControllerExample 或 WindowExample，每种一份。事件与 Controller 在 Console 输出日志，窗口示例无需预制体便能显示半透明绿色面板。完整源文件见 [基础示例](Examples.md)。
+在 `Package Manager > Easy Framework > Samples` 导入唯一的 **EasyFramework Samples** 条目，源码位于 [Samples~](../Samples~)。Unity 将其复制到 `Assets/Samples/<框架显示名>/<框架版本>/EasyFramework Samples`。所有简短示例类直接放在 `Runtime` 和 `Editor` 两个目录，必要前提、调用和释放方式写在代码注释中，没有独立说明 Markdown 或运行场景。导入本身不会自动执行业务；资源、URL 和构建配置由接入工程提供。源码索引见 [示例](Examples.md)。
 
 ## 2. 资源目录与请求
 
-在 Project Settings > EasyFramework Tools > AssetBundleBuilder 配置 Build Directories，默认 Assets/Res_DLC。将 Cube.prefab 保存到该目录，再挂载示例中的 ResourceExample。
+在 Project Settings > EasyFramework Tools > AssetBundleBuilder 配置 Build Directories，默认 Assets/Res_DLC。将 Cube.prefab 保存到该目录，再由业务显式调用示例中的 `await ResourceExample.RunAsync("Cube", parent)`。
 
 普通文件单独打包，以 .ab 结尾的目录整体打包；跳过 Editor、.meta 和配置的过滤项。多个 IAssetBundleBuilderSettings 自动合并配置。业务传入资源名 Cube，无须拼接 .ab、哈希名或下载路径。
 
@@ -59,7 +59,7 @@ public sealed class GameController : Controller<GameController>
 
 即使开启 autoInitialize，也先等待 F.InitializeAsync()。业务通过 GameController.Instance.EnterAsync(...) 进入，通过 Instance.ExitAsync() 退出；基类入口将调用转发到 F.ControllerManager，状态和参数写入时机由管理器统一处理。退出后保留实例缓存，后续进入复用；不提供公开 DestroyAsync。OnAddListeners / OnRemoveListeners 及监听去重在 Controller 内部实现。
 
-资源组件使用 `await F.ResLoader.CreateObjAsync("Cube", request: this)`，并实现 IResRequest.Alive；清理时销毁实例并调用 `F.ResLoader.Unload("Cube", this)`。使用同一个请求持有与释放，处理异步完成前组件已销毁的情况。完整处理见 ResourceExample，而不是直接丢弃加载结果。
+资源加载和清理的最小调用见 [Runtime/ResourceExample.cs](../Samples~/Runtime/ResourceExample.cs)：`RunAsync(string resourceName = "Cube", Transform parent = null)` 先等待初始化，通过局部 `IResRequest` 创建实例，并在 `finally` 中销毁实例、令请求不再存活，再以同一个请求调用 `Unload`。该模板展示一次完整使用范围；跨帧持有时，业务自行保存请求和实例，退出后释放，并在异步完成后检查自身生命周期。
 
 ## 4. 定义资源窗口
 
@@ -78,7 +78,7 @@ public sealed class HelloWindow : Window
 
 准备以 RectTransform 为根的 HelloWindow.prefab，放入构建目录。初始化后调用 `await F.WindowManager.OpenAsync<HelloWindow>(UILayer.HUD)`。未指定 UI Root 时使用包内 Resources/UIRoot。自定义 Root 要配置层、Camera、EventSystem。
 
-暂时隐藏用 Close<HelloWindow>()，释放实例先关闭再 Destroy<HelloWindow>()。继承 WindowResources 并设置 WindowResourcesPath 可改用 Resources 路径。无需资源的窗口创建示例见 WindowExample.cs。
+暂时隐藏用 Close<HelloWindow>()，释放实例先关闭再 Destroy<HelloWindow>()。继承 WindowResources 并设置 WindowResourcesPath 可改用 Resources 路径。[Runtime/WindowExample.cs](../Samples~/Runtime/WindowExample.cs) 提供 `OpenAsync()`、`Close()` 和 `Release()` 模板；需先准备以 RectTransform 为根的 `TemplateWindow.prefab`，顺序等待打开后再关闭或释放。
 
 ## 5. 应用配置与发布
 

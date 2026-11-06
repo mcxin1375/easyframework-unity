@@ -1,0 +1,12 @@
+{
+    "name": "EasyFramework.Samples.Modules",
+    "rootNamespace": "EasyFramework.Samples.Modules",
+    "references": ["EasyFramework", "EasyFramework.Profiler", "UnityEngine.UI"],
+    "versionDefines": [
+        {
+            "name": "com.code-philosophy.hybridclr",
+            "expression": "",
+            "define": "EF_HYBRIDCLR"
+        }
+    ]
+}

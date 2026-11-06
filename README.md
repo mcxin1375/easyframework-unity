@@ -12,7 +12,7 @@ https://github.com/mcxin1375/easyframework-unity.git
 
 package.json 声明 Newtonsoft.Json 与 Scriptable Build Pipeline 依赖，未声明最低 Unity 版本。当前 asmdef 还无条件引用 TMP、URP 与 HybridCLR 程序集，UI 需要 Unity UI；纯净工程仅添加 Git URL 可能出现缺失引用。先按 [安装前提](Documentation/GettingStarted.md) 准备这些包，或在项目集成中拆分相应程序集引用。HybridCLR 热更新功能仍按需启用，此处是当前包结构的编译限制。
 
-在 Package Manager 的 Samples 中导入“基础示例”，或查看 [Samples~/Basics](Samples~/Basics/README.md)。示例覆盖资源请求持有与释放、无需预制体的窗口、事件订阅、Controller 生命周期和 Editor 构建。
+在 `Package Manager > Easy Framework > Samples` 导入 **EasyFramework Samples**，或直接查看 [Samples~](Samples~)。简短示例类直接放在 `Runtime` 和 `Editor` 两个目录，调用前提和清理方式写在代码注释中，可按业务需要选用；示例不提供独立说明 Markdown 或运行场景。
 
 完整步骤见 [快速开始](Documentation/GettingStarted.md) 和 [示例说明](Documentation/Examples.md)。
 
@@ -125,7 +125,7 @@ Editor 工具代码只能放在 Editor 目录或程序集，引用 EasyFramework
 - Editor/：编辑器工具。
 - Module/Profiler/：独立性能监测模块。
 - Documentation/：入门、示例、Runtime 与 Editor 文档。
-- Samples~/Basics/：可通过 UPM 导入的基础示例。
+- Samples~/：可通过 UPM 导入的简短示例类，仅分 Runtime/ 和 Editor/。
 - Tests/Editor/：ETask 等现有编辑器测试。
 - Plugins/、Res/、Resources/：生成器与框架资源。
 

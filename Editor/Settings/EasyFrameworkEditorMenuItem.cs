@@ -12,15 +12,6 @@ namespace EasyFramework.Editor
     public static class EasyFrameworkEditorMenuItem
     {
         private const int Priority = MenuItemOrder.Editor;
-        
-        [MenuItem("EasyFramework/Settings...", priority = 0)]
-        public static void OpenSettings() => SettingsService.OpenProjectSettings(EasyFrameworkProvider.SettingPath);
-        
-        [MenuItem("EasyFramework/Preferences...", priority = 0)]
-        public static void OpenPreferences() => SettingsService.OpenUserPreferences(EasyFrameworkPreferences.SettingPath);
-        
-        [MenuItem("EasyFramework/Github", priority = 0)]
-        public static void OpenServerUrl() => Application.OpenURL(EasyFrameworkPreferences.GithubURL);
 
         [MenuItem("EasyFramework/Editor/ProjectDataPath(Show in Explorer)", priority = Priority + 100)]
         private static void OpenProjectDataPath()
