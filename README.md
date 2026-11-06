@@ -1,12 +1,8 @@
 # EasyFramework for Unity
 
-**轻量异步，按名加载，一键发布。**
-
 EasyFramework 是面向 Unity 的模块化 C# 框架，围绕异步任务、业务流程、资源与 UI，提供从游戏运行到构建发布的一套开发工具。
 
-[核心能力](#核心能力) · [快速开始](#快速开始) · [文档索引](#文档索引)
-
-**UPM：** [`com.cookie.easyframework`](package.json) · **License：** [MIT](LICENSE)
+[核心能力](#核心能力) · [快速开始](#快速开始) · [文档索引](#文档索引)](LICENSE)
 
 ## 核心能力
 
@@ -130,15 +126,15 @@ public static class GameBuild
 
 从 [快速开始](Documentation/GettingStarted.md) 和 [F 总览](Documentation/Runtime/F.md) 进入，按需查看模块接口、生命周期与使用边界。
 
-| 方向 | 文档 |
-| --- | --- |
-| 入门与示例 | [快速开始](Documentation/GettingStarted.md) · [示例说明](Documentation/Examples.md) |
-| 框架基础 | [F](Documentation/Runtime/F.md) · [ETask](Documentation/Runtime/ETask.md) · [Settings](Documentation/Runtime/EasyFrameworkSettings.md) · [Behaviour](Documentation/Runtime/FBehaviour.md) |
-| 业务组织 | [Controller](Documentation/Runtime/ControllerManager.md) · [同步事件](Documentation/Runtime/Event.md) · [异步事件](Documentation/Runtime/AsyncEvent.md) |
-| 资源与内容 | [ResLoader](Documentation/Runtime/ResLoader.md) · [DLCManager](Documentation/Runtime/DLCManager.md) · [HttpManager](Documentation/Runtime/HttpManager.md) |
-| UI 与表现 | [WindowManager](Documentation/Runtime/WindowManager.md) · [SceneLoader](Documentation/Runtime/SceneLoader.md) · [SpriteLoader](Documentation/Runtime/SpriteLoader.md) · [ShaderLoader](Documentation/Runtime/ShaderLoader.md) |
-| 常用模块 | [InputManager](Documentation/Runtime/InputManager.md) · [PoolManager](Documentation/Runtime/PoolManager.md) · [AudioPlayer](Documentation/Runtime/AudioPlayer.md) |
-| 集成与诊断 | [HybridCLRManager](Documentation/Runtime/HybridCLRManager.md) · [Profiler](Documentation/Runtime/Profiler.md) · [ECS 当前边界](Documentation/Runtime/WorldManager.md) |
+| 方向        | 文档                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 入门与示例     | [快速开始](Documentation/GettingStarted.md) · [示例说明](Documentation/Examples.md)                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 框架基础      | [F](Documentation/Runtime/F.md) · [ETask](Documentation/Runtime/ETask.md) · [Settings](Documentation/Runtime/EasyFrameworkSettings.md) · [Behaviour](Documentation/Runtime/FBehaviour.md)                                                                                                                                                                                                                                                                                                                         |
+| 业务组织      | [Controller](Documentation/Runtime/ControllerManager.md) · [同步事件](Documentation/Runtime/Event.md) · [异步事件](Documentation/Runtime/AsyncEvent.md)                                                                                                                                                                                                                                                                                                                                                                   |
+| 资源与内容     | [ResLoader](Documentation/Runtime/ResLoader.md) · [DLCManager](Documentation/Runtime/DLCManager.md) · [HttpManager](Documentation/Runtime/HttpManager.md)                                                                                                                                                                                                                                                                                                                                                         |
+| UI 与表现    | [WindowManager](Documentation/Runtime/WindowManager.md) · [SceneLoader](Documentation/Runtime/SceneLoader.md) · [SpriteLoader](Documentation/Runtime/SpriteLoader.md) · [ShaderLoader](Documentation/Runtime/ShaderLoader.md)                                                                                                                                                                                                                                                                                     |
+| 常用模块      | [InputManager](Documentation/Runtime/InputManager.md) · [PoolManager](Documentation/Runtime/PoolManager.md) · [AudioPlayer](Documentation/Runtime/AudioPlayer.md)                                                                                                                                                                                                                                                                                                                                                 |
+| 集成与诊断     | [HybridCLRManager](Documentation/Runtime/HybridCLRManager.md) · [Profiler](Documentation/Runtime/Profiler.md) · [ECS 当前边界](Documentation/Runtime/WorldManager.md)                                                                                                                                                                                                                                                                                                                                                 |
 | Editor 工具 | [ToolBase](Documentation/Editor.Tools/ToolBase.md) · [AssetImporter](Documentation/Editor.Tools/AssetImporter.md) · [AssetCreator](Documentation/Editor.Tools/AssetCreator.md) · [AssetBuilder](Documentation/Editor.Tools/AssetBuilder.md) · [AssetBundleBuilder](Documentation/Editor.Tools/AssetBundleBuilder.md) · [HybridCLRBuilder](Documentation/Editor.Tools/HybridCLRBuilder.md) · [DLCBuilder](Documentation/Editor.Tools/DLCBuilder.md) · [PlayerBuilder](Documentation/Editor.Tools/PlayerBuilder.md) |
 
 ## 接入边界
