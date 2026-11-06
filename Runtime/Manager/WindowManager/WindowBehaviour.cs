@@ -27,7 +27,7 @@ namespace EasyFramework
         {
             Window = window;
         }
-        void IWindowComponent.OnLoadObject() => OnLoadObject();
+        void IWindowComponent.OnWindowLoaded() => OnWindowLoaded();
         void IWindowComponent.OnDestroy() => OnDestroyEx();
         void IWindowComponent.OnAddListeners() => OnAddListeners();
         void IWindowComponent.OnRemoveListeners() => OnRemoveListeners();
@@ -39,7 +39,7 @@ namespace EasyFramework
         void IWindowComponent.OnButtonClick(Button btn) => OnButtonClick(btn);
         void IWindowComponent.OnUpdate() => OnUpdate();
 
-        protected virtual void OnLoadObject() { }
+        protected virtual void OnWindowLoaded() { }
         protected virtual void OnDestroyEx() { }
         protected virtual void OnAddListeners() { }
         protected virtual void OnRemoveListeners() { }

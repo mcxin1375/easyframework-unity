@@ -202,10 +202,10 @@ namespace EasyFramework.Samples.Modules
     // Resources 默认按类型名加载：Resources/DefaultResourcesWindowExample.prefab。
     public sealed class DefaultResourcesWindowExample : WindowResources { }
 
-    // Attribute 指定相对路径：Resources/Windows/PreferencesWindow.prefab。
-    [WindowResourcesPath("Windows/PreferencesWindow")]
+    // ResourcePath 指定 Resources 下的相对路径。
     public sealed class PreferencesWindowExample : WindowResources
     {
+        protected override string ResourcePath => "Windows/PreferencesWindow";
         protected override void OnOpen() => FDebug.Log("Preferences window opened.");
     }
 

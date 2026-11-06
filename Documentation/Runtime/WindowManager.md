@@ -51,7 +51,7 @@ Window 的 Alive 初始为 true，Close 后仍为 true，Destroy 入口将其置
 | `CloseAll()` | 关闭全部窗口 |
 | `Destroy(IWindow)` / `Destroy<T>()` | 销毁窗口实例及其 GameObject |
 
-`Close` 和 `Destroy` 语义不同：需要暂时隐藏时关闭，需要释放实例时销毁。关闭会移除层映射及层列表登记，类型缓存仍保留实例供重新打开。WindowManager 在需要刷新时，从类型缓存建立打开窗口的 `_updateList` 和已关闭窗口的 `_closedList`；更新时跳过已经移除层映射或仍在加载的实例，关闭缓存按 NeedDestroy 检查超时并经管理器销毁。
+`Close` 和 `Destroy` 语义不同：需要暂时隐藏时关闭，需要释放实例时销毁。关闭会移除层映射及层列表登记，类型缓存仍保留实例供重新打开。WindowManager 在需要刷新时，从类型缓存建立打开窗口的 `_updateList` 和已关闭窗口的 `_closedList`；更新时跳过已经移除层映射或仍在加载的实例，关闭缓存的 `KeepAlive` 为 `false` 时经管理器销毁。`Window` 默认在关闭后保留 60 秒，可通过重写 `KeepAliveTime` 调整时长。
 
 管理器销毁前先验证类型缓存仍指向传入实例，再删除该缓存并移除层关系；旧关闭缓存不能删除同类型的新实例。Window.Destroy 先同步调用 Close，再执行窗口 OnDestroy、组件 OnDestroy 和原生对象销毁。窗口快照按需在后续 Update 刷新，本帧已无层映射的实例停止更新，回调中新开的实例从下一次快照刷新参与 Update。
 
@@ -176,14 +176,14 @@ await F.WindowManager.OpenAsync<HelloWorldWindow3,
 
 ### 指定资源路径
 
-继承 `WindowResources` 时，默认资源路径为 `Resources/{Type.Name}`；也可以使用 `WindowResourcesPath` 指定路径：
+继承 `WindowResources` 时，默认资源路径为 `Resources/{Type.Name}`。资源位于其他路径时，重写 `ResourcePath` 指定相对于 `Resources` 的路径：
 
 ```csharp
 using EasyFramework;
 
-[WindowResourcesPath("Windows/HelloWorldResourcesWindow")]
 public class HelloWorldResourcesWindow : WindowResources
 {
+    protected override string ResourcePath => "Windows/HelloWorldResourcesWindow";
 }
 ```
 

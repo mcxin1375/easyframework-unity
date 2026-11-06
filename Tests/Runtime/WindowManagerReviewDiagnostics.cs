@@ -432,7 +432,7 @@ namespace EasyFramework.Tests
             public BrokenLoadWindow() { LastCreated = this; }
             public readonly ProbeComponent Component = new();
             protected override GameObject CreateWindowObject(Transform parent) => new GameObject("BrokenLoadWindow", typeof(RectTransform));
-            protected override void OnLoadObject() => throw new InvalidOperationException("load hook failed");
+            protected override void OnWindowLoaded() => throw new InvalidOperationException("load hook failed");
         }
         public sealed class NullResourceWindow : Window
         {
@@ -442,7 +442,7 @@ namespace EasyFramework.Tests
         public sealed class ProbeComponent : WindowComponent
         {
             public int Loads, Opens;
-            protected override void OnLoadObject() { Loads++; }
+            protected override void OnWindowLoaded() { Loads++; }
             protected override void OnOpen() { Opens++; }
         }
         public abstract class OrderWindow : Window

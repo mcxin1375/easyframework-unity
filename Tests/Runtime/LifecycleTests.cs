@@ -645,7 +645,7 @@ namespace EasyFramework.Tests
                 Requests++;
                 return await Gate.Task;
             }
-            protected override void OnLoadObject() { Creates++; }
+            protected override void OnWindowLoaded() { Creates++; }
             protected override void OnRemoveListeners() { Removes++; CleanupOrder.Add("RemoveListeners"); }
             protected override void OnClose() { Closes++; CleanupOrder.Add("Close"); }
             protected override void OnDestroy() { Destroys++; CleanupOrder.Add("Destroy"); DestroyAction?.Invoke(); }

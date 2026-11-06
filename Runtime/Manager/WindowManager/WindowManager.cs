@@ -80,7 +80,7 @@ namespace EasyFramework
                 for (int i = _closedList.Count - 1; i >= 0; i--)
                 {
                     var window = _closedList[i];
-                    if (window.NeedDestroy)
+                    if (!window.KeepAlive)
                     {
                         _closedList.RemoveAt(i);
                         DestroyWindow(window);

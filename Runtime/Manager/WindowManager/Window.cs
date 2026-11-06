@@ -15,8 +15,8 @@ namespace EasyFramework
     public abstract class Window : IWindow, ITimerObject, IResRequest
     {
         public bool Alive { get; private set; } = true;
+        public bool KeepAlive => IsOpen || _closedTime <= 0 || Time.time <= _closedTime + KeepAliveTime;
         public bool IsTimerAlive => IsOpen;
-        public bool NeedDestroy => !IsOpen && _closedTime > 0 && Time.time > _closedTime + KeepAliveTime;
         public bool IsOpen { get; private set; }
         public bool IsLoading { get; private set; }
         public bool IsActive { get; private set; }
@@ -60,12 +60,12 @@ namespace EasyFramework
             var comps = WindowObject.GetComponentsInChildren<IWindowComponent>();
             foreach (var comp in comps) RegisterComponent(comp);
 
-            OnLoadObject();
-            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnLoadObject();
+            OnWindowLoaded();
+            if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnWindowLoaded();
         }
         void IWindow.Create()
         {
-            
+            OnCreate();
         }
         void IWindow.Destroy()
         {
@@ -216,8 +216,9 @@ namespace EasyFramework
 
         protected void Close() => F.WindowManager.Close(this);
 
-        protected virtual void OnLoadObject() { }
+        protected virtual void OnCreate() { }
         protected virtual void OnDestroy() { }
+        protected virtual void OnWindowLoaded() { }
         protected virtual void OnAddListeners() { }
         protected virtual void OnRemoveListeners() { }
         protected virtual void OnOpen() { }

@@ -31,7 +31,7 @@
 3. 在初始化完成后通过 `F.WindowManager.OpenAsync<T>(layer)` 打开窗口，业务流程应等待返回的 `ETask<T>`。
 4. 暂时隐藏窗口使用 `F.WindowManager.Close<T>()`；不再使用并需要释放实例时使用 `F.WindowManager.Destroy<T>()`。
 5. 需要参数时，让窗口实现对应的 `ITParams<T1...>` 接口，并使用匹配泛型参数顺序的 `Open` 或 `OpenAsync` 重载。
-6. 资源名与窗口类型名不一致时，使用 `WindowResources` 或 `WindowResourcesPath` 明确指定资源路径，不要在业务调用处重复实现窗口资源加载逻辑。
+6. 资源名与窗口类型名不一致时，继承 `WindowResources` 并重写 `ResourcePath` 指定资源路径，不要在业务调用处重复实现窗口资源加载逻辑。
 
 详细接口和窗口定义方式见 [WindowManager](Documentation/Runtime/WindowManager.md)。
 

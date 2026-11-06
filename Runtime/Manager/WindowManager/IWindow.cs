@@ -12,8 +12,8 @@ namespace EasyFramework
     public interface IWindow
     {
         bool Alive { get; }
+        bool KeepAlive { get; }
         bool IsLoading { get; }
-        bool NeedDestroy { get; }
         UILayerBehaviour LayerBehaviour { get; }
         GameObject WindowObject { get; }
         void Create();
@@ -29,7 +29,7 @@ namespace EasyFramework
     public interface IWindowComponent
     {
         void Register(IWindow window);
-        void OnLoadObject();
+        void OnWindowLoaded();
         void OnDestroy();
         void OnAddListeners();
         void OnRemoveListeners();

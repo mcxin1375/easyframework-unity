@@ -143,7 +143,7 @@ namespace EasyFramework.Tests
                 obj.transform.SetParent(parent, false);
                 return obj;
             }
-            protected override void OnLoadObject()
+            protected override void OnWindowLoaded()
             {
                 Loads++;
                 ComponentsRegisteredAtLoad = ReferenceEquals(Plain.Owner, this) && ReferenceEquals(Typed.Window, this);
@@ -162,7 +162,7 @@ namespace EasyFramework.Tests
             public IWindow LoadOwner;
             public int Loads, Adds, Closes, Destroys;
             private List<string> Events => ((LifecycleWindow)Window).Events;
-            protected override void OnLoadObject() { Loads++; LoadOwner = Window; Events.Add("plain.load"); }
+            protected override void OnWindowLoaded() { Loads++; LoadOwner = Window; Events.Add("plain.load"); }
             protected override void OnAddListeners() { Adds++; Events.Add("plain.add"); }
             protected override void OnOpen() { Events.Add("plain.open"); }
             protected override void OnRefresh() { Events.Add("plain.refresh"); }
@@ -174,7 +174,7 @@ namespace EasyFramework.Tests
         {
             public LifecycleWindow LoadOwner;
             public int Loads, Adds, Closes, Destroys;
-            protected override void OnLoadObject() { Loads++; LoadOwner = Window; Window.Events.Add("typed.load"); }
+            protected override void OnWindowLoaded() { Loads++; LoadOwner = Window; Window.Events.Add("typed.load"); }
             protected override void OnAddListeners() { Adds++; Window.Events.Add("typed.add"); }
             protected override void OnOpen() { Window.Events.Add("typed.open"); }
             protected override void OnRefresh() { Window.Events.Add("typed.refresh"); }

@@ -10,7 +10,7 @@ Unity Package Manager 中选择 Add package from git URL：
 https://github.com/mcxin1375/easyframework-unity.git
 ```
 
-包名 com.cookie.easyframework，当前版本 0.1.1。package.json 未声明最低 Unity 版本，自动声明的依赖只有 Newtonsoft.Json 与 Scriptable Build Pipeline。
+包名为 `com.cookie.easyframework`。package.json 自动声明 Newtonsoft.Json 与 Scriptable Build Pipeline 依赖。
 
 当前 Runtime/EasyFramework.asmdef 还无条件引用 TextMesh Pro、Universal RP、HybridCLR 程序集，Profiler 也引用 URP。因此纯净工程仅添加 Git URL 可能不能编译。先在目标 Unity 的 Package Manager 安装兼容版本的以下包，再导入框架：
 
@@ -78,7 +78,7 @@ public sealed class HelloWindow : Window
 
 准备以 RectTransform 为根的 HelloWindow.prefab，放入构建目录。初始化后调用 `await F.WindowManager.OpenAsync<HelloWindow>(UILayer.HUD)`。未指定 UI Root 时使用包内 Resources/UIRoot。自定义 Root 要配置层、Camera、EventSystem。
 
-暂时隐藏用 Close<HelloWindow>()，释放实例先关闭再 Destroy<HelloWindow>()。继承 WindowResources 并设置 WindowResourcesPath 可改用 Resources 路径。[Runtime/WindowExample.cs](../Samples~/Runtime/WindowExample.cs) 提供 `OpenAsync()`、`Close()` 和 `Release()` 模板；需先准备以 RectTransform 为根的 `TemplateWindow.prefab`，顺序等待打开后再关闭或释放。
+暂时隐藏用 Close<HelloWindow>()，释放实例先关闭再 Destroy<HelloWindow>()。继承 WindowResources 并重写 `ResourcePath` 可指定 `Resources` 下的资源路径。[Runtime/WindowExample.cs](../Samples~/Runtime/WindowExample.cs) 提供 `OpenAsync()`、`Close()` 和 `Release()` 模板；需先准备以 RectTransform 为根的 `TemplateWindow.prefab`，顺序等待打开后再关闭或释放。
 
 ## 5. 应用配置与发布
 
@@ -108,6 +108,6 @@ PlayerBuilder.assetBuilder 默认 true，会先触发 AssetBuilder，再构建 P
 
 DLC 独立分包下载暂不可用。HybridCLR 是可选集成，需要安装插件、配置 EF_HYBRIDCLR 对应环境，并验证程序集构建、下载与加载。
 
-当前没有 F.WorldManager，ECS 的包外入口尚不完整；Controller 的帧分发与 ExitAllAsync 有实现问题，基础示例不依赖这些路径，见 [Controller 文档](Runtime/ControllerManager.md)。
+当前没有 F.WorldManager，ECS 的包外入口尚不完整。Controller 支持管理器帧分发和 `ExitAllAsync()`；入口与异常处理见 [Controller 文档](Runtime/ControllerManager.md)。
 
 文档核对不能替代目标 Unity 场景运行和平台构建。包内 Profiler 的唯一 Manager 入口、启动配置、模块开关、缓存点击遮罩及计数器边界见 [Profiler](Runtime/Profiler.md)；自动启动遵循已保存的 autoInitialize 设置。
