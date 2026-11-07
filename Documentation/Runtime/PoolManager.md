@@ -30,4 +30,4 @@ sealed class PoolExample
 
 只有从池中租出的对象才能按池生命周期归还。归还后不要继续操作对象，也不要在业务侧重复 `Destroy`。
 
-源码：[IPoolManager.cs](../../Runtime/Manager/PoolManager/IPoolManager.cs)。
+源码：[IPoolManager.cs](../../EasyFramework/Runtime/Manager/PoolManager/IPoolManager.cs)。

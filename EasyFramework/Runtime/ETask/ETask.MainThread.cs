@@ -15,6 +15,7 @@ namespace EasyFramework
         {
             int ThreadId { get; }
             float Time { get; }
+            float GetTime(ETaskDelayType delayType);
         }
 
 #if UNITY_2022_1_OR_NEWER
@@ -22,6 +23,17 @@ namespace EasyFramework
         {
             public int ThreadId { get; }
             public float Time => UnityEngine.Time.time;
+
+            float IThread.GetTime(ETaskDelayType delayType)
+            {
+                switch (delayType)
+                {
+                    case ETaskDelayType.Scaled: return UnityEngine.Time.time;
+                    case ETaskDelayType.Unscaled: return UnityEngine.Time.unscaledTime;
+                    case ETaskDelayType.Realtime: return UnityEngine.Time.realtimeSinceStartup;
+                    default: throw new ArgumentOutOfRangeException(nameof(delayType), delayType, null);
+                }
+            }
 
             public UnityThread()
             {
@@ -46,6 +58,7 @@ namespace EasyFramework
         {
             int IThread.ThreadId => _thread?.ManagedThreadId ?? -1;
             float IThread.Time => _time;
+            float IThread.GetTime(ETaskDelayType delayType) => _time;
 
             private const int FPS = 30;
             private const long TickInterval = (long)(1f / FPS * 1000);

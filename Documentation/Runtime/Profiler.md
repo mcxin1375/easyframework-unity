@@ -68,6 +68,6 @@ OnShaderVariantError 参数为 ShaderVariantInfo，订阅者在主线程执行�
 
 2026-11-05 在当前 EasyFramework.Unity2022 工程使用 Unity 2022.3.62f3 验证：完整 Edit Mode 271/271、Play Mode 133/133，均为 0 失败、0 跳过。新增真实相机与几何体渲染回归，覆盖不限帧、60 FPS、SRP 和内置双相机，避免只用内存计数器验证渲染指标。采样循环预热后连续执行 1,000 次普通/渲染读取组合，托管分配为 0 字节；该结果不包含文本生成，也不代表整块面板零分配。
 
-射线测试使用 EventSystem.RaycastAll 和合成 PointerEventData，不代表物理鼠标、真机触摸或 IMGUI 外观验收。Windows Mono Player 的 Development 与正式包已做独立渲染冒烟验证；Android 和 IL2CPP 尚未验收，完整记录与剩余 R09、R14 范围见 [REVIEW](../../REVIEW.md)。
+射线测试使用 EventSystem.RaycastAll 和合成 PointerEventData，不代表物理鼠标、真机触摸或 IMGUI 外观验收。Windows Mono Player 的 Development 与正式包已做独立渲染冒烟验证；Android 和 IL2CPP 尚未验收。
 
-源码：[ProfilerManager.cs](../../Module/Profiler/Runtime/Manager/ProfilerManager.cs)、[ProfilerSettings.cs](../../Module/Profiler/Runtime/Manager/ProfilerSettings.cs)、[ProfilerGUIBehaviour.cs](../../Module/Profiler/Runtime/Behaviour/ProfilerGUIBehaviour/ProfilerGUIBehaviour.cs)、[ProfilerRecorderEx.cs](../../Module/Profiler/Runtime/Behaviour/ProfilerGUIBehaviour/ProfilerRecorder/ProfilerRecorderEx.cs)、[ProfilerProvider.cs](../../Module/Profiler/Editor/ProfilerProvider.cs)。
+源码：[ProfilerManager.cs](../../EasyFramework.Profiler/Runtime/Manager/ProfilerManager.cs)、[ProfilerSettings.cs](../../EasyFramework.Profiler/Runtime/Manager/ProfilerSettings.cs)、[ProfilerGUIBehaviour.cs](../../EasyFramework.Profiler/Runtime/Behaviour/ProfilerGUIBehaviour/ProfilerGUIBehaviour.cs)、[ProfilerRecorderEx.cs](../../EasyFramework.Profiler/Runtime/Behaviour/ProfilerGUIBehaviour/ProfilerRecorder/ProfilerRecorderEx.cs)、[ProfilerProvider.cs](../../EasyFramework.Profiler/Editor/ProfilerProvider.cs)。

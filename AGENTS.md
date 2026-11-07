@@ -7,7 +7,7 @@
 - 业务代码通过全局入口 `F.xxx` 访问运行时模块，不直接依赖模块的具体实现类。
 - 使用资源、窗口、DLC 或其他依赖框架初始化的功能前，必须先调用一次并等待 `await F.InitializeAsync()` 完成。
 - Runtime 代码不能引用 Editor 程序集；Editor 工具、构建逻辑和编辑器扩展应放在 Editor 程序集或 Editor 目录中。
-- 新增功能时优先使用已有接口和扩展点，并阅读对应的 Runtime 或 Editor.Tools 文档后再实现。
+- 新增功能时优先使用已有接口和扩展点，并阅读对应的 Runtime 或 Editor 文档后再实现。
 
 ## 文档读取要求
 
@@ -17,8 +17,8 @@
 - 涉及安装或示例时，阅读 `Documentation/GettingStarted.md` 和 `Documentation/Examples.md`；可导入示例类位于 `Samples~/Runtime/` 和 `Samples~/Editor/`。
 - 涉及 Controller 或 ECS 时，先核对对应文档的当前实现限制，再选择可用入口。
 - 涉及某个 `F.xxx` 模块时，阅读对应的 Runtime 文档。
-- 涉及 Editor 工具时，先阅读 `Documentation/Editor.Tools/ToolBase.md`。
-- 涉及具体 Editor 工具时，再阅读 `Documentation/Editor.Tools/` 下对应的工具文档。
+- 涉及 Editor 工具时，先阅读 `Documentation/Editor/ToolBase.md`。
+- 涉及具体 Editor 工具时，再阅读 `Documentation/Editor/` 下对应的工具文档。
 - 涉及多个模块或完整发布流程时，补充阅读相关依赖模块的文档。
 - 只有在文档审查、重构或整体整理时，才读取 `Documentation` 目录下的全部文档。
 
@@ -58,7 +58,7 @@ GameObject cube = await F.ResLoader.CreateObjAsync("Cube");
 F.ResLoader.Unload("Cube");
 ```
 
-资源加载和释放接口以 [ResLoader](Documentation/Runtime/ResLoader.md) 为准，打包规则以 [AssetBundleBuilder](Documentation/Editor.Tools/AssetBundleBuilder.md) 为准。
+资源加载和释放接口以 [ResLoader](Documentation/Runtime/ResLoader.md) 为准，打包规则以 [AssetBundleBuilder](Documentation/Editor/AssetBundleBuilder.md) 为准。
 
 ## 发布配置
 
@@ -87,4 +87,4 @@ PlayerBuilder.Instance.Execute();
 - `EasyFramework/Tools/AssetBuilder - Execute`
 - `EasyFramework/Tools/PlayerBuilder - Execute`
 
-详细工具接口和扩展方式见 [Editor.Tools](README.md#editortools) 及 `Documentation/Editor.Tools/` 下的对应文档。
+详细工具接口和扩展方式见 [ToolBase](Documentation/Editor/ToolBase.md) 及 `Documentation/Editor/` 下的对应文档。

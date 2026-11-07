@@ -46,4 +46,4 @@ internal sealed class GameAssetImportExtension : IToolEvent<AssetImporter>
 
 多个扩展按 `Order` 升序执行。需要共享配置时可以使用 `ToolScriptableObject<AssetImporter>`，而不是把项目路径硬编码到工具类中。
 
-源码：[AssetImporter.cs](../../Editor/Tools/AssetImporter/AssetImporter.cs)、[ResImporterSettings.cs](../../Editor/Tools/AssetImporter/ScriptableObject/ResImporterSettings.cs)。
+源码：[AssetImporter.cs](../../EasyFramework/Editor/Tools/AssetImporter/AssetImporter.cs)、[ResImporterSettings.cs](../../EasyFramework/Editor/Tools/AssetImporter/ScriptableObject/ResImporterSettings.cs)。

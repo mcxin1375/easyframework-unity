@@ -49,4 +49,4 @@ internal sealed class GameAssetBuildExtension : IToolEvent<AssetBuilder>
 
 扩展中应使用稳定的输出目录和明确的失败日志，并确保后续 `DLCBuilder` 需要的文件已经写入对应平台目录。
 
-源码：[AssetBuilder.cs](../../Editor/Tools/AssetBuilder/AssetBuilder.cs)、[ToolOrder.cs](../../Editor/Tools/ToolOrder.cs)。
+源码：[AssetBuilder.cs](../../EasyFramework/Editor/Tools/AssetBuilder/AssetBuilder.cs)、[ToolOrder.cs](../../EasyFramework/Editor/Tools/ToolOrder.cs)。

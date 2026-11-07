@@ -57,4 +57,4 @@ enabled 仅控制 Player 构建主体，前置资源构建仍可能执行。不�
 
 使用 DLC_StreamingAssets 时，应启用 DLCBuilder.copyVersionToStreamingAssets，或先执行 DLCBuilder - CopyVersionToStreamingAssets。确认复制完成后再发布 Player，详见 [快速开始](../GettingStarted.md)。
 
-源码：[PlayerBuilder.cs](../../Editor/Tools/PlayerBuilder/PlayerBuilder.cs)、[PlayerBuilderSettings.cs](../../Editor/Tools/PlayerBuilder/PlayerBuilderSettings.cs)、[PlayerBuilderPreExtension.cs](../../Editor/Tools/PlayerBuilder/PlayerBuilderPreExtension.cs)、[BuildPlayerOptionsSettings.cs](../../Editor/Tools/PlayerBuilder/BuildPlayerOptionsSettings.cs)、[PlayerBuilderUtility.cs](../../Editor/Tools/PlayerBuilder/PlayerBuilderUtility.cs)。
+源码：[PlayerBuilder.cs](../../EasyFramework/Editor/Tools/PlayerBuilder/PlayerBuilder.cs)、[PlayerBuilderSettings.cs](../../EasyFramework/Editor/Tools/PlayerBuilder/PlayerBuilderSettings.cs)、[PlayerBuilderPreExtension.cs](../../EasyFramework/Editor/Tools/PlayerBuilder/PlayerBuilderPreExtension.cs)、[BuildPlayerOptionsSettings.cs](../../EasyFramework/Editor/Tools/PlayerBuilder/BuildPlayerOptionsSettings.cs)、[PlayerBuilderUtility.cs](../../EasyFramework/Editor/Tools/PlayerBuilder/PlayerBuilderUtility.cs)。

@@ -12,4 +12,4 @@
 
 返回的 Unity 对象依赖资源加载器的持有关系。使用完成后按 Atlas 粒度释放，不要在卸载后继续保存并使用 Sprite 引用。
 
-源码：[ISpriteLoader.cs](../../Runtime/Manager/SpriteLoader/ISpriteLoader.cs)。
+源码：[ISpriteLoader.cs](../../EasyFramework/Runtime/Manager/SpriteLoader/ISpriteLoader.cs)。

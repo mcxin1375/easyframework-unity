@@ -55,4 +55,4 @@ Unload 不负责 Destroy 已实例化的 GameObject。先停止使用并销毁�
 
 批量 CreateObjAsync(resName, count, ...) 在所有分支都等待实例化完成后返回；Editor Bundle 模式随后恢复 Shader。count 为 0 返回空数组且不加载资源，负数抛出 ArgumentOutOfRangeException；资源加载失败返回 null。
 
-源码：[IResLoader.cs](../../Runtime/Manager/ResLoader/IResLoader.cs)、[IResLoaderEx.cs](../../Runtime/Manager/ResLoader/IResLoaderEx.cs)、[IResRequest.cs](../../Runtime/Manager/ResLoader/IResRequest.cs)、[AssetBundleRequest.cs](../../Runtime/Manager/ResLoader/AssetBundleLoader/AssetBundleRequest.cs)。
+源码：[IResLoader.cs](../../EasyFramework/Runtime/Manager/ResLoader/IResLoader.cs)、[IResLoaderEx.cs](../../EasyFramework/Runtime/Manager/ResLoader/IResLoaderEx.cs)、[IResRequest.cs](../../EasyFramework/Runtime/Manager/ResLoader/IResRequest.cs)、[AssetBundleRequest.cs](../../EasyFramework/Runtime/Manager/ResLoader/AssetBundleLoader/AssetBundleRequest.cs)。

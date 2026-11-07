@@ -36,4 +36,4 @@ Utility 先暂存当前平台的 `HybridCLRBuilder` 工具输出，全部文件�
 
 HybridCLR 已启用时，输出目录会被 `DLCBuilder` 作为 DLC 来源之一收集；禁用时不收集旧目录。构建前应确保 HybridCLR 已完成安装、当前平台配置有效，并确认程序集文件确实生成。
 
-源码：[HybridCLRBuilder.cs](../../Editor/Tools/AssetBuilder/HybridCLRBuilder/HybridCLRBuilder.cs)、[HybridCLRBuilderSettings.cs](../../Editor/Tools/AssetBuilder/HybridCLRBuilder/HybridCLRBuilderSettings.cs)、[HybridCLRBuilderUtility.cs](../../Editor/Tools/AssetBuilder/HybridCLRBuilder/HybridCLRBuilderUtility.cs)。
+源码：[HybridCLRBuilder.cs](../../EasyFramework/Editor/Tools/HybridCLRBuilder/HybridCLRBuilder.cs)、[HybridCLRBuilderSettings.cs](../../EasyFramework/Editor/Tools/HybridCLRBuilder/HybridCLRBuilderSettings.cs)、[HybridCLRBuilderUtility.cs](../../EasyFramework/Editor/Tools/HybridCLRBuilder/HybridCLRBuilderUtility.cs)。

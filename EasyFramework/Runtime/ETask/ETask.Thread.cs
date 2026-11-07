@@ -31,6 +31,28 @@ namespace EasyFramework
             await action();
             cancellationToken.ThrowIfCancellationRequested();
         }
+
+        public static async ETask<TResult> RunOnThreadPool<TResult>(Func<TResult> function, CancellationToken cancellationToken = default)
+        {
+            if (function == null) throw new ArgumentNullException(nameof(function));
+            cancellationToken.ThrowIfCancellationRequested();
+            await ETask.SwitchToThreadPool();
+            cancellationToken.ThrowIfCancellationRequested();
+            TResult result = function();
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
+        }
+
+        public static async ETask<TResult> RunOnThreadPool<TResult>(Func<ETask<TResult>> function, CancellationToken cancellationToken = default)
+        {
+            if (function == null) throw new ArgumentNullException(nameof(function));
+            cancellationToken.ThrowIfCancellationRequested();
+            await ETask.SwitchToThreadPool();
+            cancellationToken.ThrowIfCancellationRequested();
+            TResult result = await function();
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
+        }
         
         public static SwitchToMainThreadAwaitable SwitchToMainThread() => new SwitchToMainThreadAwaitable();
         public static SwitchToThreadPoolAwaitable SwitchToThreadPool()

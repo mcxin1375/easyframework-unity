@@ -13,4 +13,4 @@
 
 当前实现的部分 Player 下载/加载路径仍依赖项目侧配置或注释中的后续接入逻辑。使用前应先验证 HybridCLR Builder 输出、DLC 文件名和加载入口，不要把此模块当作安装 package 后即可独立工作的热更方案。
 
-源码：[HybridCLRManager.cs](../../Runtime/Manager/HybridCLRManager/HybridCLRManager.cs)。
+源码：[HybridCLRManager.cs](../../EasyFramework/Runtime/Manager/HybridCLRManager/HybridCLRManager.cs)。

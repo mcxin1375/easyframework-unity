@@ -1,6 +1,6 @@
 # F.Settings
 
-`F.Settings` 的类型是 `EasyFrameworkSettings`，来源于 `Runtime/Base/ProjectSettings/EasyFrameworkSettings.cs`。它集中保存框架初始化、资源、DLC、HTTP、UI、HybridCLR 和调试参数。
+`F.Settings` 的类型是 `EasyFrameworkSettings`，来源于 `EasyFramework/Runtime/ProjectSettings/EasyFrameworkSettings.cs`。它集中保存框架初始化、资源、DLC、HTTP、UI、HybridCLR 和调试参数。
 
 ## 常用配置
 
@@ -27,4 +27,4 @@
 
 在 Unity 中打开 `EasyFramework/Settings...` 修改项目设置。`F.Settings` 是运行时读取入口；设置资源的生成和保存由框架的 Project Settings 系统处理。
 
-源码：[EasyFrameworkSettings.cs](../../Runtime/Base/ProjectSettings/EasyFrameworkSettings.cs)。
+源码：[EasyFrameworkSettings.cs](../../EasyFramework/Runtime/ProjectSettings/EasyFrameworkSettings.cs)。

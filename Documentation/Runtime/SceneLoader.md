@@ -23,4 +23,4 @@ F.SceneLoader.SetActive("Main");
 
 场景名必须与资源和 Unity 场景配置一致。卸载场景后不要继续使用该场景中的对象引用。
 
-源码：[ISceneLoader.cs](../../Runtime/Manager/SceneLoader/ISceneLoader.cs)。
+源码：[ISceneLoader.cs](../../EasyFramework/Runtime/Manager/SceneLoader/ISceneLoader.cs)。

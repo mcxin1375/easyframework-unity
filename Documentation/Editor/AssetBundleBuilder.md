@@ -95,4 +95,4 @@ internal sealed class GameAssetBundleBuildSettings : IAssetBundleBuilderSettings
 
 直接执行或由 AssetBuilder 触发时，都会通过完整 Execute() 升级 AssetBundleBuilder 版本，再在 OnSelfExecute 中调用 BuildBySettings；输出由后续 DLCBuilder 收集。
 
-源码：[AssetBundleBuilder.cs](../../Editor/Tools/AssetBuilder/AssetBundleBuilder/AssetBundleBuilder.cs)、[AssetBundleBuilderSettings.cs](../../Editor/Tools/AssetBuilder/AssetBundleBuilder/AssetBundleBuilderSettings.cs)、[AssetBundleBuildSettings.cs](../../Editor/Tools/AssetBuilder/AssetBundleBuilder/AssetBundleBuildSettings.cs)、[AssetBundleBuilderUtility.cs](../../Editor/Tools/AssetBuilder/AssetBundleBuilder/AssetBundleBuilderUtility.cs)。
+源码：[AssetBundleBuilder.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuilder.cs)、[AssetBundleBuilderSettings.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuilderSettings.cs)、[AssetBundleBuildSettings.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuildSettings.cs)、[AssetBundleBuilderUtility.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuilderUtility.cs)。

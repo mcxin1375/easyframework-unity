@@ -142,4 +142,4 @@ await NextController.Instance.EnterAsync();
 
 这不是事务切换：旧 Controller 已退出后，新 Controller 进入失败不会自动恢复旧栈。原来的 ExitOtherBeforeEnter 不再放在薄基类中。
 
-源码：[IControllerManager.cs](../../Runtime/Manager/ControllerManager/IControllerManager.cs)、[ControllerManager.cs](../../Runtime/Manager/ControllerManager/ControllerManager.cs)、[IController.cs](../../Runtime/Manager/ControllerManager/IController.cs)、[Controller.cs](../../Runtime/Manager/ControllerManager/Controller.cs)、[ControllerComponent.cs](../../Runtime/Manager/ControllerManager/ControllerComponent.cs)。
+源码：[IControllerManager.cs](../../EasyFramework/Runtime/Manager/ControllerManager/IControllerManager.cs)、[ControllerManager.cs](../../EasyFramework/Runtime/Manager/ControllerManager/ControllerManager.cs)、[IController.cs](../../EasyFramework/Runtime/Manager/ControllerManager/IController.cs)、[Controller.cs](../../EasyFramework/Runtime/Manager/ControllerManager/Controller.cs)、[ControllerComponent.cs](../../EasyFramework/Runtime/Manager/ControllerManager/ControllerComponent.cs)。

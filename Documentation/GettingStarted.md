@@ -10,9 +10,9 @@ Unity Package Manager 中选择 Add package from git URL：
 https://github.com/mcxin1375/easyframework-unity.git
 ```
 
-包名为 `com.cookie.easyframework`。package.json 自动声明 Newtonsoft.Json 与 Scriptable Build Pipeline 依赖。
+包名为 `com.cookie.easyframework`，当前版本为 `1.0.0`。package.json 自动声明 Newtonsoft.Json 与 Scriptable Build Pipeline 依赖。版本变更见 [更新日志](../CHANGELOG.md)。
 
-当前 Runtime/EasyFramework.asmdef 还无条件引用 TextMesh Pro、Universal RP、HybridCLR 程序集，Profiler 也引用 URP。因此纯净工程仅添加 Git URL 可能不能编译。先在目标 Unity 的 Package Manager 安装兼容版本的以下包，再导入框架：
+当前 `EasyFramework/Runtime/EasyFramework.asmdef` 还无条件引用 TextMesh Pro、Universal RP、HybridCLR 程序集，Profiler 也引用 URP。因此纯净工程仅添加 Git URL 可能不能编译。先在目标 Unity 的 Package Manager 安装兼容版本的以下包，再导入框架：
 
 - Unity UI：com.unity.ugui。
 - TextMesh Pro：com.unity.textmeshpro。

@@ -25,4 +25,4 @@
 
 缓存清理只处理 `DLCPath` 根层不属于当前版本的 MD5 资源文件，保留版本元数据、其他业务文件及子目录，不遍历应用数据根目录。`DLCPath` 应专用于框架缓存，业务数据放在其他目录。
 
-源码：[IDLCManager.cs](../../Runtime/Manager/DLCManager/IDLCManager.cs)、[DLCManager.cs](../../Runtime/Manager/DLCManager/DLCManager.cs)。
+源码：[IDLCManager.cs](../../EasyFramework/Runtime/Manager/DLCManager/IDLCManager.cs)、[DLCManager.cs](../../EasyFramework/Runtime/Manager/DLCManager/DLCManager.cs)。

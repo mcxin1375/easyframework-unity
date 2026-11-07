@@ -22,4 +22,4 @@ music.Stop();
 
 音频资源名必须符合项目资源配置。播放返回的 `AudioObject` 是值类型句柄，停止前应确认播放对象仍属于当前音频播放器生命周期。
 
-源码：[IAudioPlayer.cs](../../Runtime/Manager/AudioPlayer/IAudioPlayer.cs)、[AudioObject.cs](../../Runtime/Manager/AudioPlayer/AudioObject.cs)。
+源码：[IAudioPlayer.cs](../../EasyFramework/Runtime/Manager/AudioPlayer/IAudioPlayer.cs)、[AudioObject.cs](../../EasyFramework/Runtime/Manager/AudioPlayer/AudioObject.cs)。

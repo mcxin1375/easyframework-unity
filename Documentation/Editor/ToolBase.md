@@ -118,4 +118,4 @@ internal sealed class GameAssetCreatorExtension : IToolEvent<AssetCreator>
 - 每次构建前确认 `EditorUserBuildSettings.activeBuildTarget`，不要在扩展中隐式切换平台。
 - 需要重新扫描扩展时调用工具的 `Refresh()`；不要长期保存可能已经失效的扩展数组。
 
-源码：[ToolBase.cs](../../Editor/Tools/ToolBase.cs)、[ITool.cs](../../Editor/Tools/ITool.cs)、[ToolExtension.cs](../../Editor/Tools/ToolExtension.cs)、[ToolExtensionObjectPool.cs](../../Editor/Tools/ToolExtensionObjectPool.cs)、[ToolScriptableObject.cs](../../Editor/Tools/ToolScriptableObject.cs)。
+源码：[ToolBase.cs](../../EasyFramework/Editor/Tools/ToolBase.cs)、[ITool.cs](../../EasyFramework/Editor/Tools/ITool.cs)、[ToolExtension.cs](../../EasyFramework/Editor/Tools/ToolExtension.cs)、[ToolExtensionObjectPool.cs](../../EasyFramework/Editor/Tools/ToolExtensionObjectPool.cs)、[ToolScriptableObject.cs](../../EasyFramework/Editor/Tools/ToolScriptableObject.cs)。

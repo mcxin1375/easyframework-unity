@@ -1,7 +1,7 @@
 {
   "name": "com.cookie.easyframework",
   "displayName": "Easy Framework",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "description": "Easy Framework",
   "author": {
     "name": "Cookie"
@@ -9,7 +9,7 @@
   "samples": [
     {
       "displayName": "EasyFramework Samples",
-      "description": "按 Runtime 与 Editor 分类的简短示例类，调用前提和清理方式直接写在代码注释中。",
+      "description": "\u6309 Runtime \u4e0e Editor \u5206\u7c7b\u7684\u7b80\u77ed\u793a\u4f8b\u7c7b\uff0c\u8c03\u7528\u524d\u63d0\u548c\u6e05\u7406\u65b9\u5f0f\u76f4\u63a5\u5199\u5728\u4ee3\u7801\u6ce8\u91ca\u4e2d\u3002",
       "path": "Samples~"
     }
   ],

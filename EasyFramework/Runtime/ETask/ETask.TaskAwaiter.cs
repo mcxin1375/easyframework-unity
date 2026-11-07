@@ -112,6 +112,11 @@ namespace EasyFramework
                 return true;
             }
 
+            public bool TrySetCanceled(CancellationToken cancellationToken = default)
+            {
+                return TrySetException(new OperationCanceledException(cancellationToken));
+            }
+
             protected bool TryBeginCompletion() =>
                 Interlocked.CompareExchange(ref Status, Completing, ETaskStatusValue.Pending) == ETaskStatusValue.Pending;
 

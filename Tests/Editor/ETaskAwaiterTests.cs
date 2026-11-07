@@ -415,6 +415,184 @@ namespace EasyFramework.Tests
         }
 
         [Test]
+        public void WaitCondition_StateOverloads_WaitWithoutPredicateClosures()
+        {
+            var untilState = new WaitConditionState { IsReady = false };
+            var whileState = new WaitConditionState { IsReady = true };
+            var until = ETask.WaitUntil(untilState, IsReady);
+            var whileTask = ETask.WaitWhile(whileState, IsReady);
+
+            Tick();
+            Assert.That(until.Status, Is.EqualTo(ETaskStatus.Pending));
+            Assert.That(whileTask.Status, Is.EqualTo(ETaskStatus.Pending));
+
+            untilState.IsReady = true;
+            whileState.IsReady = false;
+            Tick();
+
+            Assert.That(until.Status, Is.EqualTo(ETaskStatus.Succeeded));
+            Assert.That(whileTask.Status, Is.EqualTo(ETaskStatus.Succeeded));
+            until.GetAwaiter().GetResult();
+            whileTask.GetAwaiter().GetResult();
+        }
+
+        [Test]
+        public void YieldAndNextFrame_UseCurrentAndFollowingTickerPasses()
+        {
+            var yielded = ETask.Yield();
+            var nextFrame = ETask.NextFrame();
+
+            Tick();
+            Assert.That(yielded.Status, Is.EqualTo(ETaskStatus.Succeeded));
+            Assert.That(nextFrame.Status, Is.EqualTo(ETaskStatus.Pending));
+            Tick();
+            Assert.That(nextFrame.Status, Is.EqualTo(ETaskStatus.Succeeded));
+            yielded.GetAwaiter().GetResult();
+            nextFrame.GetAwaiter().GetResult();
+        }
+
+        [Test]
+        public void DelayAndWaitConditions_CancelWithTheOriginalToken()
+        {
+            using (var cancellation = new CancellationTokenSource())
+            {
+                var tasks = new[]
+                {
+                    ETask.Delay(TimeSpan.FromHours(1), cancellation.Token),
+                    ETask.DelayFrame(100, cancellation.Token),
+                    ETask.WaitUntil(() => false, cancellation.Token),
+                    ETask.WaitWhile(() => true, cancellation.Token)
+                };
+
+                cancellation.Cancel();
+                Tick();
+
+                foreach (var task in tasks)
+                {
+                    Assert.That(task.Status, Is.EqualTo(ETaskStatus.Canceled));
+                    var error = Catch(() => task.GetAwaiter().GetResult());
+                    Assert.That(error, Is.TypeOf<OperationCanceledException>());
+                    Assert.That(((OperationCanceledException)error).CancellationToken, Is.EqualTo(cancellation.Token));
+                }
+            }
+        }
+
+        [Test]
+        public void DelayClockTypes_AcceptZeroDuration()
+        {
+            var tasks = new[]
+            {
+                ETask.DelaySeconds(0, ETaskDelayType.Scaled),
+                ETask.DelaySeconds(0, ETaskDelayType.Unscaled),
+                ETask.DelaySeconds(0, ETaskDelayType.Realtime)
+            };
+
+            Tick();
+
+            foreach (var task in tasks)
+            {
+                Assert.That(task.Status, Is.EqualTo(ETaskStatus.Succeeded));
+                task.GetAwaiter().GetResult();
+            }
+        }
+
+        [Test]
+        public void CompletionSource_CompletesOnceAndPropagatesCancellation()
+        {
+            var completion = new ETaskCompletionSource<int>();
+            var task = completion.Task;
+            Assert.That(completion.TrySetResult(42), Is.True);
+            Assert.That(completion.TrySetException(new InvalidOperationException()), Is.False);
+            Assert.That(task.Status, Is.EqualTo(ETaskStatus.Succeeded));
+            Assert.That(task.GetAwaiter().GetResult(), Is.EqualTo(42));
+
+            using (var cancellation = new CancellationTokenSource())
+            {
+                var canceled = new ETaskCompletionSource();
+                Assert.That(canceled.TrySetCanceled(cancellation.Token), Is.True);
+                Assert.That(canceled.Task.Status, Is.EqualTo(ETaskStatus.Canceled));
+                var error = Catch(() => canceled.Task.GetAwaiter().GetResult());
+                Assert.That(error, Is.TypeOf<OperationCanceledException>());
+                Assert.That(((OperationCanceledException)error).CancellationToken, Is.EqualTo(cancellation.Token));
+            }
+            Tick();
+        }
+
+        [Test]
+        public void Preserve_AllowsMultipleConsumersAndRepeatedResultReads()
+        {
+            var source = NewGenericProbe<int>();
+            var task = source.Begin();
+            var shared = task.Preserve();
+            int first = -1;
+            int second = -1;
+            shared.GetAwaiter().OnCompleted(() => first = shared.GetAwaiter().GetResult());
+            shared.GetAwaiter().OnCompleted(() => second = shared.GetAwaiter().GetResult());
+
+            source.TrySetResult(42);
+
+            Assert.That(first, Is.EqualTo(42));
+            Assert.That(second, Is.EqualTo(42));
+            Assert.That(shared.GetAwaiter().GetResult(), Is.EqualTo(42));
+            Tick();
+            Assert.That(source.CleanupCount, Is.EqualTo(1));
+
+            var failedSource = NewGenericProbe<int>();
+            var failedTask = failedSource.Begin();
+            var failedShared = failedTask.Preserve();
+            var expected = new InvalidOperationException("shared task failure");
+            failedSource.TrySetException(expected);
+            Assert.That(Catch(() => failedShared.GetAwaiter().GetResult()), Is.SameAs(expected));
+            Assert.That(Catch(() => failedShared.GetAwaiter().GetResult()), Is.SameAs(expected));
+            Tick();
+            Assert.That(failedSource.CleanupCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RunOnThreadPool_GenericOverloadsReturnValuesFromWorkerThread()
+        {
+            int callerThreadId = Thread.CurrentThread.ManagedThreadId;
+            int synchronousThreadId = CompleteFromWorker(ETask.RunOnThreadPool(() => Thread.CurrentThread.ManagedThreadId));
+            int asynchronousThreadId = CompleteFromWorker(ETask.RunOnThreadPool(
+                new Func<ETask<int>>(() => ETask.FromResult(Thread.CurrentThread.ManagedThreadId))));
+
+            Assert.That(synchronousThreadId, Is.Not.EqualTo(callerThreadId));
+            Assert.That(asynchronousThreadId, Is.Not.EqualTo(callerThreadId));
+            Tick();
+        }
+
+        [Test]
+        public void WhenAllWaitsForAllInputsAndKeepsResultOrder()
+        {
+            var first = new ETaskCompletionSource<int>();
+            var second = new ETaskCompletionSource<int>();
+            var all = ETask.WhenAll(first.Task, second.Task);
+
+            second.SetResult(2);
+            Assert.That(all.Status, Is.EqualTo(ETaskStatus.Pending));
+            first.SetResult(1);
+
+            CollectionAssert.AreEqual(new[] { 1, 2 }, all.GetAwaiter().GetResult());
+            Tick();
+        }
+
+        [Test]
+        public void WhenAnyReturnsWinnerAndConsumesLaterLoserFailure()
+        {
+            var winner = new ETaskCompletionSource<int>();
+            var loser = new ETaskCompletionSource<int>();
+            var any = ETask.WhenAny(winner.Task, loser.Task);
+
+            winner.SetResult(7);
+            var result = any.GetAwaiter().GetResult();
+            Assert.That(result.Index, Is.EqualTo(0));
+            Assert.That(result.Result, Is.EqualTo(7));
+
+            loser.SetException(new InvalidOperationException("discarded loser failure"));
+            Tick();
+        }
+
+        [Test]
         public void StartHook_Throws_CompletesTaskAsFaulted()
         {
             var source = NewProbe();
@@ -719,6 +897,32 @@ namespace EasyFramework.Tests
             var source = new GenericProbe<T>();
             _sources.Add(source);
             return source;
+        }
+
+        private static TResult CompleteFromWorker<TResult>(ETask<TResult> task)
+        {
+            using (var completed = new ManualResetEventSlim())
+            {
+                TResult result = default;
+                Exception exception = null;
+                task.GetAwaiter().OnCompleted(() =>
+                {
+                    try { result = task.GetAwaiter().GetResult(); }
+                    catch (Exception error) { exception = error; }
+                    finally { completed.Set(); }
+                });
+
+                if (!completed.Wait(5000)) throw new TimeoutException("The thread-pool task did not complete.");
+                if (exception != null) throw exception;
+                return result;
+            }
+        }
+
+        private static bool IsReady(WaitConditionState state) => state.IsReady;
+
+        private sealed class WaitConditionState
+        {
+            public bool IsReady;
         }
 
         private static void Tick() => TickMethod.Invoke(null, null);

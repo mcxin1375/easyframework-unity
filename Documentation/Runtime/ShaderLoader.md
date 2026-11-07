@@ -10,4 +10,4 @@
 
 先加载资源包，再查询 Shader。加载失败或资源未配置时 `GetShader` 可能返回空，调用方应处理该情况。
 
-源码：[IShaderLoader.cs](../../Runtime/Manager/ShaderLoader/IShaderLoader.cs)。
+源码：[IShaderLoader.cs](../../EasyFramework/Runtime/Manager/ShaderLoader/IShaderLoader.cs)。

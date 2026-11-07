@@ -27,4 +27,4 @@ public sealed class GameTick : IFrameworkTick
 
 当前宿主销毁后不会自动重建，也不会统一销毁所有单例或 ECS World。不要手动销毁宿主后继续使用框架。启动流程放在业务组件中并等待 F.InitializeAsync()。
 
-源码：[FBehaviour.cs](../../Runtime/Behaviour/FBehaviour.cs)、[IFrameworkTick.cs](../../Runtime/Behaviour/IFrameworkTick.cs)。
+源码：[FBehaviour.cs](../../EasyFramework/Runtime/FBehaviour.cs)。

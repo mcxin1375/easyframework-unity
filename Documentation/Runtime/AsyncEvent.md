@@ -79,4 +79,4 @@ lambda 注册时保存委托，解绑时传入保存的同一委托；重新写�
 
 池化快照减少重复分配，不保证整个调用过程零 GC。首次创建快照、List 扩容、同时挂起派发数量超过池中历史可用数量，以及业务委托、闭包、ETask 和异常日志都可能分配；池中快照保留各自的 List 容量供后续复用。
 
-源码：[Event.cs](../../Runtime/Core/Event/Event.cs)、[AsyncEvent.cs](../../Runtime/Core/Event/AsyncEvent.cs)。
+源码：[Event.cs](../../EasyFramework/Runtime/Manager/Event/Event.cs)、[AsyncEvent.cs](../../EasyFramework/Runtime/Manager/Event/AsyncEvent.cs)。

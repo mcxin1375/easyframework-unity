@@ -1,8 +1,8 @@
 # EasyFramework for Unity
 
-EasyFramework 是面向 Unity 的模块化 C# 框架，围绕异步任务、业务流程、资源与 UI，提供从游戏运行到构建发布的一套开发工具。
+EasyFramework 是面向 Unity 的模块化 C# 框架，围绕异步任务、业务流程、资源与 UI，提供从游戏运行到构建发布的一套开发工具。UPM 包名为 `com.cookie.easyframework`，当前版本为 `1.0.0`。
 
-[核心能力](#核心能力) · [快速开始](#快速开始) · [文档索引](#文档索引)](LICENSE)
+[核心能力](#核心能力) · [快速开始](#快速开始) · [文档索引](#文档索引) · [更新日志](CHANGELOG.md) · [许可证](LICENSE)
 
 ## 核心能力
 
@@ -34,7 +34,7 @@ var cube = await F.ResLoader.CreateObjAsync("Cube");
 EasyFramework/Tools/PlayerBuilder - Execute
 ```
 
-默认流程先构建 AssetBundle 和 DLC 版本，再同步应用设置并构建 Player。构建步骤可通过 `IToolEvent<T>` 扩展；使用 `DLC_StreamingAssets` 时需按项目配置资源复制。[了解 PlayerBuilder](Documentation/Editor.Tools/PlayerBuilder.md)
+默认流程先构建 AssetBundle 和 DLC 版本，再同步应用设置并构建 Player。构建步骤可通过 `IToolEvent<T>` 扩展；使用 `DLC_StreamingAssets` 时需按项目配置资源复制。[了解 PlayerBuilder](Documentation/Editor/PlayerBuilder.md)
 
 ### 业务、界面与基础模块
 
@@ -48,7 +48,7 @@ EasyFramework/Tools/PlayerBuilder - Execute
 
 ### 1. 准备依赖并安装
 
-框架包名为 `com.cookie.easyframework`。`package.json` 声明了 Newtonsoft.Json 和 Scriptable Build Pipeline 依赖；包本身未声明最低 Unity 版本，[配套示例工程](https://github.com/mcxin1375/easyframework-projects)使用 Unity 2022.3.62f3。
+`package.json` 声明 Newtonsoft.Json 和 Scriptable Build Pipeline 依赖；包本身未声明最低 Unity 版本，[配套示例工程](https://github.com/mcxin1375/easyframework-projects)使用 Unity 2022.3.62f3。
 
 当前程序集还无条件引用 TextMesh Pro、Universal RP 和 HybridCLR；UI 功能需要 Unity UI。请先在目标工程中准备这些依赖，再通过 Unity Package Manager 的 **Add package from git URL** 安装：
 
@@ -120,7 +120,7 @@ public static class GameBuild
 }
 ```
 
-需要分别执行资源和 Player 构建时，先关闭 `PlayerBuilder.assetBuilder`，再按 AssetBuilder、PlayerBuilder 的顺序执行。详细规则见 [AssetBundleBuilder](Documentation/Editor.Tools/AssetBundleBuilder.md)、[DLCBuilder](Documentation/Editor.Tools/DLCBuilder.md) 和 [PlayerBuilder](Documentation/Editor.Tools/PlayerBuilder.md)。
+需要分别执行资源和 Player 构建时，先关闭 `PlayerBuilder.assetBuilder`，再按 AssetBuilder、PlayerBuilder 的顺序执行。详细规则见 [AssetBundleBuilder](Documentation/Editor/AssetBundleBuilder.md)、[DLCBuilder](Documentation/Editor/DLCBuilder.md) 和 [PlayerBuilder](Documentation/Editor/PlayerBuilder.md)。
 
 ## 文档索引
 
@@ -135,7 +135,7 @@ public static class GameBuild
 | UI 与表现    | [WindowManager](Documentation/Runtime/WindowManager.md) · [SceneLoader](Documentation/Runtime/SceneLoader.md) · [SpriteLoader](Documentation/Runtime/SpriteLoader.md) · [ShaderLoader](Documentation/Runtime/ShaderLoader.md)                                                                                                                                                                                                                                                                                     |
 | 常用模块      | [InputManager](Documentation/Runtime/InputManager.md) · [PoolManager](Documentation/Runtime/PoolManager.md) · [AudioPlayer](Documentation/Runtime/AudioPlayer.md)                                                                                                                                                                                                                                                                                                                                                 |
 | 集成与诊断     | [HybridCLRManager](Documentation/Runtime/HybridCLRManager.md) · [Profiler](Documentation/Runtime/Profiler.md) · [ECS 当前边界](Documentation/Runtime/WorldManager.md)                                                                                                                                                                                                                                                                                                                                                 |
-| Editor 工具 | [ToolBase](Documentation/Editor.Tools/ToolBase.md) · [AssetImporter](Documentation/Editor.Tools/AssetImporter.md) · [AssetCreator](Documentation/Editor.Tools/AssetCreator.md) · [AssetBuilder](Documentation/Editor.Tools/AssetBuilder.md) · [AssetBundleBuilder](Documentation/Editor.Tools/AssetBundleBuilder.md) · [HybridCLRBuilder](Documentation/Editor.Tools/HybridCLRBuilder.md) · [DLCBuilder](Documentation/Editor.Tools/DLCBuilder.md) · [PlayerBuilder](Documentation/Editor.Tools/PlayerBuilder.md) |
+| Editor 工具 | [ToolBase](Documentation/Editor/ToolBase.md) · [AssetImporter](Documentation/Editor/AssetImporter.md) · [AssetCreator](Documentation/Editor/AssetCreator.md) · [AssetBuilder](Documentation/Editor/AssetBuilder.md) · [AssetBundleBuilder](Documentation/Editor/AssetBundleBuilder.md) · [HybridCLRBuilder](Documentation/Editor/HybridCLRBuilder.md) · [DLCBuilder](Documentation/Editor/DLCBuilder.md) · [PlayerBuilder](Documentation/Editor/PlayerBuilder.md) |
 
 ## 接入边界
 
@@ -146,17 +146,18 @@ public static class GameBuild
 
 Profiler 的历史验证记录包括 Edit Mode 271/271、Play Mode 133/133，以及 Windows Mono Development / 正式包最小场景冒烟；这不代表完整业务 Player、Android / IL2CPP 或真机验收。验证条件见 [Profiler 文档](Documentation/Runtime/Profiler.md)。
 
-## 目录结构
+## 包内结构
 
 ```text
-Runtime/          运行时核心与模块
-Editor/           编辑器工具与构建流程
-Module/Profiler/  独立性能诊断模块
-Documentation/    入门、示例和模块文档
-Samples~/         可通过 UPM 导入的 Runtime / Editor 示例
-Tests/            Editor 与 Runtime 自动化测试
-Plugins/          生成器等插件
-Res/、Resources/   框架资源
+EasyFramework/Runtime/   运行时核心与模块
+EasyFramework/Editor/    编辑器工具与构建流程
+EasyFramework.Profiler/  独立性能诊断模块
+Documentation/Runtime/  Runtime 模块文档
+Documentation/Editor/   Editor 工具文档
+Samples~/Runtime/       Runtime 示例
+Samples~/Editor/        Editor 示例
+Tests/                  自动化测试
+Plugins/                生成器等插件
 ```
 
 ## 许可证

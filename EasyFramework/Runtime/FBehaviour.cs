@@ -15,31 +15,14 @@ namespace EasyFramework
         void OnLateUpdate();
         void OnDestroy();
     }
-    public class FBehaviour : MonoBehaviour
+    public class FBehaviour : SingletonBehaviour<FBehaviour>
     {
-        private static int _uid;
         public const string NAME_ID = "[EasyFramework]";
-        
-        private static FBehaviour _instance;
-        public static FBehaviour Instance
-        {
-            get
-            {
-                if (_instance == null && _uid == 0)
-                {
-                    _uid = 1;
-                    var gameObject = new GameObject(NAME_ID);
-                    _instance = gameObject.AddComponent<FBehaviour>();
-                }
-
-                return _instance;
-            }
-        }
-        
         private readonly Ticker _ticker = new();
         
         void Awake()
         {
+            transform.name = NAME_ID;
             FDebug.Log($"{transform.name} OnAwake");
             Object.DontDestroyOnLoad(gameObject);
         }

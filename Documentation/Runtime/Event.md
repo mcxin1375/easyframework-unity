@@ -36,4 +36,4 @@ sealed class LoginEvents
 
 事件处理器异常会被框架捕获并记录，不应依赖异常中断后续处理器。订阅对象销毁时必须解除订阅，避免持有失效对象或重复响应。
 
-源码：[Event.cs](../../Runtime/Core/Event/Event.cs)。
+源码：[Event.cs](../../EasyFramework/Runtime/Manager/Event/Event.cs)。

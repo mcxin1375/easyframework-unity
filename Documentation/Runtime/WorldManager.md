@@ -22,4 +22,4 @@ GetOrCreateSystem<T>() 和 GetSystem<T>() 当前被注释，不能作为可用 A
 
 已有框架内集成持有 World 时，System 按 Order 降序更新，同序按类型全名排序；Destroy 是终态。该实现基于引用对象和列表，不提供 Burst、Job System 或 chunk 存储。
 
-源码：[FWorld.cs](../../Runtime/Core/ECS/FWorld.cs)、[FSystem.cs](../../Runtime/Core/ECS/FSystem.cs)、[FEntityManager.cs](../../Runtime/Core/ECS/FEntityManager.cs)、[F.cs](../../Runtime/F.cs)。
+源码：[FWorld.cs](../../EasyFramework/Runtime/Core/ECS/FWorld.cs)、[FSystem.cs](../../EasyFramework/Runtime/Core/ECS/FSystem.cs)、[FEntityManager.cs](../../EasyFramework/Runtime/Core/ECS/FEntityManager.cs)、[F.cs](../../EasyFramework/Runtime/F.cs)。

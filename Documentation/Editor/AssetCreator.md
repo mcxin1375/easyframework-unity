@@ -43,4 +43,4 @@ internal sealed class GameAssetCreator : IToolEvent<AssetCreator>
 
 扩展应保证重复执行结果稳定，并在写入文件后依赖工具末尾的 AssetDatabase 刷新让 Unity 重新导入。需要可视化配置时，可继承 `ToolScriptableObject<AssetCreator>` 并提供 `enabled` 与 `order`。
 
-源码：[AssetCreator.cs](../../Editor/Tools/AssetCreator/AssetCreator.cs)、[ToolScriptableObject.cs](../../Editor/Tools/ToolScriptableObject.cs)。
+源码：[AssetCreator.cs](../../EasyFramework/Editor/Tools/AssetCreator/AssetCreator.cs)、[ToolScriptableObject.cs](../../EasyFramework/Editor/Tools/ToolScriptableObject.cs)。

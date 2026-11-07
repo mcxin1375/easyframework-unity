@@ -25,4 +25,4 @@ sealed class DownloadExample
 
 文件下载先写入目标目录内的唯一临时文件，响应与流关闭、已知长度校验通过后才替换最终文件。失败或取消返回 false，清理临时文件并保留原目标。通用 HTTP 下载校验服务端提供的长度；DLC 在此基础上按资源清单校验长度与 MD5。
 
-源码：[IHttpManager.cs](../../Runtime/Manager/HttpManager/IHttpManager.cs)。
+源码：[IHttpManager.cs](../../EasyFramework/Runtime/Manager/HttpManager/IHttpManager.cs)。

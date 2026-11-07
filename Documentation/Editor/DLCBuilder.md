@@ -41,4 +41,4 @@ DLC 独立分包下载暂不可用，不能将基础版本构建等同于完整�
 
 在 Editor 程序集中实现 IToolEvent<DLCBuilder>，通过 Order 控制顺序。直接或通过 AssetBuilder 执行时，Before → Execute → After 各调用一次；直接调用 Utility 不分发扩展事件。构建会替换基础输出目录，不要将需要长期保留的文件放入该目录。
 
-源码：[DLCBuilder.cs](../../Editor/Tools/AssetBuilder/DLCBuilder/DLCBuilder.cs)、[DLCBuilderSettings.cs](../../Editor/Tools/AssetBuilder/DLCBuilder/DLCBuilderSettings.cs)、[DLCBuilderUtility.cs](../../Editor/Tools/AssetBuilder/DLCBuilder/DLCBuilderUtility.cs)。
+源码：[DLCBuilder.cs](../../EasyFramework/Editor/Tools/DLCBuilder/DLCBuilder.cs)、[DLCBuilderSettings.cs](../../EasyFramework/Editor/Tools/DLCBuilder/DLCBuilderSettings.cs)、[DLCBuilderUtility.cs](../../EasyFramework/Editor/Tools/DLCBuilder/DLCBuilderUtility.cs)。
