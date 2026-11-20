@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Build.Pipeline;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace EasyFramework.Editor
@@ -889,19 +890,14 @@ namespace EasyFramework.Editor
 
         private static bool PrepareAnalysisAssets()
         {
-            var dirtyPaths = AssetBundleBuilderUtility.GetDirtyProjectAssetPaths();
-            if (dirtyPaths.Length == 0) return true;
+            var dirtyScenePath = AssetBundleBuilderUtility.GetDirtyActiveScenePath();
+            if (string.IsNullOrEmpty(dirtyScenePath)) return true;
 
-            var previewPaths = dirtyPaths.Take(8).ToArray();
-            var preview = string.Join("\n", previewPaths);
-            if (dirtyPaths.Length > previewPaths.Length) preview += "\n...";
-
-            var message = $"检测到 {dirtyPaths.Length} 个项目资源存在未保存修改：\n\n{preview}\n\n模拟分析会先保存这些修改，是否继续？";
-            if (!EditorUtility.DisplayDialog("模拟分析需要保存资源", message, "保存并继续", "取消"))
+            var message = $"当前场景存在未保存修改：\n\n{dirtyScenePath}\n\n模拟分析前需要保存当前场景，是否继续？";
+            if (!EditorUtility.DisplayDialog("模拟分析需要保存当前场景", message, "保存并继续", "取消"))
                 return false;
 
-            AssetDatabase.SaveAssets();
-            return true;
+            return EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
         }
 
         private static AssetBundleBuild[] CreateBuildDefinitions(AssetBundleBuildLayoutReport report)

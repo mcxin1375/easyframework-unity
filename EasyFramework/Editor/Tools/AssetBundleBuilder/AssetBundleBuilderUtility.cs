@@ -15,6 +15,7 @@ using UnityEditor.Build.Pipeline;
 using UnityEditor.Build.Pipeline.Interfaces;
 using UnityEditor.Build.Pipeline.Tasks;
 using UnityEditor.Build.Pipeline.Utilities;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Build.Pipeline;
 
@@ -126,7 +127,7 @@ namespace EasyFramework.Editor
         {
             var settings = AssetBundleBuilderSettings.Instance;
             var builds = CreateAssetBundleBuildBySettings();
-            EnsureNoDirtyProjectAssets();
+            EnsureNoDirtyActiveScene();
             var outputPath = FileHelper.CreateTempPath(Path.Combine(
                 AssetBundleBuilder.Instance.ToolsPlatformPath, "AssetBundleLayoutAnalysis"));
 
@@ -271,13 +272,20 @@ namespace EasyFramework.Editor
             }
         }
 
-        private static void EnsureNoDirtyProjectAssets()
+        private static void EnsureNoDirtyActiveScene()
         {
-            var dirtyPaths = GetDirtyProjectAssetPaths();
-            if (dirtyPaths.Length == 0) return;
+            var scenePath = GetDirtyActiveScenePath();
+            if (string.IsNullOrEmpty(scenePath)) return;
 
             throw new BuildFailedException(
-                $"AssetBundle layout analysis stopped because this asset has unsaved changes: {dirtyPaths[0]}");
+                $"AssetBundle layout analysis stopped because the active scene has unsaved changes: {scenePath}");
+        }
+
+        public static string GetDirtyActiveScenePath()
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+            if (!scene.IsValid() || !scene.isDirty) return null;
+            return string.IsNullOrEmpty(scene.path) ? "<未保存场景>" : scene.path;
         }
 
         public static string[] GetDirtyProjectAssetPaths()
@@ -490,7 +498,8 @@ namespace EasyFramework.Editor
         {
             List<string> tmpList = new List<string>();
             if (files?.Length > 0) tmpList.AddRange(files);
-            string[] guids = AssetDatabase.FindAssets("t:Shader", directories);
+            var normalizedDirectories = directories?.Select(NormalizeUnityAssetPath).ToArray();
+            string[] guids = AssetDatabase.FindAssets("t:Shader", normalizedDirectories);
             foreach (var guid in guids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
@@ -527,14 +536,122 @@ namespace EasyFramework.Editor
             {
                 foreach (string directory in directories)
                 {
-                    string[] arr = Directory.GetFiles(directory, "*.*", SearchOption.AllDirectories).Where(file => !file.EndsWith(".meta")).ToArray();
-                    Add(arr);
+                    Add(CollectAssetPathsFromDirectory(directory));
                 }
             }
 
             var assetNames = assetNameList.ToArray();
             var addressableNames = CreateAddressableNames(assetNames);
             return CreateAssetBundleBuild(abName, assetNames, addressableNames);
+        }
+
+        private static string NormalizeUnityAssetPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return path;
+
+            path = path.Replace('\\', '/');
+            if (!path.StartsWith("Packages/", StringComparison.OrdinalIgnoreCase)) return path;
+
+            var packageStart = "Packages/".Length;
+            var packageEnd = path.IndexOf('/', packageStart);
+            if (packageEnd < 0) packageEnd = path.Length;
+            var packageSegment = path.Substring(packageStart, packageEnd - packageStart);
+            var versionSeparator = packageSegment.LastIndexOf('@');
+            if (versionSeparator <= 0) return path;
+
+            return "Packages/" + packageSegment.Substring(0, versionSeparator) +
+                   path.Substring(packageEnd);
+        }
+
+        private static string[] CollectAssetPathsFromDirectory(string directory)
+        {
+            var assetPath = NormalizeUnityAssetPath(directory);
+            if (AssetDatabase.IsValidFolder(assetPath))
+            {
+                return AssetDatabase.FindAssets(string.Empty, new[] { assetPath })
+                    .Select(AssetDatabase.GUIDToAssetPath)
+                    .Where(path => !string.IsNullOrWhiteSpace(path) && !AssetDatabase.IsValidFolder(path))
+                    .Select(NormalizeUnityAssetPath)
+                    .ToArray();
+            }
+
+            if (!TryResolveAssetDirectory(assetPath, out var fileSystemPath, out var virtualRoot))
+                throw new DirectoryNotFoundException(
+                    $"AssetBundleBuildInfo directory is not a valid Unity asset folder: {directory}");
+
+            return Directory.GetFiles(fileSystemPath, "*.*", SearchOption.AllDirectories)
+                .Where(file => !file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))
+                .Select(file => ToUnityAssetPath(file, fileSystemPath, virtualRoot))
+                .ToArray();
+        }
+
+        private static bool TryResolveAssetDirectory(string assetPath, out string fileSystemPath,
+            out string virtualRoot)
+        {
+            fileSystemPath = null;
+            virtualRoot = null;
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+
+            if (assetPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+            {
+                fileSystemPath = Path.Combine(projectRoot, assetPath.Replace('/', Path.DirectorySeparatorChar));
+                virtualRoot = "Assets";
+                return Directory.Exists(fileSystemPath);
+            }
+
+            if (!assetPath.StartsWith("Packages/", StringComparison.OrdinalIgnoreCase))
+                return Directory.Exists(assetPath) && SetPhysicalRoot(assetPath, assetPath, out fileSystemPath, out virtualRoot);
+
+            var packageStart = "Packages/".Length;
+            var packageEnd = assetPath.IndexOf('/', packageStart);
+            if (packageEnd < 0) packageEnd = assetPath.Length;
+            var packageName = assetPath.Substring(packageStart, packageEnd - packageStart);
+            var packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(assetPath);
+            var packageRoot = packageInfo?.resolvedPath;
+
+            if (string.IsNullOrEmpty(packageRoot))
+            {
+                var embeddedRoot = Path.Combine(projectRoot, "Packages", packageName);
+                if (Directory.Exists(embeddedRoot)) packageRoot = embeddedRoot;
+            }
+
+            if (string.IsNullOrEmpty(packageRoot))
+            {
+                var cacheRoot = Path.Combine(projectRoot, "Library", "PackageCache");
+                packageRoot = Directory.Exists(cacheRoot)
+                    ? Directory.GetDirectories(cacheRoot, packageName + "@*", SearchOption.TopDirectoryOnly)
+                        .OrderByDescending(path => path, StringComparer.OrdinalIgnoreCase)
+                        .FirstOrDefault()
+                    : null;
+            }
+
+            if (string.IsNullOrEmpty(packageRoot)) return false;
+
+            var relative = assetPath.Length > packageEnd
+                ? assetPath.Substring(packageEnd + 1)
+                : string.Empty;
+            fileSystemPath = Path.Combine(packageRoot,
+                relative.Replace('/', Path.DirectorySeparatorChar));
+            virtualRoot = "Packages/" + packageName;
+            return Directory.Exists(fileSystemPath);
+        }
+
+        private static bool SetPhysicalRoot(string path, string root, out string fileSystemPath,
+            out string virtualRoot)
+        {
+            fileSystemPath = Path.GetFullPath(path);
+            virtualRoot = root.Replace('\\', '/');
+            return true;
+        }
+
+        private static string ToUnityAssetPath(string filePath, string fileSystemRoot, string virtualRoot)
+        {
+            var relative = Path.GetRelativePath(fileSystemRoot, filePath)
+                .Replace(Path.DirectorySeparatorChar, '/')
+                .Replace(Path.AltDirectorySeparatorChar, '/');
+            return string.IsNullOrEmpty(relative) || relative == "."
+                ? virtualRoot
+                : virtualRoot.TrimEnd('/') + "/" + relative;
         }
 
         public static AssetBundleBuild CreateAssetBundleBuild(string abName, string[] assetNames, string[] addressableNames)
