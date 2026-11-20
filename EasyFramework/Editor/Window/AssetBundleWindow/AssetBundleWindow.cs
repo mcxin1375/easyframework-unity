@@ -440,17 +440,21 @@ namespace EasyFramework.Editor
             var referencingFiles = resource.ReferencingFiles.Length == 0
                 ? string.Empty
                 : $"\n由以下直接资源引用:\n{string.Join("\n", resource.ReferencingFiles)}";
-            var evidence = string.Empty;
-            if (_viewIndex != 0)
+            var duplicateWrittenBundles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (duplicateBundles != null) duplicateWrittenBundles.UnionWith(duplicateBundles);
+            if (contentDuplicateBundles != null) duplicateWrittenBundles.UnionWith(contentDuplicateBundles);
+
+            string tooltip;
+            if (duplicate && duplicateWrittenBundles.Count > 0)
             {
-                if (duplicateBundles != null)
-                    evidence += $"\n同对象重复 AB：\n{string.Join("\n", duplicateBundles)}";
-                if (contentDuplicateBundles != null)
-                    evidence += $"\n内容重复 AB：\n{string.Join("\n", contentDuplicateBundles)}";
-                if (resource.DuplicateObjectBytes > 0 || resource.ContentDuplicateBytes > 0)
-                    evidence += $"\n估算重复字节：{FormatBytes(resource.DuplicateObjectBytes + resource.ContentDuplicateBytes)}";
+                var duplicateBundleText = string.Join("\n", duplicateWrittenBundles
+                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
+                tooltip = $"重复写入 AB：\n{duplicateBundleText}";
             }
-            var tooltip = resource.AssetPath + bundleInfo + evidence + referencingFiles;
+            else
+            {
+                tooltip = resource.AssetPath + bundleInfo + referencingFiles;
+            }
             var resourceTooltip = new GUIContent(resource.AssetPath, tooltip);
             var referenceCountTooltip = new GUIContent((resourceBundles?.Count ?? 0).ToString(), tooltip);
             using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox, GUILayout.Height(RowHeight)))
