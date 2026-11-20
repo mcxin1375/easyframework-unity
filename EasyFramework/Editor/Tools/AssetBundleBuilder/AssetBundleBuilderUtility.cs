@@ -271,10 +271,20 @@ namespace EasyFramework.Editor
 
                 var assetPath = AssetDatabase.GetAssetPath(asset);
                 if (string.IsNullOrEmpty(assetPath)) continue;
+                if (IsIgnorableDirtyAsset(asset, assetPath)) continue;
                 if (IsProjectAssetPath(assetPath)) dirtyPaths.Add(assetPath);
             }
 
             return dirtyPaths.OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
+        }
+
+        private static bool IsIgnorableDirtyAsset(UnityEngine.Object asset, string assetPath)
+        {
+            if (asset is Shader || asset is ComputeShader) return true;
+
+            var extension = Path.GetExtension(assetPath);
+            return string.Equals(extension, ".shader", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(extension, ".compute", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsProjectAssetPath(string assetPath)
