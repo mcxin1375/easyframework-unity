@@ -82,7 +82,7 @@ internal sealed class GameAssetBundleBuildSettings : IAssetBundleBuilderSettings
 - `ignoreFileNames` 和 `ignoreFileExes` 在自动扫描时生效。
 - 普通文件按不含扩展名的文件名生成 Bundle 名。
 - 以 `.ab` 结尾的目录会整体生成一个 Bundle，Bundle 名去掉 `.ab` 后缀。
-- `.ab` 目录中的每个文件使用去掉扩展名的文件名作为 Bundle 内地址名；同一 Bundle 内地址名重复时构建失败。
+- `.ab` 目录中的文件默认使用去掉扩展名的文件名作为 Bundle 内地址名；同一 Bundle 内不同路径出现同名文件时，冲突资源使用完整 Unity 资源路径作为地址名。
 - 显式 `BuildInfos` 先生成，再与目录扫描结果按 Bundle 名合并。
 - Bundle 名缺少当前 `EasyFrameworkSettings.abSuffix` 时会自动追加后缀。
 

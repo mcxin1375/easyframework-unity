@@ -490,7 +490,7 @@ namespace EasyFramework.Editor
             }
 
             var assetNames = assetNameList.ToArray();
-            var addressableNames = assetNames.Select(Path.GetFileNameWithoutExtension).ToArray();
+            var addressableNames = CreateAddressableNames(assetNames);
             return CreateAssetBundleBuild(abName, assetNames, addressableNames);
         }
 
@@ -526,9 +526,35 @@ namespace EasyFramework.Editor
             foreach (string s in ab2.assetNames) if (!assetNameList.Contains(s)) assetNameList.Add(s);
 
             ab.assetNames = assetNameList.ToArray();
-            ab.addressableNames = ab.assetNames.Select(Path.GetFileNameWithoutExtension).ToArray();
+            ab.addressableNames = CreateAddressableNames(ab.assetNames);
             ValidateAddressableNames(ab.assetBundleName, ab.assetNames, ab.addressableNames);
             return ab;
+        }
+
+        private static string[] CreateAddressableNames(string[] assetNames)
+        {
+            if (assetNames == null) return null;
+
+            var normalizedPaths = assetNames.Select(NormalizeAssetPath).ToArray();
+            var shortNames = normalizedPaths
+                .Select(Path.GetFileNameWithoutExtension)
+                .ToArray();
+            var duplicateShortNames = shortNames
+                .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .Where(group => group.Count() > 1)
+                .Select(group => group.Key)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return shortNames
+                .Select((shortName, index) => duplicateShortNames.Contains(shortName)
+                    ? normalizedPaths[index]
+                    : shortName)
+                .ToArray();
+        }
+
+        private static string NormalizeAssetPath(string path)
+        {
+            return path?.Replace('\\', '/');
         }
 
         private static void ValidateAddressableNames(string abName, string[] assetNames, string[] addressableNames)
@@ -537,20 +563,11 @@ namespace EasyFramework.Editor
             if (assetNames.Length != addressableNames.Length)
                 throw new BuildFailedException($"AssetBundle [{abName}] assetNames and addressableNames count mismatch.");
 
-            var pathDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < addressableNames.Length; i++)
             {
                 var addressableName = addressableNames[i];
                 if (string.IsNullOrWhiteSpace(addressableName))
                     throw new BuildFailedException($"AssetBundle [{abName}] contains an empty addressable name.");
-                if (pathDict.TryGetValue(addressableName, out var previousPath))
-                {
-                    throw new BuildFailedException(
-                        $"AssetBundle [{abName}] contains duplicate addressable name [{addressableName}]: " +
-                        $"{previousPath} and {assetNames[i]}");
-                }
-
-                pathDict.Add(addressableName, assetNames[i]);
             }
         }
     }

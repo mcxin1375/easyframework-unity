@@ -17,7 +17,7 @@ AssetBundleLoader 初始化直接清空并填充内部 _abDict，不额外分配
 | `IsLoading` / `IsUnloading` / `GetLoadingProgress` | 状态查询 |
 | `GetAllDependencies` | 查询依赖 Bundle |
 
-资源名来自构建 Manifest，不需要自行拼接 .ab 或哈希文件名。`.ab` 目录合包时，`assetName` 使用 Bundle 内地址名，当前打包规则为文件名去扩展名：
+资源名来自构建 Manifest，不需要自行拼接 .ab 或哈希文件名。`.ab` 目录合包时，`assetName` 使用 Bundle 内地址名，默认规则为文件名去扩展名；同一 Bundle 内不同路径出现同名文件时，冲突资源使用完整 Unity 资源路径（含扩展名）作为地址名：
 
 ```csharp
 var texture = await F.ResLoader.LoadAssetAsync<Texture2D>("Textures", "Texture1", request: this);

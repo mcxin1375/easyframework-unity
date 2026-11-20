@@ -25,7 +25,7 @@ var cube = await F.ResLoader.CreateObjAsync("Cube");
 var texture = await F.ResLoader.LoadAssetAsync<Texture2D>("Textures", "Texture1");
 ```
 
-业务无需拼接资源路径或哈希文件名；合包资源使用 `abName` 和 `assetName` 精确加载。Player 使用构建清单定位 Bundle 并处理依赖；Editor 默认通过资源桥接加载，可不打包调试。长期持有资源时，可通过 `IResRequest` 管理持有与释放。[了解资源管理](Documentation/Runtime/ResLoader.md)
+业务无需拼接哈希文件名；合包资源使用 `abName` 和 `assetName` 精确加载。同一 Bundle 内的同名文件会使用完整资源路径区分。Player 使用构建清单定位 Bundle 并处理依赖；Editor 默认通过资源桥接加载，可不打包调试。长期持有资源时，可通过 `IResRequest` 管理持有与释放。[了解资源管理](Documentation/Runtime/ResLoader.md)
 
 ### PlayerBuilder · 一键构建发布
 
