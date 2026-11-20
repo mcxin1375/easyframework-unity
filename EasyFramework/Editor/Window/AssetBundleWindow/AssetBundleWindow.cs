@@ -628,11 +628,15 @@ namespace EasyFramework.Editor
 
         private void AnalyzeCurrentSettings()
         {
-            _isAnalyzing = true;
             _refreshError = null;
-            EditorUtility.DisplayProgressBar("AssetBundle Window", "分析当前打包配置...", 0.5f);
+            var progressShown = false;
             try
             {
+                if (!PrepareAnalysisAssets()) return;
+
+                _isAnalyzing = true;
+                EditorUtility.DisplayProgressBar("AssetBundle Window", "分析当前打包配置...", 0.5f);
+                progressShown = true;
                 _lastAnalysisReport = AssetBundleBuilderUtility.AnalyzeBySettings();
                 _configuredBuilds = CreateBuildDefinitions(_lastAnalysisReport);
                 SetActiveViewData();
@@ -644,11 +648,28 @@ namespace EasyFramework.Editor
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
+                if (progressShown) EditorUtility.ClearProgressBar();
                 _isAnalyzing = false;
                 _hasLoaded = true;
                 Repaint();
             }
+        }
+
+        private static bool PrepareAnalysisAssets()
+        {
+            var dirtyPaths = AssetBundleBuilderUtility.GetDirtyProjectAssetPaths();
+            if (dirtyPaths.Length == 0) return true;
+
+            var previewPaths = dirtyPaths.Take(8).ToArray();
+            var preview = string.Join("\n", previewPaths);
+            if (dirtyPaths.Length > previewPaths.Length) preview += "\n...";
+
+            var message = $"检测到 {dirtyPaths.Length} 个项目资源存在未保存修改：\n\n{preview}\n\n模拟分析会先保存这些修改，是否继续？";
+            if (!EditorUtility.DisplayDialog("模拟分析需要保存资源", message, "保存并继续", "取消"))
+                return false;
+
+            AssetDatabase.SaveAssets();
+            return true;
         }
 
         private static AssetBundleBuild[] CreateBuildDefinitions(AssetBundleBuildLayoutReport report)

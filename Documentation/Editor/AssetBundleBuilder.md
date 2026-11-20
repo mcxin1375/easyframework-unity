@@ -10,7 +10,7 @@
 | `EasyFramework/Tools/AssetBundleBuilder - BuildManifestOnly` | Dry Run 构建并生成可供编辑器查询的 Manifest 资产 |
 | `EasyFramework/Tools/AssetBundleBuilder - CheckVerifyValidity` | 检查同一资源是否被多个 Bundle 重复收集 |
 
-`AssetBundleWindow` 提供构建列表、最近正式构建和模拟分析三个页签。构建列表按当前配置显示直接登记资源及其递归引用的非代码依赖，资源详情分为直接资源和间接资源两组，引用数列统计包含该资源的 AB 数量，悬浮资源路径可查看所在 AB 列表；AB 名称后的数字只在直接资源数大于 1 时显示，`!n` 表示间接依赖数。最近正式构建和模拟分析显示 SBP 捕获的实际布局。模拟分析调用 `AssetBundleBuilderUtility.AnalyzeBySettings()`，使用当前配置和活动构建平台运行 SBP 到 `PostPackingCallback` 之后，在序列化写入前捕获最终布局并停止；不会写 AssetBundle 文件。由于 SBP 会调用 `AssetDatabase.SaveAssets`，存在未保存的 `Assets/` 或嵌入式 package 资源时分析会中止并提示路径。分析会编译 Player 脚本，并把脚本输出、临时输出和构建日志放入隔离目录后清理；SBP/Unity 构建缓存仍可能更新。
+`AssetBundleWindow` 提供构建列表、最近正式构建和模拟分析三个页签。构建列表按当前配置显示直接登记资源及其递归引用的非代码依赖，资源详情分为直接资源和间接资源两组，引用数列统计包含该资源的 AB 数量，悬浮资源路径可查看所在 AB 列表；AB 名称后的数字只在直接资源数大于 1 时显示，`!n` 表示间接依赖数。最近正式构建和模拟分析显示 SBP 捕获的实际布局。模拟分析开始前会检测未保存的项目资源，并在用户确认后保存再运行；分析调用 `AssetBundleBuilderUtility.AnalyzeBySettings()`，使用当前配置和活动构建平台运行 SBP 到 `PostPackingCallback` 之后，在序列化写入前捕获最终布局并停止；不会写 AssetBundle 文件。分析会编译 Player 脚本，并把脚本输出、临时输出和构建日志放入隔离目录后清理；SBP/Unity 构建缓存仍可能更新。
 
 ## 配置入口
 

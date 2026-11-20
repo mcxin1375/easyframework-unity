@@ -255,21 +255,36 @@ namespace EasyFramework.Editor
 
         private static void EnsureNoDirtyProjectAssets()
         {
+            var dirtyPaths = GetDirtyProjectAssetPaths();
+            if (dirtyPaths.Length == 0) return;
+
+            throw new BuildFailedException(
+                $"AssetBundle layout analysis stopped because this asset has unsaved changes: {dirtyPaths[0]}");
+        }
+
+        public static string[] GetDirtyProjectAssetPaths()
+        {
+            var dirtyPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var asset in Resources.FindObjectsOfTypeAll<UnityEngine.Object>())
             {
                 if (asset == null || !EditorUtility.IsPersistent(asset) || !EditorUtility.IsDirty(asset)) continue;
 
                 var assetPath = AssetDatabase.GetAssetPath(asset);
                 if (string.IsNullOrEmpty(assetPath)) continue;
-                var isProjectAsset = assetPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase);
-                var packageInfo = assetPath.StartsWith("Packages/", StringComparison.OrdinalIgnoreCase)
-                    ? UnityEditor.PackageManager.PackageInfo.FindForAssetPath(assetPath)
-                    : null;
-                var isEmbeddedPackageAsset = packageInfo?.source == UnityEditor.PackageManager.PackageSource.Embedded;
-                if (isProjectAsset || isEmbeddedPackageAsset)
-                    throw new BuildFailedException(
-                        $"AssetBundle layout analysis stopped because this asset has unsaved changes: {assetPath}");
+                if (IsProjectAssetPath(assetPath)) dirtyPaths.Add(assetPath);
             }
+
+            return dirtyPaths.OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
+        }
+
+        private static bool IsProjectAssetPath(string assetPath)
+        {
+            if (assetPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)) return true;
+
+            var packageInfo = assetPath.StartsWith("Packages/", StringComparison.OrdinalIgnoreCase)
+                ? UnityEditor.PackageManager.PackageInfo.FindForAssetPath(assetPath)
+                : null;
+            return packageInfo?.source == UnityEditor.PackageManager.PackageSource.Embedded;
         }
         
         public static void BuildManifestOnly()
