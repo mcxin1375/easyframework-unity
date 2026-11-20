@@ -24,6 +24,8 @@ namespace EasyFramework.Editor
         private readonly List<BundleViewData> _bundles = new List<BundleViewData>();
         private readonly Dictionary<string, List<string>> _resourceBundles =
             new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, List<string>> _contentResourceBundles =
+            new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, List<string>> _resourceLocations =
             new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, ResourceCategory> _resourceCategories =
@@ -40,6 +42,7 @@ namespace EasyFramework.Editor
         private string _viewMessage;
         private int _viewIndex;
         private bool _showDuplicatesOnly;
+        private bool _showMultipleDirectResourcesOnly;
         private bool _includeCode;
         private bool _includeShaders;
         private bool _hasLoaded;
@@ -50,6 +53,13 @@ namespace EasyFramework.Editor
         private int DuplicateReferenceCount => _resourceBundles
             .Where(pair => IsResourcePathVisible(pair.Key) && pair.Value.Count > 1)
             .Sum(pair => pair.Value.Count);
+        private int ContentDuplicateResourceCount => _contentResourceBundles.Count(pair =>
+            IsResourcePathVisible(pair.Key) && pair.Value.Count > 1);
+        private long EstimatedDuplicateByteCount => _bundles.Sum(bundle => bundle.Resources
+            .Where(IsResourceVisible)
+            .Sum(resource => resource.DuplicateObjectBytes + resource.ContentDuplicateBytes));
+        private bool ContentAnalysisAvailable => _viewIndex > 0 &&
+            (_viewIndex == 1 ? _lastBuildReport : _lastAnalysisReport)?.hasContentAnalysis == true;
         private int TotalResourceCount => _bundles.Sum(bundle =>
             bundle.Resources.Count(IsResourceVisible));
 
@@ -85,11 +95,11 @@ namespace EasyFramework.Editor
             DrawViewHeader();
             DrawSummary();
 
-            if (DuplicateResourceCount > 0)
+            if (DuplicateResourceCount > 0 || ContentAnalysisAvailable && ContentDuplicateResourceCount > 0)
             {
                 var duplicateMessage = _viewIndex == 0
-                    ? $"发现 {DuplicateResourceCount} 个资源路径被多个 AB 配置引用，共 {DuplicateReferenceCount} 个包内引用项。黄色行表示重复引用。"
-                    : $"发现 {DuplicateResourceCount} 个资源路径在多个 AB 包中包含相同对象，共 {DuplicateReferenceCount} 个包内重复项。黄色行表示重复资源。";
+                    ? $"发现 {DuplicateResourceCount} 个资源路径被多个 AB 配置引用，共 {DuplicateReferenceCount} 个配置项。"
+                    : $"同对象重复 {DuplicateResourceCount} 个资源、{DuplicateReferenceCount} 个包内项；内容重复 {ContentDuplicateResourceCount} 个资源。黄色行表示重复证据。";
                 EditorGUILayout.HelpBox(
                     duplicateMessage,
                     MessageType.Warning);
@@ -220,7 +230,7 @@ namespace EasyFramework.Editor
             using (new EditorGUILayout.HorizontalScope())
             {
                 EditorGUILayout.LabelField(
-                    "分析当前配置的 SBP 打包布局；流程在写入 AssetBundle 文件之前结束。",
+                    "分析当前配置的 SBP 布局；只写入隔离临时序列化文件，不归档正式 AssetBundle。",
                     EditorStyles.miniLabel);
                 using (new EditorGUI.DisabledScope(_isAnalyzing))
                 {
@@ -237,8 +247,14 @@ namespace EasyFramework.Editor
             {
                 DrawSummaryItem("AB 包", _bundles.Count.ToString());
                 DrawSummaryItem("包内资源", TotalResourceCount.ToString());
-                DrawSummaryItem("重复资源", DuplicateResourceCount.ToString(), DuplicateResourceCount > 0);
-                DrawSummaryItem("重复包内项", DuplicateReferenceCount.ToString(), DuplicateReferenceCount > 0);
+                DrawSummaryItem(_viewIndex == 0 ? "重复配置资源" : "同对象重复",
+                    DuplicateResourceCount.ToString(), DuplicateResourceCount > 0);
+                DrawSummaryItem(_viewIndex == 0 ? "重复配置项" : "同对象项",
+                    DuplicateReferenceCount.ToString(), DuplicateReferenceCount > 0);
+                DrawSummaryItem("内容重复", ContentAnalysisAvailable ? ContentDuplicateResourceCount.ToString() : "—",
+                    ContentAnalysisAvailable && ContentDuplicateResourceCount > 0);
+                DrawSummaryItem("估算重复字节", ContentAnalysisAvailable ? FormatBytes(EstimatedDuplicateByteCount) : "—",
+                    ContentAnalysisAvailable && EstimatedDuplicateByteCount > 0);
 
                 GUILayout.FlexibleSpace();
                 var filteredCount = GetVisibleBundles().Count;
@@ -261,6 +277,14 @@ namespace EasyFramework.Editor
             GUI.color = previousColor;
         }
 
+        private static string FormatBytes(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024f:0.##} KB";
+            if (bytes < 1024L * 1024L * 1024L) return $"{bytes / (1024f * 1024f):0.##} MB";
+            return $"{bytes / (1024f * 1024f * 1024f):0.##} GB";
+        }
+
         private void DrawContent(List<BundleViewData> visibleBundles)
         {
             using (new EditorGUILayout.HorizontalScope())
@@ -274,7 +298,17 @@ namespace EasyFramework.Editor
         {
             using (new EditorGUILayout.VerticalScope(GUILayout.Width(BundleListWidth)))
             {
-                EditorGUILayout.LabelField("AssetBundle", EditorStyles.boldLabel);
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.LabelField("AssetBundle", EditorStyles.boldLabel);
+                    var multipleResourceFilter = EditorGUILayout.ToggleLeft("直接资源数>1",
+                        _showMultipleDirectResourcesOnly, GUILayout.Width(94f));
+                    if (multipleResourceFilter != _showMultipleDirectResourcesOnly)
+                    {
+                        _showMultipleDirectResourcesOnly = multipleResourceFilter;
+                        OnFilterChanged();
+                    }
+                }
                 _bundleScrollPosition = EditorGUILayout.BeginScrollView(_bundleScrollPosition);
                 if (visibleBundles.Count == 0)
                 {
@@ -297,7 +331,11 @@ namespace EasyFramework.Editor
         {
             var selected = string.Equals(bundle.Name, _selectedBundleName, StringComparison.OrdinalIgnoreCase);
             var duplicateCount = bundle.Resources.Count(resource =>
+                IsResourceVisible(resource) && IsAnyDuplicate(resource.AssetPath));
+            var exactDuplicateCount = bundle.Resources.Count(resource =>
                 IsResourceVisible(resource) && IsDuplicate(resource.AssetPath));
+            var contentDuplicateCount = bundle.Resources.Count(resource =>
+                IsResourceVisible(resource) && IsContentDuplicate(resource.AssetPath));
             var duplicate = duplicateCount > 0;
             var previousBackground = GUI.backgroundColor;
 
@@ -307,7 +345,9 @@ namespace EasyFramework.Editor
                 GUI.backgroundColor = new Color(1f, 0.82f, 0.45f);
 
             var label = FormatBundleLabel(bundle);
-            var tooltip = duplicate ? $"该 AB 包包含 {duplicateCount} 个重复资源路径。" : null;
+            var tooltip = duplicate
+                ? $"同对象重复 {exactDuplicateCount} 个，内容重复 {contentDuplicateCount} 个，共 {duplicateCount} 个。"
+                : null;
             if (GUILayout.Button(new GUIContent(label, tooltip),
                     EditorStyles.miniButton, GUILayout.Height(RowHeight)))
             {
@@ -339,14 +379,22 @@ namespace EasyFramework.Editor
                 _resourceScrollPosition = EditorGUILayout.BeginScrollView(_resourceScrollPosition);
                 var resources = GetVisibleResources(selectedBundle);
                 var directResources = resources.Where(resource => resource.IsDirect).ToList();
-                var indirectResources = resources.Where(resource => !resource.IsDirect).ToList();
+                var indirectResources = resources.Where(resource => resource.IsIndirect).ToList();
+                var writtenResources = resources.Where(resource => resource.IsWritten).ToList();
                 var directCount = selectedBundle.Resources.Count(resource =>
                     resource.IsDirect && IsResourceVisible(resource));
                 var indirectCount = selectedBundle.Resources.Count(resource =>
-                    !resource.IsDirect && IsResourceVisible(resource));
+                    resource.IsIndirect && IsResourceVisible(resource));
+                var writtenCount = selectedBundle.Resources.Count(resource =>
+                    resource.IsWritten && IsResourceVisible(resource));
                 DrawResourceSection("直接资源", directResources, directCount);
                 GUILayout.Space(8f);
                 DrawResourceSection("间接资源", indirectResources, indirectCount);
+                if (_viewIndex != 0)
+                {
+                    GUILayout.Space(8f);
+                    DrawResourceSection("写入资源", writtenResources, writtenCount);
+                }
 
                 EditorGUILayout.EndScrollView();
             }
@@ -378,7 +426,10 @@ namespace EasyFramework.Editor
 
         private void DrawResourceRow(ResourceViewData resource)
         {
-            var duplicate = GetDuplicateBundles(resource.AssetPath) != null;
+            var duplicateBundles = GetDuplicateBundles(resource.AssetPath);
+            var contentDuplicateBundles = GetContentDuplicateBundles(resource.AssetPath);
+            var duplicate = (_viewIndex != 0 || resource.IsDirect) &&
+                            (duplicateBundles != null || contentDuplicateBundles != null);
             var previousBackground = GUI.backgroundColor;
             if (duplicate) GUI.backgroundColor = new Color(1f, 0.82f, 0.45f);
 
@@ -389,7 +440,17 @@ namespace EasyFramework.Editor
             var referencingFiles = resource.ReferencingFiles.Length == 0
                 ? string.Empty
                 : $"\n由以下直接资源引用:\n{string.Join("\n", resource.ReferencingFiles)}";
-            var tooltip = resource.AssetPath + bundleInfo + referencingFiles;
+            var evidence = string.Empty;
+            if (_viewIndex != 0)
+            {
+                if (duplicateBundles != null)
+                    evidence += $"\n同对象重复 AB：\n{string.Join("\n", duplicateBundles)}";
+                if (contentDuplicateBundles != null)
+                    evidence += $"\n内容重复 AB：\n{string.Join("\n", contentDuplicateBundles)}";
+                if (resource.DuplicateObjectBytes > 0 || resource.ContentDuplicateBytes > 0)
+                    evidence += $"\n估算重复字节：{FormatBytes(resource.DuplicateObjectBytes + resource.ContentDuplicateBytes)}";
+            }
+            var tooltip = resource.AssetPath + bundleInfo + evidence + referencingFiles;
             var resourceTooltip = new GUIContent(resource.AssetPath, tooltip);
             var referenceCountTooltip = new GUIContent((resourceBundles?.Count ?? 0).ToString(), tooltip);
             using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox, GUILayout.Height(RowHeight)))
@@ -420,7 +481,8 @@ namespace EasyFramework.Editor
         {
             return _bundles.Where(bundle =>
                 (!_showDuplicatesOnly || bundle.Resources.Any(resource =>
-                    IsResourceVisible(resource) && IsDuplicate(resource.AssetPath))) &&
+                    IsResourceVisible(resource) && IsAnyDuplicate(resource.AssetPath))) &&
+                (!_showMultipleDirectResourcesOnly || GetVisibleDirectResourceCount(bundle) > 1) &&
                 (string.IsNullOrWhiteSpace(_searchText) || BundleMatchesSearch(bundle)))
                 .ToList();
         }
@@ -431,7 +493,7 @@ namespace EasyFramework.Editor
                 ContainsIgnoreCase(bundle.Name, _searchText);
             return bundle.Resources.Where(resource =>
                     IsResourceVisible(resource) &&
-                    (!_showDuplicatesOnly || IsDuplicate(resource.AssetPath)) &&
+                    (!_showDuplicatesOnly || IsAnyDuplicate(resource.AssetPath)) &&
                     (searchMatchesBundle || ContainsIgnoreCase(resource.AssetPath, _searchText)))
                 .ToList();
         }
@@ -462,9 +524,26 @@ namespace EasyFramework.Editor
             return _resourceBundles.TryGetValue(assetPath, out var bundles) && bundles.Count > 1;
         }
 
+        private bool IsContentDuplicate(string assetPath)
+        {
+            return _contentResourceBundles.TryGetValue(assetPath, out var bundles) && bundles.Count > 1;
+        }
+
+        private bool IsAnyDuplicate(string assetPath)
+        {
+            return IsDuplicate(assetPath) || IsContentDuplicate(assetPath);
+        }
+
         private List<string> GetDuplicateBundles(string assetPath)
         {
             return _resourceBundles.TryGetValue(assetPath, out var bundles) && bundles.Count > 1
+                ? bundles
+                : null;
+        }
+
+        private List<string> GetContentDuplicateBundles(string assetPath)
+        {
+            return _contentResourceBundles.TryGetValue(assetPath, out var bundles) && bundles.Count > 1
                 ? bundles
                 : null;
         }
@@ -498,6 +577,7 @@ namespace EasyFramework.Editor
         {
             _bundles.Clear();
             _resourceBundles.Clear();
+            _contentResourceBundles.Clear();
             _resourceLocations.Clear();
             _resourceCategories.Clear();
             _viewMessage = null;
@@ -528,7 +608,8 @@ namespace EasyFramework.Editor
                 foreach (var resource in resources)
                 {
                     RegisterResource(resource, bundle.Name);
-                    AddBundleReference(resource.AssetPath, bundle.Name);
+                    if (resource.IsDirect)
+                        AddBundleReference(resource.AssetPath, bundle.Name);
                 }
             }
         }
@@ -555,11 +636,11 @@ namespace EasyFramework.Editor
             }
 
             resources.AddRange(directPaths.Select(path => CreateResourceViewData(
-                path, true, false, GetReferencingFiles(referencingFiles, path))));
+                path, ResourceDisplayKind.Direct, false, GetReferencingFiles(referencingFiles, path))));
             resources.AddRange(dependencyPaths
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                 .Select(path => CreateResourceViewData(
-                    path, false, false, GetReferencingFiles(referencingFiles, path))));
+                    path, ResourceDisplayKind.Indirect, false, GetReferencingFiles(referencingFiles, path))));
             return resources.ToArray();
         }
 
@@ -585,24 +666,73 @@ namespace EasyFramework.Editor
 
         private string FormatBundleLabel(BundleViewData bundle)
         {
-            var directCount = bundle.Resources.Count(resource =>
-                resource.IsDirect && IsResourceVisible(resource));
-            var indirectCount = bundle.Resources.Count(resource =>
-                !resource.IsDirect && IsResourceVisible(resource));
+            var directCount = GetVisibleDirectResourceCount(bundle);
             var counts = new List<string>(2);
             if (directCount > 1) counts.Add(directCount.ToString());
-            if (indirectCount > 0) counts.Add($"!{indirectCount}");
 
             return counts.Count == 0
                 ? bundle.Name
                 : $"{bundle.Name} ({string.Join(", ", counts)})";
         }
 
-        private static ResourceViewData CreateResourceViewData(string assetPath, bool isDirect,
-            bool isDuplicateInLayout, string[] referencingFiles)
+        private int GetVisibleDirectResourceCount(BundleViewData bundle)
         {
-            return new ResourceViewData(assetPath, isDirect, isDuplicateInLayout, referencingFiles,
-                GetResourceCategory(assetPath));
+            return bundle.Resources.Count(resource => resource.IsDirect && IsResourceVisible(resource));
+        }
+
+        private static ResourceViewData CreateResourceViewData(string assetPath, ResourceDisplayKind displayKind,
+            bool isDuplicateInLayout, string[] referencingFiles, int duplicateObjectCount = 0,
+            long duplicateObjectBytes = 0, bool isContentDuplicate = false,
+            int contentDuplicateObjectCount = 0, long contentDuplicateBytes = 0,
+            string[] duplicateBundles = null, string[] contentDuplicateBundles = null,
+            long serializedSize = 0)
+        {
+            return new ResourceViewData(assetPath, displayKind, isDuplicateInLayout, referencingFiles,
+                GetResourceCategory(assetPath), duplicateObjectCount, duplicateObjectBytes,
+                isContentDuplicate, contentDuplicateObjectCount, contentDuplicateBytes,
+                duplicateBundles, contentDuplicateBundles, serializedSize);
+        }
+
+        private static void AddDependencyKinds(List<ResourceViewData> resources)
+        {
+            var resourceMap = resources.ToDictionary(resource => resource.AssetPath,
+                StringComparer.OrdinalIgnoreCase);
+            var directPaths = resources.Where(resource => resource.IsDirect)
+                .Select(resource => resource.AssetPath)
+                .ToArray();
+
+            foreach (var directPath in directPaths)
+            {
+                var dependencies = AssetDatabase.GetDependencies(directPath, true);
+                foreach (var dependency in dependencies ?? Array.Empty<string>())
+                {
+                    var dependencyPath = NormalizeAssetPath(dependency);
+                    if (string.IsNullOrWhiteSpace(dependencyPath) ||
+                        string.Equals(dependencyPath, directPath, StringComparison.OrdinalIgnoreCase) ||
+                        IsGeneratedAssetPath(dependencyPath)) continue;
+
+                    if (!resourceMap.TryGetValue(dependencyPath, out var resource))
+                    {
+                        resource = CreateResourceViewData(dependencyPath, ResourceDisplayKind.Indirect,
+                            false, new[] { directPath });
+                        resourceMap.Add(dependencyPath, resource);
+                        resources.Add(resource);
+                    }
+                    else
+                    {
+                        resource.AddKind(ResourceDisplayKind.Indirect);
+                        resource.AddReferencingFile(directPath);
+                    }
+                }
+            }
+        }
+
+        private static bool IsGeneratedAssetPath(string path)
+        {
+            return path != null &&
+                   (path.StartsWith("temp:/", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("archive:/", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("library:/", StringComparison.OrdinalIgnoreCase));
         }
 
         private static ResourceCategory GetResourceCategory(string assetPath)
@@ -648,12 +778,21 @@ namespace EasyFramework.Editor
             {
                 var resourceLayouts = bundleLayout.resources ?? Array.Empty<AssetBundleBuildLayoutResource>();
                 var resources = resourceLayouts
-                    .Where(resource => !string.IsNullOrWhiteSpace(resource.assetPath))
+                    .Where(resource => !string.IsNullOrWhiteSpace(resource.assetPath) &&
+                                       !IsGeneratedAssetPath(resource.assetPath))
                     .Select(resource => CreateResourceViewData(
-                        NormalizeAssetPath(resource.assetPath), resource.isDirect, resource.isDuplicate,
-                        resource.referencingFiles ?? Array.Empty<string>()))
-                    .ToArray();
-                var bundle = new BundleViewData(bundleLayout.name ?? "<未命名 AB>", resources);
+                        NormalizeAssetPath(resource.assetPath),
+                        resource.isDirect
+                            ? ResourceDisplayKind.Direct | ResourceDisplayKind.Written
+                            : ResourceDisplayKind.Written,
+                        resource.isDuplicate,
+                        resource.referencingFiles ?? Array.Empty<string>(), resource.duplicateObjectCount,
+                        resource.duplicateObjectBytes, resource.isContentDuplicate,
+                        resource.contentDuplicateObjectCount, resource.contentDuplicateBytes,
+                        resource.duplicateBundles, resource.contentDuplicateBundles, resource.serializedSize))
+                    .ToList();
+                AddDependencyKinds(resources);
+                var bundle = new BundleViewData(bundleLayout.name ?? "<未命名 AB>", resources.ToArray());
                 _bundles.Add(bundle);
 
                 foreach (var resource in resources)
@@ -661,6 +800,8 @@ namespace EasyFramework.Editor
                     RegisterResource(resource, bundle.Name);
                     if (resource.IsDuplicateInLayout)
                         AddBundleReference(resource.AssetPath, bundle.Name);
+                    if (resource.IsContentDuplicate)
+                        AddContentBundleReferences(resource.AssetPath, resource.ContentDuplicateBundles);
                 }
             }
         }
@@ -698,6 +839,19 @@ namespace EasyFramework.Editor
 
             if (!bundles.Contains(bundleName, StringComparer.OrdinalIgnoreCase))
                 bundles.Add(bundleName);
+        }
+
+        private void AddContentBundleReferences(string assetPath, IEnumerable<string> bundleNames)
+        {
+            if (!_contentResourceBundles.TryGetValue(assetPath, out var bundles))
+            {
+                bundles = new List<string>();
+                _contentResourceBundles.Add(assetPath, bundles);
+            }
+
+            foreach (var bundleName in bundleNames ?? Array.Empty<string>())
+                if (!bundles.Contains(bundleName, StringComparer.OrdinalIgnoreCase))
+                    bundles.Add(bundleName);
         }
 
         private void AnalyzeCurrentSettings()
@@ -773,6 +927,15 @@ namespace EasyFramework.Editor
             return path?.Replace('\\', '/');
         }
 
+        [Flags]
+        private enum ResourceDisplayKind
+        {
+            None = 0,
+            Direct = 1,
+            Indirect = 2,
+            Written = 4
+        }
+
         private enum ResourceCategory
         {
             Other,
@@ -795,21 +958,56 @@ namespace EasyFramework.Editor
         private sealed class ResourceViewData
         {
             public readonly string AssetPath;
-            public readonly bool IsDirect;
+            public ResourceDisplayKind DisplayKind;
             public readonly bool IsDuplicateInLayout;
-            public readonly string[] ReferencingFiles;
+            public string[] ReferencingFiles;
             public readonly ResourceCategory Category;
+            public readonly int DuplicateObjectCount;
+            public readonly long DuplicateObjectBytes;
+            public readonly bool IsContentDuplicate;
+            public readonly int ContentDuplicateObjectCount;
+            public readonly long ContentDuplicateBytes;
+            public readonly string[] DuplicateBundles;
+            public readonly string[] ContentDuplicateBundles;
+            public readonly long SerializedSize;
+            public bool IsDirect => (DisplayKind & ResourceDisplayKind.Direct) != 0;
+            public bool IsIndirect => (DisplayKind & ResourceDisplayKind.Indirect) != 0;
+            public bool IsWritten => (DisplayKind & ResourceDisplayKind.Written) != 0;
             public bool IsCode => Category == ResourceCategory.Code;
             public bool IsShader => Category == ResourceCategory.Shader;
 
-            public ResourceViewData(string assetPath, bool isDirect, bool isDuplicateInLayout,
-                string[] referencingFiles, ResourceCategory category)
+            public ResourceViewData(string assetPath, ResourceDisplayKind displayKind, bool isDuplicateInLayout,
+                string[] referencingFiles, ResourceCategory category, int duplicateObjectCount,
+                long duplicateObjectBytes, bool isContentDuplicate, int contentDuplicateObjectCount,
+                long contentDuplicateBytes, string[] duplicateBundles, string[] contentDuplicateBundles,
+                long serializedSize)
             {
                 AssetPath = assetPath;
-                IsDirect = isDirect;
+                DisplayKind = displayKind;
                 IsDuplicateInLayout = isDuplicateInLayout;
                 ReferencingFiles = referencingFiles ?? Array.Empty<string>();
                 Category = category;
+                DuplicateObjectCount = duplicateObjectCount;
+                DuplicateObjectBytes = duplicateObjectBytes;
+                IsContentDuplicate = isContentDuplicate;
+                ContentDuplicateObjectCount = contentDuplicateObjectCount;
+                ContentDuplicateBytes = contentDuplicateBytes;
+                DuplicateBundles = duplicateBundles ?? Array.Empty<string>();
+                ContentDuplicateBundles = contentDuplicateBundles ?? Array.Empty<string>();
+                SerializedSize = serializedSize;
+            }
+
+            public void AddKind(ResourceDisplayKind kind)
+            {
+                DisplayKind |= kind;
+            }
+
+            public void AddReferencingFile(string path)
+            {
+                if (string.IsNullOrWhiteSpace(path) || ReferencingFiles.Contains(path,
+                        StringComparer.OrdinalIgnoreCase)) return;
+
+                ReferencingFiles = ReferencingFiles.Concat(new[] { path }).ToArray();
             }
         }
     }

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using UnityEditor;
 using UnityEditor.Build.Content;
 using UnityEditor.Build.Pipeline;
@@ -14,11 +16,12 @@ namespace EasyFramework.Editor
     [Serializable]
     public sealed class AssetBundleBuildLayoutReport
     {
-        public int schemaVersion = 1;
+        public int schemaVersion = 2;
         public string buildTarget;
         public string generatedAt;
         public int buildOptions;
         public bool isSimulation;
+        public bool hasContentAnalysis;
         public AssetBundleBuildLayout[] bundles = Array.Empty<AssetBundleBuildLayout>();
     }
 
@@ -36,6 +39,14 @@ namespace EasyFramework.Editor
         public bool isDirect;
         public bool isDuplicate;
         public int duplicateObjectCount;
+        public long duplicateObjectBytes;
+        public bool isContentDuplicate;
+        public int contentDuplicateObjectCount;
+        public long contentDuplicateBytes;
+        public string[] duplicateBundles = Array.Empty<string>();
+        public string[] contentDuplicateBundles = Array.Empty<string>();
+        public string[] contentHashes = Array.Empty<string>();
+        public long serializedSize;
         public string[] objectIds = Array.Empty<string>();
         public string[] referencingFiles = Array.Empty<string>();
     }
@@ -45,6 +56,7 @@ namespace EasyFramework.Editor
         private readonly string _buildTarget;
         private readonly BuildAssetBundleOptions _buildOptions;
         private readonly bool _isSimulation;
+        private readonly bool _captureSerializedContent;
 
         [InjectContext(ContextUsage.In)]
         private IBundleBuildContent _buildContent;
@@ -55,15 +67,19 @@ namespace EasyFramework.Editor
         [InjectContext]
         private IBundleWriteData _writeData;
 
-        public int Version => 1;
+        [InjectContext]
+        private IBundleBuildResults _buildResults;
+
+        public int Version => 2;
         public AssetBundleBuildLayoutReport Report { get; private set; }
 
         public AssetBundleBuildLayoutCapture(string buildTarget, BuildAssetBundleOptions buildOptions,
-            bool isSimulation)
+            bool isSimulation, bool captureSerializedContent)
         {
             _buildTarget = buildTarget;
             _buildOptions = buildOptions;
             _isSimulation = isSimulation;
+            _captureSerializedContent = captureSerializedContent;
         }
 
         public ReturnCode Run()
@@ -114,7 +130,12 @@ namespace EasyFramework.Editor
                 }
             }
 
+            if (_captureSerializedContent)
+                CaptureSerializedObjects(bundles);
+
             MarkDuplicateObjects(bundles.Values);
+            if (_captureSerializedContent)
+                MarkDuplicateContent(bundles.Values);
 
             Report = new AssetBundleBuildLayoutReport
             {
@@ -122,6 +143,7 @@ namespace EasyFramework.Editor
                 generatedAt = DateTime.UtcNow.ToString("o"),
                 buildOptions = (int)_buildOptions,
                 isSimulation = _isSimulation,
+                hasContentAnalysis = _captureSerializedContent && _buildResults?.WriteResults?.Count > 0,
                 bundles = bundles.Values
                     .OrderBy(bundle => bundle.Name, StringComparer.OrdinalIgnoreCase)
                     .Select(bundle => new AssetBundleBuildLayout
@@ -135,6 +157,21 @@ namespace EasyFramework.Editor
                                 isDirect = resource.IsDirect,
                                 isDuplicate = resource.DuplicateObjectCount > 0,
                                 duplicateObjectCount = resource.DuplicateObjectCount,
+                                duplicateObjectBytes = resource.DuplicateObjectBytes,
+                                isContentDuplicate = resource.ContentDuplicateObjectCount > 0,
+                                contentDuplicateObjectCount = resource.ContentDuplicateObjectCount,
+                                contentDuplicateBytes = resource.ContentDuplicateBytes,
+                                duplicateBundles = resource.DuplicateBundles
+                                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray(),
+                                contentDuplicateBundles = resource.ContentDuplicateBundles
+                                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray(),
+                                contentHashes = resource.Objects.Values
+                                    .Where(data => !string.IsNullOrEmpty(data.ContentHash))
+                                    .Select(data => data.ContentHash)
+                                    .Distinct(StringComparer.Ordinal)
+                                    .OrderBy(hash => hash, StringComparer.Ordinal)
+                                    .ToArray(),
+                                serializedSize = resource.Objects.Values.Sum(data => data.SerializedSize),
                                 objectIds = resource.ObjectIds.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
                                 referencingFiles = resource.ReferencingFiles
                                     .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
@@ -173,9 +210,139 @@ namespace EasyFramework.Editor
             {
                 foreach (var resource in bundle.Resources.Values)
                 {
-                    resource.DuplicateObjectCount = resource.ObjectIds.Count(objectId =>
-                        objectBundles[GetResourceObjectKey(resource.AssetPath, objectId)].Count > 1);
+                    foreach (var objectId in resource.ObjectIds)
+                    {
+                        var bundleNames = objectBundles[GetResourceObjectKey(resource.AssetPath, objectId)];
+                        if (bundleNames.Count <= 1) continue;
+
+                        resource.DuplicateObjectCount++;
+                        resource.DuplicateBundles.UnionWith(bundleNames);
+                        if (resource.Objects.TryGetValue(objectId, out var objectData))
+                        {
+                            objectData.IsDuplicateObject = true;
+                            objectData.DuplicateBundles.UnionWith(bundleNames);
+                            var canonicalBundle = bundleNames.OrderBy(name => name,
+                                StringComparer.OrdinalIgnoreCase).First();
+                            if (!string.Equals(bundle.Name, canonicalBundle, StringComparison.OrdinalIgnoreCase))
+                                resource.DuplicateObjectBytes += objectData.SerializedSize;
+                        }
+                    }
                 }
+            }
+        }
+
+        private void CaptureSerializedObjects(Dictionary<string, BundleData> bundles)
+        {
+            if (_buildResults?.WriteResults == null) return;
+
+            foreach (var pair in _buildResults.WriteResults)
+            {
+                if (!_writeData.FileToBundle.TryGetValue(pair.Key, out var bundleName) ||
+                    !bundles.TryGetValue(bundleName, out var bundle)) continue;
+
+                var serializedObjects = pair.Value.serializedObjects;
+                if (serializedObjects == null) continue;
+
+                foreach (var serializedObject in serializedObjects)
+                {
+                    var objectIdentifier = serializedObject.serializedObject;
+                    var assetPath = GetAssetPath(objectIdentifier);
+                    if (string.IsNullOrWhiteSpace(assetPath)) continue;
+
+                    var objectId = GetObjectKey(objectIdentifier);
+                    var resource = GetOrAddResource(bundle, assetPath);
+                    resource.ObjectIds.Add(objectId);
+                    if (bundle.DirectPaths.Contains(assetPath)) resource.IsDirect = true;
+
+                    var objectData = resource.GetOrAddObject(objectId);
+                    objectData.SerializedSize = GetSerializedSize(serializedObject);
+                    objectData.ContentHash = CalculateContentHash(serializedObject);
+                }
+            }
+        }
+
+        private static void MarkDuplicateContent(IEnumerable<BundleData> bundles)
+        {
+            var contentGroups = new Dictionary<string, List<ObjectOccurrence>>(StringComparer.Ordinal);
+            foreach (var bundle in bundles)
+            {
+                foreach (var resource in bundle.Resources.Values)
+                {
+                    foreach (var pair in resource.Objects)
+                    {
+                        if (string.IsNullOrEmpty(pair.Value.ContentHash) || pair.Value.SerializedSize <= 0) continue;
+                        if (!contentGroups.TryGetValue(pair.Value.ContentHash, out var occurrences))
+                        {
+                            occurrences = new List<ObjectOccurrence>();
+                            contentGroups.Add(pair.Value.ContentHash, occurrences);
+                        }
+
+                        occurrences.Add(new ObjectOccurrence(bundle.Name, resource, pair.Value));
+                    }
+                }
+            }
+
+            foreach (var occurrences in contentGroups.Values)
+            {
+                var bundleNames = occurrences.Select(item => item.BundleName)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+                var objectIds = occurrences.Select(item => item.ObjectData.ObjectId)
+                    .Distinct(StringComparer.Ordinal).ToArray();
+                if (bundleNames.Length <= 1 || objectIds.Length <= 1) continue;
+
+                var ordered = occurrences.OrderBy(item => item.BundleName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(item => item.Resource.AssetPath, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(item => item.ObjectData.ObjectId, StringComparer.Ordinal)
+                    .ToList();
+                for (var index = 0; index < ordered.Count; index++)
+                {
+                    var occurrence = ordered[index];
+                    occurrence.Resource.ContentDuplicateObjectCount++;
+                    occurrence.Resource.ContentDuplicateBundles.UnionWith(bundleNames);
+                    occurrence.ObjectData.IsContentDuplicate = true;
+                    occurrence.ObjectData.ContentDuplicateBundles.UnionWith(bundleNames);
+                    if (index > 0) occurrence.Resource.ContentDuplicateBytes += occurrence.ObjectData.SerializedSize;
+                }
+            }
+        }
+
+        private static long GetSerializedSize(ObjectSerializedInfo serializedObject)
+        {
+            return (long)serializedObject.header.size + (long)serializedObject.rawData.size;
+        }
+
+        private static string CalculateContentHash(ObjectSerializedInfo serializedObject)
+        {
+            if (serializedObject.header.size == 0 && serializedObject.rawData.size == 0) return null;
+
+            using (var hash = SHA256.Create())
+            {
+                if (!AppendLocation(hash, serializedObject.header) ||
+                    !AppendLocation(hash, serializedObject.rawData)) return null;
+                hash.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+                return BitConverter.ToString(hash.Hash).Replace("-", string.Empty).ToLowerInvariant();
+            }
+        }
+
+        private static bool AppendLocation(HashAlgorithm hash, SerializedLocation location)
+        {
+            if (location.size == 0) return true;
+            if (string.IsNullOrEmpty(location.fileName) || !File.Exists(location.fileName)) return false;
+
+            using (var stream = File.OpenRead(location.fileName))
+            {
+                stream.Position = (long)location.offset;
+                var buffer = new byte[64 * 1024];
+                long remaining = (long)location.size;
+                while (remaining > 0)
+                {
+                    var read = stream.Read(buffer, 0, (int)Math.Min(buffer.Length, remaining));
+                    if (read <= 0) break;
+                    hash.TransformBlock(buffer, 0, read, buffer, 0);
+                    remaining -= read;
+                }
+
+                return remaining == 0;
             }
         }
 
@@ -209,7 +376,18 @@ namespace EasyFramework.Editor
         private static string GetAssetPath(ObjectIdentifier objectIdentifier)
         {
             var path = AssetDatabase.GUIDToAssetPath(objectIdentifier.guid.ToString());
-            return NormalizeAssetPath(string.IsNullOrWhiteSpace(path) ? objectIdentifier.filePath : path);
+            var normalizedPath = NormalizeAssetPath(string.IsNullOrWhiteSpace(path)
+                ? objectIdentifier.filePath
+                : path);
+            return IsGeneratedAssetPath(normalizedPath) ? null : normalizedPath;
+        }
+
+        private static bool IsGeneratedAssetPath(string path)
+        {
+            return path != null &&
+                   (path.StartsWith("temp:/", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("archive:/", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("library:/", StringComparison.OrdinalIgnoreCase));
         }
 
         private static string GetObjectKey(ObjectIdentifier objectIdentifier)
@@ -243,12 +421,65 @@ namespace EasyFramework.Editor
             public readonly HashSet<string> ObjectIds = new HashSet<string>(StringComparer.Ordinal);
             public readonly HashSet<string> ReferencingFiles =
                 new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            public readonly Dictionary<string, SerializedObjectData> Objects =
+                new Dictionary<string, SerializedObjectData>(StringComparer.Ordinal);
+            public readonly HashSet<string> DuplicateBundles =
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            public readonly HashSet<string> ContentDuplicateBundles =
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             public int DuplicateObjectCount;
+            public long DuplicateObjectBytes;
+            public int ContentDuplicateObjectCount;
+            public long ContentDuplicateBytes;
             public bool IsDirect;
 
             public AssetBundleBuildLayoutResourceData(string assetPath)
             {
                 AssetPath = assetPath;
+            }
+
+            public SerializedObjectData GetOrAddObject(string objectId)
+            {
+                if (!Objects.TryGetValue(objectId, out var objectData))
+                {
+                    objectData = new SerializedObjectData(objectId);
+                    Objects.Add(objectId, objectData);
+                }
+
+                return objectData;
+            }
+        }
+
+        private sealed class SerializedObjectData
+        {
+            public readonly string ObjectId;
+            public string ContentHash;
+            public long SerializedSize;
+            public bool IsDuplicateObject;
+            public bool IsContentDuplicate;
+            public readonly HashSet<string> DuplicateBundles =
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            public readonly HashSet<string> ContentDuplicateBundles =
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            public SerializedObjectData(string objectId)
+            {
+                ObjectId = objectId;
+            }
+        }
+
+        private sealed class ObjectOccurrence
+        {
+            public readonly string BundleName;
+            public readonly AssetBundleBuildLayoutResourceData Resource;
+            public readonly SerializedObjectData ObjectData;
+
+            public ObjectOccurrence(string bundleName, AssetBundleBuildLayoutResourceData resource,
+                SerializedObjectData objectData)
+            {
+                BundleName = bundleName;
+                Resource = resource;
+                ObjectData = objectData;
             }
         }
     }

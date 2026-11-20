@@ -10,7 +10,7 @@
 | `EasyFramework/Tools/AssetBundleBuilder - BuildManifestOnly` | Dry Run 构建并生成可供编辑器查询的 Manifest 资产 |
 | `EasyFramework/Tools/AssetBundleBuilder - CheckVerifyValidity` | 检查同一资源是否被多个 Bundle 重复收集 |
 
-`AssetBundleWindow` 提供构建列表、最近正式构建和模拟分析三个页签。资源详情分为直接资源和间接资源两组，引用数列统计包含该资源的 AB 数量，悬浮资源路径可查看所在 AB 列表；顶部开关为“重复资源”“代码”和“Shader”，代码与 Shader 默认不计入列表及统计，打开对应开关后纳入显示。AB 名称后的数字只在直接资源数大于 1 时显示，`!n` 表示间接依赖数。最近正式构建和模拟分析显示 SBP 捕获的实际布局。模拟分析开始前会检测未保存的项目资源，并在用户确认后保存再运行；Shader 和 ComputeShader 导入对象的 Unity dirty 状态不作为未保存资源拦截。分析调用 `AssetBundleBuilderUtility.AnalyzeBySettings()`，使用当前配置和活动构建平台运行 SBP 到 `PostPackingCallback` 之后，在序列化写入前捕获最终布局并停止；不会写 AssetBundle 文件。分析会编译 Player 脚本，并把脚本输出、临时输出和构建日志放入隔离目录后清理；SBP/Unity 构建缓存仍可能更新。
+`AssetBundleWindow` 提供构建列表、最近正式构建和模拟分析三个页签。构建列表显示直接资源和间接资源；模拟分析额外显示“写入资源”，其中间接资源统一来自 `AssetDatabase.GetDependencies()`，写入资源来自 SBP 实际写入对象，因此同一路径可以同时出现在间接资源和写入资源列表。引用数列统计包含该资源的 AB 数量，悬浮资源路径可查看所在 AB 列表；SBP 生成的 `temp:/`、`archive:/` 和 `library:/` 内部对象不计入资源列表或统计。顶部开关为“重复资源”“代码”和“Shader”，AB 列表顶部另有“直接资源数>1”筛选，代码与 Shader 默认不计入列表及统计，打开对应开关后纳入显示。重复统计分为“同对象重复”和“内容重复”：前者要求相同 `ObjectIdentifier` 实际写入多个 AB，后者要求不同对象的临时序列化数据哈希相同，并给出未压缩序列化数据的重复字节估算。构建列表只显示直接资源的重复配置；间接资源仍展示但不作为重复证据，直接重复资源和对应 AB 会标色提醒。最近正式构建显示对象级结果，内容级结果需要报告包含内容分析；模拟分析会生成内容分析。AB 名称只在直接资源数大于 1 时显示 `(n)`，不显示间接资源数量。模拟分析开始前会检测未保存的项目资源，并在用户确认后保存再运行；Shader 和 ComputeShader 导入对象的 Unity dirty 状态不作为未保存资源拦截。分析调用 `AssetBundleBuilderUtility.AnalyzeBySettings()`，模拟分析会写入隔离的临时序列化文件，在序列化写入后捕获对象数据，然后在归档 AssetBundle 前停止；不会写正式 AssetBundle 文件。分析会编译 Player 脚本，并把脚本输出、临时输出和构建日志放入隔离目录后清理；SBP/Unity 构建缓存仍可能更新。
 
 ## 配置入口
 

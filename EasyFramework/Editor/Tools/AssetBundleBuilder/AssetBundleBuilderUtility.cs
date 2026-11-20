@@ -14,6 +14,7 @@ using UnityEditor.Build.Content;
 using UnityEditor.Build.Pipeline;
 using UnityEditor.Build.Pipeline.Interfaces;
 using UnityEditor.Build.Pipeline.Tasks;
+using UnityEditor.Build.Pipeline.Utilities;
 using UnityEngine;
 using UnityEngine.Build.Pipeline;
 
@@ -185,22 +186,26 @@ namespace EasyFramework.Editor
                 parameters.ScriptOutputFolder = Path.Combine(outputPath, "ScriptAssemblies");
             }
 
-            var captureTask = new AssetBundleBuildLayoutCapture(target.ToString(), options, stopAfterLayout);
+            var captureSerializedContent = isolateTemporaryOutput;
+            var captureTask = new AssetBundleBuildLayoutCapture(target.ToString(), options, stopAfterLayout,
+                captureSerializedContent);
             var tasks = DefaultBuildTasks.Create(DefaultBuildTasks.Preset.AssetBundleCompatible);
-            var packingCallbackIndex = -1;
+            var captureTaskIndex = -1;
             for (var index = 0; index < tasks.Count; index++)
             {
-                if (tasks[index] is PostPackingCallback)
+                if ((captureSerializedContent && tasks[index] is WriteSerializedFiles) ||
+                    (!captureSerializedContent && tasks[index] is PostPackingCallback))
                 {
-                    packingCallbackIndex = index;
+                    captureTaskIndex = index + 1;
                     break;
                 }
             }
 
-            if (packingCallbackIndex < 0)
-                throw new InvalidOperationException("SBP AssetBundle task list does not contain PostPackingCallback.");
+            if (captureTaskIndex < 0)
+                throw new InvalidOperationException(captureSerializedContent
+                    ? "SBP AssetBundle task list does not contain WriteSerializedFiles."
+                    : "SBP AssetBundle task list does not contain PostPackingCallback.");
 
-            var captureTaskIndex = packingCallbackIndex + 1;
             tasks.Insert(captureTaskIndex, captureTask);
             if (stopAfterLayout)
             {
@@ -209,7 +214,20 @@ namespace EasyFramework.Editor
             }
 
             var content = new BundleBuildContent(builds);
-            var exitCode = ContentPipeline.BuildAssetBundles(parameters, content, out IBundleBuildResults results, tasks);
+            var previousSlimWriteResults = ScriptableBuildPipeline.slimWriteResults;
+            if (captureSerializedContent) ScriptableBuildPipeline.slimWriteResults = false;
+
+            ReturnCode exitCode;
+            IBundleBuildResults results;
+            try
+            {
+                exitCode = ContentPipeline.BuildAssetBundles(parameters, content, out results, tasks);
+            }
+            finally
+            {
+                if (captureSerializedContent)
+                    ScriptableBuildPipeline.slimWriteResults = previousSlimWriteResults;
+            }
             if (exitCode < ReturnCode.Success)
                 throw new BuildFailedException($"AssetBundle build failed: {exitCode}");
 
