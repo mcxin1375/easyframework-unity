@@ -27,7 +27,7 @@ https://github.com/mcxin1375/easyframework-unity.git
 
 在 Project Settings > EasyFramework Tools > AssetBundleBuilder 配置 Build Directories，默认 Assets/Res_DLC。将 Cube.prefab 保存到该目录，再由业务显式调用示例中的 `await ResourceExample.RunAsync("Cube", parent)`。
 
-普通文件单独打包，以 .ab 结尾的目录整体打包；跳过 Editor、.meta 和配置的过滤项。多个 IAssetBundleBuilderSettings 自动合并配置。业务传入资源名 Cube，无须拼接 .ab、哈希名或下载路径。
+普通文件单独打包，以 .ab 结尾的目录整体打包；跳过 Editor、.meta 和配置的过滤项。多个 IAssetBundleBuilderSettings 自动合并配置。业务传入资源名 Cube，无须拼接 .ab、哈希名或下载路径；合包资源使用 `F.ResLoader.LoadAsset<T>(abName, assetName)` 精确加载。
 
 Editor 默认 resLoaderEditorMode = true，使用编辑器桥接，可不打包运行资源示例。Player 前必须构建资源并准备 DLC。
 

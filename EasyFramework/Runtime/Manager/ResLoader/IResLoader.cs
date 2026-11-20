@@ -16,8 +16,10 @@ namespace EasyFramework
         string[] GetAllDependencies(string abName);
 
         T LoadAsset<T>(string abName, IResRequest request = null) where T : UnityEngine.Object;
+        T LoadAsset<T>(string abName, string assetName, IResRequest request = null) where T : UnityEngine.Object;
         T[] LoadAllAssets<T>(string abName, IResRequest request = null) where T : UnityEngine.Object;
         ETask<T> LoadAssetAsync<T>(string abName, IResRequest request = null) where T : UnityEngine.Object;
+        ETask<T> LoadAssetAsync<T>(string abName, string assetName, IResRequest request = null) where T : UnityEngine.Object;
         ETask<T[]> LoadAllAssetsAsync<T>(string abName, IResRequest request = null) where T : UnityEngine.Object;
         
         void LoadScene(string sceneNam, LoadSceneMode mode = LoadSceneMode.Single, IResRequest request = null);

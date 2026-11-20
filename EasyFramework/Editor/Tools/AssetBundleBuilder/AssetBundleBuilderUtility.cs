@@ -489,29 +489,9 @@ namespace EasyFramework.Editor
                 }
             }
 
-            List<string> addressableNameList = new List<string>();
-            // bool repeatAddressableName = false;
-            for (int i = 0; i < assetNameList.Count; i++)
-            {
-                string addressableName = Path.GetFileNameWithoutExtension(assetNameList[i]);
-                // if (addressableNameList.Contains(addressableName))
-                // {
-                //     repeatAddressableName = true;
-                // }
-                addressableNameList.Add(addressableName);
-            }
-
-            // if (repeatAddressableName)
-            // {
-            //     Log.Error($"---------------------------- Create AssetBundle {abName} AssetNames Repeated!");
-            //     foreach (string s in fileList)
-            //     {
-            //         Log.Error(Path.GetFileNameWithoutExtension(s), s);
-            //     }
-            //     Log.Error($"----------------------------");
-            // }
-
-            return CreateAssetBundleBuild(abName, assetNameList.ToArray(), addressableNameList.ToArray());
+            var assetNames = assetNameList.ToArray();
+            var addressableNames = assetNames.Select(Path.GetFileNameWithoutExtension).ToArray();
+            return CreateAssetBundleBuild(abName, assetNames, addressableNames);
         }
 
         public static AssetBundleBuild CreateAssetBundleBuild(string abName, string[] assetNames, string[] addressableNames)
@@ -527,6 +507,8 @@ namespace EasyFramework.Editor
                 abName = $"{abName}{EasyFrameworkSettings.Instance.abSuffix}";
             }
 
+            ValidateAddressableNames(abName, assetNames, addressableNames);
+
             return new AssetBundleBuild
             {
                 assetBundleName = abName,
@@ -539,33 +521,37 @@ namespace EasyFramework.Editor
         public static AssetBundleBuild Merge(AssetBundleBuild ab, AssetBundleBuild ab2)
         {
             List<string> assetNameList = new List<string>();
-            List<string> addressableNameList = new List<string>();
             
             foreach (string s in ab.assetNames) if (!assetNameList.Contains(s)) assetNameList.Add(s);
             foreach (string s in ab2.assetNames) if (!assetNameList.Contains(s)) assetNameList.Add(s);
-            
-            for (int i = 0; i < assetNameList.Count; i++)
-            {
-                string addressableName = Path.GetFileNameWithoutExtension(assetNameList[i]);
-                addressableNameList.Add(addressableName);
-            }
-            
-            // List<string> repeatNameList = assetNameList.GroupBy(x => x)
-            //     .Where(x => x.Count() > 1)
-            //     .Select(x => x.Key).ToList();
-            // if (repeatNameList.Count > 0)
-            // {
-            //     Log.Error($"---------------------------- Merge AssetBundle {ab.assetBundleName} AssetNames Repeated!");
-            //     foreach (string s in ab.assetNames)
-            //     {
-            //         Log.Error(Path.GetFileNameWithoutExtension(s), s);
-            //     }
-            //     Log.Error($"----------------------------");
-            // }
 
             ab.assetNames = assetNameList.ToArray();
-            ab.addressableNames = addressableNameList.ToArray();
+            ab.addressableNames = ab.assetNames.Select(Path.GetFileNameWithoutExtension).ToArray();
+            ValidateAddressableNames(ab.assetBundleName, ab.assetNames, ab.addressableNames);
             return ab;
+        }
+
+        private static void ValidateAddressableNames(string abName, string[] assetNames, string[] addressableNames)
+        {
+            if (assetNames == null || addressableNames == null) return;
+            if (assetNames.Length != addressableNames.Length)
+                throw new BuildFailedException($"AssetBundle [{abName}] assetNames and addressableNames count mismatch.");
+
+            var pathDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < addressableNames.Length; i++)
+            {
+                var addressableName = addressableNames[i];
+                if (string.IsNullOrWhiteSpace(addressableName))
+                    throw new BuildFailedException($"AssetBundle [{abName}] contains an empty addressable name.");
+                if (pathDict.TryGetValue(addressableName, out var previousPath))
+                {
+                    throw new BuildFailedException(
+                        $"AssetBundle [{abName}] contains duplicate addressable name [{addressableName}]: " +
+                        $"{previousPath} and {assetNames[i]}");
+                }
+
+                pathDict.Add(addressableName, assetNames[i]);
+            }
         }
     }
 }

@@ -17,10 +17,15 @@ namespace EasyFramework
         
         public static GameObject CreateObj(this IResLoader resLoader, string resName, Transform parent = null, IResRequest request = null)
         {
-            var go = resLoader.LoadAsset<GameObject>(resName, request);
+            return CreateObj(resLoader, resName, resName, parent, request);
+        }
+
+        public static GameObject CreateObj(this IResLoader resLoader, string abName, string assetName, Transform parent = null, IResRequest request = null)
+        {
+            var go = resLoader.LoadAsset<GameObject>(abName, assetName, request);
             if (go == null)
             {
-                FDebug.LogError($"CreateObj failed: {resName}");
+                FDebug.LogError($"CreateObj failed: {GetAssetKey(abName, assetName)}");
                 return null;
             }
             
@@ -38,10 +43,15 @@ namespace EasyFramework
         
         public static async ETask<GameObject> CreateObjAsync(this IResLoader resLoader, string resName, Transform parent = null, IResRequest request = null)
         {
-            var go = await resLoader.LoadAssetAsync<GameObject>(resName, request);
+            return await CreateObjAsync(resLoader, resName, resName, parent, request);
+        }
+
+        public static async ETask<GameObject> CreateObjAsync(this IResLoader resLoader, string abName, string assetName, Transform parent = null, IResRequest request = null)
+        {
+            var go = await resLoader.LoadAssetAsync<GameObject>(abName, assetName, request);
             if (go == null)
             {
-                FDebug.LogError($"CreateObjAsync failed: {resName}");
+                FDebug.LogError($"CreateObjAsync failed: {GetAssetKey(abName, assetName)}");
                 return null;
             }
             
@@ -59,12 +69,17 @@ namespace EasyFramework
         
         public static async ETask<GameObject[]> CreateObjAsync(this IResLoader resLoader, string resName, int count, Transform parent = null, IResRequest request = null)
         {
+            return await CreateObjAsync(resLoader, resName, resName, count, parent, request);
+        }
+
+        public static async ETask<GameObject[]> CreateObjAsync(this IResLoader resLoader, string abName, string assetName, int count, Transform parent = null, IResRequest request = null)
+        {
             if (count < 0) throw new System.ArgumentOutOfRangeException(nameof(count));
             if (count == 0) return System.Array.Empty<GameObject>();
-            var go = await resLoader.LoadAssetAsync<GameObject>(resName, request);
+            var go = await resLoader.LoadAssetAsync<GameObject>(abName, assetName, request);
             if (go == null)
             {
-                FDebug.LogError($"CreateObjAsync failed: {resName}");
+                FDebug.LogError($"CreateObjAsync failed: {GetAssetKey(abName, assetName)}");
                 return null;
             }
             
@@ -101,5 +116,7 @@ namespace EasyFramework
 #endif
             
         }
+
+        private static string GetAssetKey(string abName, string assetName) => abName == assetName ? abName : $"{abName}/{assetName}";
     }
 }

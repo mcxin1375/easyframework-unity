@@ -662,7 +662,13 @@ namespace EasyFramework.Tests
                 Loads++;
                 return Template as T;
             }
+            public ETask<T> LoadAssetAsync<T>(string abName, string assetName, IResRequest request = null) where T : Object
+            {
+                Loads++;
+                return ETask.FromResult(Template as T);
+            }
             public T LoadAsset<T>(string name, IResRequest request = null) where T : Object => throw new NotSupportedException();
+            public T LoadAsset<T>(string abName, string assetName, IResRequest request = null) where T : Object => throw new NotSupportedException();
             public T[] LoadAllAssets<T>(string name, IResRequest request = null) where T : Object => throw new NotSupportedException();
             public ETask<T[]> LoadAllAssetsAsync<T>(string name, IResRequest request = null) where T : Object => throw new NotSupportedException();
             public AssetBundle Load(string name, IResRequest request = null) => throw new NotSupportedException();

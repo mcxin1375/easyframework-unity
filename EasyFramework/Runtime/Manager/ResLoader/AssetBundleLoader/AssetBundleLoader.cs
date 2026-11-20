@@ -244,8 +244,12 @@ namespace EasyFramework
 
         public T LoadAsset<T>(string abName, IResRequest request = null) where T : Object
         {
+            return LoadAsset<T>(abName, abName, request);
+        }
+        public T LoadAsset<T>(string abName, string assetName, IResRequest request = null) where T : Object
+        {
             var ab = Load(abName, request);
-            return ab?.LoadAsset<T>(abName);
+            return ab?.LoadAsset<T>(assetName);
         }
         public T[] LoadAllAssets<T>(string abName, IResRequest request = null) where T : Object
         {
@@ -254,9 +258,13 @@ namespace EasyFramework
         }
         public async ETask<T> LoadAssetAsync<T>(string abName, IResRequest request = null) where T : Object
         {
+            return await LoadAssetAsync<T>(abName, abName, request);
+        }
+        public async ETask<T> LoadAssetAsync<T>(string abName, string assetName, IResRequest request = null) where T : Object
+        {
             var ab = await LoadAsync(abName, request);
             if (ab == null) return null;
-            return await ab.LoadAssetAsyncEx<T>(abName)!;
+            return await ab.LoadAssetAsyncEx<T>(assetName)!;
         }
         public async ETask<T[]> LoadAllAssetsAsync<T>(string abName, IResRequest request = null) where T : Object
         {

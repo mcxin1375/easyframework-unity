@@ -16,15 +16,16 @@ await ETask.DelaySeconds(1);
 
 实际分配取决于等待的操作、续体、闭包及业务代码，并非所有调用都保证 0 GC；池化任务应由调用方消费一次。[了解 ETask](Documentation/Runtime/ETask.md)
 
-### ResLoader · 加载资源只需资源名
+### ResLoader · 按资源名加载
 
 初始化框架并配置资源后，传入资源名即可加载并实例化：
 
 ```csharp
 var cube = await F.ResLoader.CreateObjAsync("Cube");
+var texture = await F.ResLoader.LoadAssetAsync<Texture2D>("Textures", "Texture1");
 ```
 
-业务无需拼接资源路径、Bundle 名或哈希文件名。Player 使用构建清单定位资源并处理依赖；Editor 默认通过资源桥接加载，可不打包调试。长期持有资源时，可通过 `IResRequest` 管理持有与释放。[了解资源管理](Documentation/Runtime/ResLoader.md)
+业务无需拼接资源路径或哈希文件名；合包资源使用 `abName` 和 `assetName` 精确加载。Player 使用构建清单定位 Bundle 并处理依赖；Editor 默认通过资源桥接加载，可不打包调试。长期持有资源时，可通过 `IResRequest` 管理持有与释放。[了解资源管理](Documentation/Runtime/ResLoader.md)
 
 ### PlayerBuilder · 一键构建发布
 

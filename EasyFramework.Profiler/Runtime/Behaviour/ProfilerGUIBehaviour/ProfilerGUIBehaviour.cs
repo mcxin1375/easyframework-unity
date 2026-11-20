@@ -14,7 +14,10 @@ namespace EasyFramework.Profiler
     public class ProfilerGUIBehaviour : MonoBehaviour
     {
         public readonly FPSEx FPSEx = new();
-        public readonly ProfilerRecorderEx ProfilerRecorderEx = new();
+        // ProfilerRecorderEx touches Unity runtime APIs in its constructor. MonoBehaviour
+        // field initializers run from the native-backed constructor, where those APIs are
+        // not allowed (notably Debug.isDebugBuild in a non-editor player).
+        public ProfilerRecorderEx ProfilerRecorderEx;
         public readonly ProfilerDeviceEx ProfilerDeviceEx = new();
         
         private GUIStyle _detailsStyle;
@@ -38,6 +41,8 @@ namespace EasyFramework.Profiler
         
         void Awake()
         {
+            ProfilerRecorderEx = new ProfilerRecorderEx();
+
             if (_bgTexture == null)
             {
                 _bgTexture = new Texture2D(1, 1);
@@ -80,7 +85,7 @@ namespace EasyFramework.Profiler
         private void OnDestroy()
         {
             SetInputBlocked(false);
-            ProfilerRecorderEx.Dispose();
+            ProfilerRecorderEx?.Dispose();
         }
 
         void Update()

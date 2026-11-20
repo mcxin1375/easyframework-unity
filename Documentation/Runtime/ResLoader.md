@@ -10,13 +10,20 @@ AssetBundleLoader 初始化直接清空并填充内部 _abDict，不额外分配
 | --- | --- |
 | `Load` / `LoadAsync` | 同步或异步加载 Bundle，可传 IResRequest |
 | `LoadAsset<T>` / `LoadAssetAsync<T>` | 加载单个对象 |
+| `LoadAsset<T>(abName, assetName)` / `LoadAssetAsync<T>(abName, assetName)` | 从指定 Bundle 精确加载对象 |
 | `LoadAllAssets<T>` / `LoadAllAssetsAsync<T>` | 加载包内全部指定类型对象 |
 | `CreateObj` / `CreateObjAsync` | IResLoaderEx 扩展：加载 GameObject 并实例化 |
 | `LoadScene` / `LoadSceneAsync` / `UnloadSceneAsync` | 场景资源加载与释放 |
 | `IsLoading` / `IsUnloading` / `GetLoadingProgress` | 状态查询 |
 | `GetAllDependencies` | 查询依赖 Bundle |
 
-资源名来自构建 Manifest，不需要自行拼接 .ab 或哈希文件名。资源不存在时 CreateObjAsync 会记录错误并返回 null。
+资源名来自构建 Manifest，不需要自行拼接 .ab 或哈希文件名。`.ab` 目录合包时，`assetName` 使用 Bundle 内地址名，当前打包规则为文件名去扩展名：
+
+```csharp
+var texture = await F.ResLoader.LoadAssetAsync<Texture2D>("Textures", "Texture1", request: this);
+```
+
+精确加载后仍按 `abName` 释放 Bundle：`F.ResLoader.Unload("Textures", this)`。资源不存在时 CreateObjAsync 会记录错误并返回 null。
 
 ## 持有与释放
 
