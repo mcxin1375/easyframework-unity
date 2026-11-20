@@ -288,41 +288,6 @@ namespace EasyFramework.Editor
             return string.IsNullOrEmpty(scene.path) ? "<未保存场景>" : scene.path;
         }
 
-        public static string[] GetDirtyProjectAssetPaths()
-        {
-            var dirtyPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var asset in Resources.FindObjectsOfTypeAll<UnityEngine.Object>())
-            {
-                if (asset == null || !EditorUtility.IsPersistent(asset) || !EditorUtility.IsDirty(asset)) continue;
-
-                var assetPath = AssetDatabase.GetAssetPath(asset);
-                if (string.IsNullOrEmpty(assetPath)) continue;
-                if (IsIgnorableDirtyAsset(asset, assetPath)) continue;
-                if (IsProjectAssetPath(assetPath)) dirtyPaths.Add(assetPath);
-            }
-
-            return dirtyPaths.OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
-        }
-
-        private static bool IsIgnorableDirtyAsset(UnityEngine.Object asset, string assetPath)
-        {
-            if (asset is Shader || asset is ComputeShader) return true;
-
-            var extension = Path.GetExtension(assetPath);
-            return string.Equals(extension, ".shader", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(extension, ".compute", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsProjectAssetPath(string assetPath)
-        {
-            if (assetPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)) return true;
-
-            var packageInfo = assetPath.StartsWith("Packages/", StringComparison.OrdinalIgnoreCase)
-                ? UnityEditor.PackageManager.PackageInfo.FindForAssetPath(assetPath)
-                : null;
-            return packageInfo?.source == UnityEditor.PackageManager.PackageSource.Embedded;
-        }
-        
         public static void BuildManifestOnly()
         {
             var settings = AssetBundleBuilderSettings.Instance;
@@ -442,12 +407,16 @@ namespace EasyFramework.Editor
             
             void For(string path)
             {
-                path = path.Replace("\\", "/");
-                if (!Directory.Exists(path)) return;
+                path = NormalizeUnityAssetPath(path);
+                if (string.IsNullOrWhiteSpace(path)) return;
                 if (path.IsEditorPath()) return;
+
+                if (!TryResolveAssetDirectory(path, out var fileSystemPath, out var virtualRoot)) return;
                 
-                string[] folders = Directory.GetDirectories(path).Where(file => !file.EndsWith(".meta")).ToArray();
-                string[] files = Directory.GetFiles(path).Where(file => !file.EndsWith(".meta")).ToArray();
+                string[] folders = Directory.GetDirectories(fileSystemPath)
+                    .Where(file => !file.EndsWith(".meta")).ToArray();
+                string[] files = Directory.GetFiles(fileSystemPath)
+                    .Where(file => !file.EndsWith(".meta")).ToArray();
 
                 foreach (string file in files)
                 {
@@ -456,7 +425,7 @@ namespace EasyFramework.Editor
                     
                     if (resFileIgnoreExs.Contains(extension) || resFileIgnoreNames.Contains(fileName)) continue;
 
-                    fileList.Add(file.Replace("\\", "/"));
+                    fileList.Add(ToUnityAssetPath(file, fileSystemPath, virtualRoot));
                 }
 
                 foreach (string folder in folders)
@@ -465,13 +434,12 @@ namespace EasyFramework.Editor
                     if (name == "Editor") continue;
                     if (name.EndsWith(EasyFrameworkSettings.Instance.abSuffix))
                     {
-                        // folderList.Add(folder);
-                        string newPath = folder.Replace('\\', '/');
+                        string newPath = ToUnityAssetPath(folder, fileSystemPath, virtualRoot);
                         if (!folderList.Contains(newPath)) folderList.Add(newPath);
                     }
                     else
                     {
-                        For(folder);
+                        For(ToUnityAssetPath(folder, fileSystemPath, virtualRoot));
                     }
                 }
             }
@@ -723,11 +691,20 @@ namespace EasyFramework.Editor
             if (assetNames.Length != addressableNames.Length)
                 throw new BuildFailedException($"AssetBundle [{abName}] assetNames and addressableNames count mismatch.");
 
+            var pathDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < addressableNames.Length; i++)
             {
                 var addressableName = addressableNames[i];
                 if (string.IsNullOrWhiteSpace(addressableName))
                     throw new BuildFailedException($"AssetBundle [{abName}] contains an empty addressable name.");
+
+                var key = NormalizeAssetPath(addressableName);
+                if (pathDict.TryGetValue(key, out var previousPath))
+                    throw new BuildFailedException(
+                        $"AssetBundle [{abName}] contains duplicate addressable name [{addressableName}]: " +
+                        $"{previousPath} and {assetNames[i]}");
+
+                pathDict.Add(key, assetNames[i]);
             }
         }
     }

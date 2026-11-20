@@ -28,7 +28,9 @@ namespace EasyFramework.Editor
 
         public string GetFilePath(string abName)
         {
-            if (_assetsMap.TryGetValue(NormalizeAbName(abName), out var info)) return info.assetNames[0];
+            if (_assetsMap.TryGetValue(NormalizeAbName(abName), out var info) &&
+                info.assetNames?.Length > 0)
+                return info.assetNames[0];
             return string.Empty;
         }
 
@@ -44,19 +46,33 @@ namespace EasyFramework.Editor
         
         public T LoadAsset<T>(string abName, IResRequest request = null) where T : Object
         {
-            return LoadAsset<T>(abName, abName, request);
+            if (!_assetsMap.TryGetValue(NormalizeAbName(abName), out var abBuild)) return null;
+            return LoadFirstAsset<T>(abBuild);
         }
         public T LoadAsset<T>(string abName, string assetName, IResRequest request = null) where T : Object
         {
             if (!_assetsMap.TryGetValue(NormalizeAbName(abName), out var abBuild)) return null;
 
-            for (int i = 0; i < abBuild.assetNames.Length; i++)
+            var assetNames = abBuild.assetNames ?? Array.Empty<string>();
+            for (var i = 0; i < assetNames.Length; i++)
             {
-                var addressableName = abBuild.addressableNames?.Length == abBuild.assetNames.Length
+                var assetPath = assetNames[i];
+                var addressableName = abBuild.addressableNames?.Length == assetNames.Length
                     ? abBuild.addressableNames[i]
-                    : Path.GetFileNameWithoutExtension(abBuild.assetNames[i]);
+                    : Path.GetFileNameWithoutExtension(assetPath);
                 if (addressableName != assetName) continue;
-                return AssetDatabase.LoadAssetAtPath<T>(abBuild.assetNames[i]);
+                return AssetDatabase.LoadAssetAtPath<T>(assetPath);
+            }
+
+            return null;
+        }
+
+        private static T LoadFirstAsset<T>(AssetBundleBuild abBuild) where T : Object
+        {
+            foreach (var assetPath in abBuild.assetNames ?? Array.Empty<string>())
+            {
+                var asset = AssetDatabase.LoadAssetAtPath<T>(assetPath);
+                if (asset != null) return asset;
             }
 
             return null;
@@ -66,9 +82,8 @@ namespace EasyFramework.Editor
             if (_assetsMap.TryGetValue(NormalizeAbName(abName), out var abBuild))
             {
                 List<T> tmp = new List<T>();
-                for (int i = 0; i < abBuild.assetNames.Length; i++)
+                foreach (var file in abBuild.assetNames ?? Array.Empty<string>())
                 {
-                    var file = abBuild.assetNames[i];
                     Object[] arr = AssetDatabase.LoadAllAssetsAtPath(file);
                     foreach (Object o in arr)
                         if (o is T t)

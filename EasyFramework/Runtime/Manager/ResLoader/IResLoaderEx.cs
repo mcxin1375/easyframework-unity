@@ -22,7 +22,9 @@ namespace EasyFramework
 
         public static GameObject CreateObj(this IResLoader resLoader, string abName, string assetName, Transform parent = null, IResRequest request = null)
         {
-            var go = resLoader.LoadAsset<GameObject>(abName, assetName, request);
+            var go = abName == assetName
+                ? resLoader.LoadAsset<GameObject>(abName, request)
+                : resLoader.LoadAsset<GameObject>(abName, assetName, request);
             if (go == null)
             {
                 FDebug.LogError($"CreateObj failed: {GetAssetKey(abName, assetName)}");
@@ -48,7 +50,9 @@ namespace EasyFramework
 
         public static async ETask<GameObject> CreateObjAsync(this IResLoader resLoader, string abName, string assetName, Transform parent = null, IResRequest request = null)
         {
-            var go = await resLoader.LoadAssetAsync<GameObject>(abName, assetName, request);
+            var go = abName == assetName
+                ? await resLoader.LoadAssetAsync<GameObject>(abName, request)
+                : await resLoader.LoadAssetAsync<GameObject>(abName, assetName, request);
             if (go == null)
             {
                 FDebug.LogError($"CreateObjAsync failed: {GetAssetKey(abName, assetName)}");
@@ -76,7 +80,9 @@ namespace EasyFramework
         {
             if (count < 0) throw new System.ArgumentOutOfRangeException(nameof(count));
             if (count == 0) return System.Array.Empty<GameObject>();
-            var go = await resLoader.LoadAssetAsync<GameObject>(abName, assetName, request);
+            var go = abName == assetName
+                ? await resLoader.LoadAssetAsync<GameObject>(abName, request)
+                : await resLoader.LoadAssetAsync<GameObject>(abName, assetName, request);
             if (go == null)
             {
                 FDebug.LogError($"CreateObjAsync failed: {GetAssetKey(abName, assetName)}");

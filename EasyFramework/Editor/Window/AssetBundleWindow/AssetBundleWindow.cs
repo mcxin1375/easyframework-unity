@@ -526,12 +526,12 @@ namespace EasyFramework.Editor
 
         private bool IsDuplicate(string assetPath)
         {
-            return _resourceBundles.TryGetValue(assetPath, out var bundles) && bundles.Count > 1;
+            return FindDuplicateBundles(_resourceBundles, assetPath) != null;
         }
 
         private bool IsContentDuplicate(string assetPath)
         {
-            return _contentResourceBundles.TryGetValue(assetPath, out var bundles) && bundles.Count > 1;
+            return FindDuplicateBundles(_contentResourceBundles, assetPath) != null;
         }
 
         private bool IsAnyDuplicate(string assetPath)
@@ -541,14 +541,18 @@ namespace EasyFramework.Editor
 
         private List<string> GetDuplicateBundles(string assetPath)
         {
-            return _resourceBundles.TryGetValue(assetPath, out var bundles) && bundles.Count > 1
-                ? bundles
-                : null;
+            return FindDuplicateBundles(_resourceBundles, assetPath);
         }
 
         private List<string> GetContentDuplicateBundles(string assetPath)
         {
-            return _contentResourceBundles.TryGetValue(assetPath, out var bundles) && bundles.Count > 1
+            return FindDuplicateBundles(_contentResourceBundles, assetPath);
+        }
+
+        private static List<string> FindDuplicateBundles(
+            Dictionary<string, List<string>> bundlesByPath, string assetPath)
+        {
+            return bundlesByPath.TryGetValue(assetPath, out var bundles) && bundles.Count > 1
                 ? bundles
                 : null;
         }
