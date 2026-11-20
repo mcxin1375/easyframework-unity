@@ -10,6 +10,8 @@
 | `EasyFramework/Tools/AssetBundleBuilder - BuildManifestOnly` | Dry Run 构建并生成可供编辑器查询的 Manifest 资产 |
 | `EasyFramework/Tools/AssetBundleBuilder - CheckVerifyValidity` | 检查同一资源是否被多个 Bundle 重复收集 |
 
+`AssetBundleWindow` 提供当前配置、最近正式构建布局和模拟分析三个页签。模拟分析调用 `AssetBundleBuilderUtility.AnalyzeBySettings()`，使用当前配置和活动构建平台运行 SBP 到 `PostPackingCallback` 之后，在序列化写入前捕获最终布局并停止；不会写 AssetBundle 文件。由于 SBP 会调用 `AssetDatabase.SaveAssets`，存在未保存的 `Assets/` 或嵌入式 package 资源时分析会中止并提示路径。分析会编译 Player 脚本，并把脚本输出、临时输出和构建日志放入隔离目录后清理；SBP/Unity 构建缓存仍可能更新。
+
 ## 配置入口
 
 基础配置位于 `Project Settings > EasyFramework Tools > AssetBundleBuilder`，对应 `AssetBundleBuilderSettings`：
@@ -89,10 +91,12 @@ internal sealed class GameAssetBundleBuildSettings : IAssetBundleBuilderSettings
 
 正式构建先写入输出目录旁的暂存目录，验证非空构建结果、各 Bundle 文件和 `AssetBundleManifest.json` 后，再替换 `AssetBundleBuilder.ProjectPlatformPath`。新输出只包含当前构建产物；构建失败抛异常，保留旧目录并阻止后续 DLC / Player 构建。
 
-`BuildManifestOnly` 带 Dry Run 标志，在隔离目录运行管线，再于 `AssetBundleBuilder.AssetsPlatformPath` 下更新 `<平台名>.asset`，保留已有 GUID。当前 SBP 兼容入口仍可能生成 Bundle，这些临时产物会被删除，不覆盖正式输出。正式发布配置含 `DryRunBuild` 时直接失败，避免父链发布旧资源。正式构建前建议先执行 `CheckVerifyValidity`，处理所有重复资源错误后再发布。
+正式构建成功后，布局报告写入 `AssetBundleBuilder.DebugPlatformPath/AssetBundleBuildLayout.json`；模拟结果单独写入 `AssetBundleBuildLayout.Analysis.json`，不会覆盖正式构建报告。报告按资源路径列出各包实际写入的对象、直接/间接来源及引入依赖的直接资源。只有同一路径下相同 `ObjectIdentifier` 对象进入多个 AB，才标记为重复；同一源文件的不同子对象不会仅因路径相同而误判。报告不包含压缩后的精确体积，体积仍以正式 AB 文件为准。
+
+`BuildManifestOnly` 保留原职责：在隔离目录运行管线，再于 `AssetBundleBuilder.AssetsPlatformPath` 下更新 `<平台名>.asset`，保留已有 GUID。正式发布配置含 `DryRunBuild` 时直接失败，避免父链发布旧资源。正式构建前建议先执行 `CheckVerifyValidity`，处理所有重复登记资源后再发布。
 
 ## 构建链路
 
 直接执行或由 AssetBuilder 触发时，都会通过完整 Execute() 升级 AssetBundleBuilder 版本，再在 OnSelfExecute 中调用 BuildBySettings；输出由后续 DLCBuilder 收集。
 
-源码：[AssetBundleBuilder.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuilder.cs)、[AssetBundleBuilderSettings.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuilderSettings.cs)、[AssetBundleBuildSettings.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuildSettings.cs)、[AssetBundleBuilderUtility.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuilderUtility.cs)。
+源码：[AssetBundleBuilder.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuilder.cs)、[AssetBundleBuilderSettings.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuilderSettings.cs)、[AssetBundleBuildSettings.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuildSettings.cs)、[AssetBundleBuildLayout.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuildLayout.cs)、[AssetBundleBuilderUtility.cs](../../EasyFramework/Editor/Tools/AssetBundleBuilder/AssetBundleBuilderUtility.cs)、[AssetBundleWindow.cs](../../EasyFramework/Editor/Window/AssetBundleWindow/AssetBundleWindow.cs)。

@@ -4,19 +4,32 @@
 // describe:
 //----------------------------------------------------------------*/
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Build;
+using UnityEditor.Build.Content;
 using UnityEditor.Build.Pipeline;
+using UnityEditor.Build.Pipeline.Interfaces;
+using UnityEditor.Build.Pipeline.Tasks;
 using UnityEngine;
 using UnityEngine.Build.Pipeline;
+
+#if UNITY_2018_3_OR_NEWER
+using BuildCompression = UnityEngine.BuildCompression;
+#else
+using BuildCompression = UnityEditor.Build.Content.BuildCompression;
+#endif
 
 namespace EasyFramework.Editor
 {
     public static class AssetBundleBuilderUtility
     {
+        private const string BuildLayoutReportFileName = "AssetBundleBuildLayout.json";
+        private const string AnalysisReportFileName = "AssetBundleBuildLayout.Analysis.json";
+
         public static void BuildBySettings(string outputPath)
         {
             var settings = AssetBundleBuilderSettings.Instance;
@@ -25,10 +38,11 @@ namespace EasyFramework.Editor
 
             var stage = FileHelper.CreateTempPath(outputPath);
             CompatibilityAssetBundleManifest bundleManifest = null;
+            AssetBundleBuildLayoutReport buildLayoutReport = null;
             try
             {
                 if (settings.createManifestFile) BuildManifestOnly();
-                bundleManifest = BuildAssetBundle(stage, settings.buildAssetBundleOptions);
+                bundleManifest = BuildAssetBundle(stage, settings.buildAssetBundleOptions, out buildLayoutReport);
                 var manifest = ConfigHelper.Load<AssetBundleManifest>($"{stage}/{AssetBundleManifest.FileName}");
                 if (manifest?.abNames == null || !manifest.abNames.SequenceEqual(bundleManifest.GetAllAssetBundles()))
                     throw new BuildFailedException("AssetBundleManifest.json does not match the completed build.");
@@ -36,24 +50,41 @@ namespace EasyFramework.Editor
                 File.Move(Path.Combine(stage, Path.GetFileName(stage) + ".manifest"),
                     Path.Combine(stage, new DirectoryInfo(outputPath).Name + ".manifest"));
                 FileHelper.ReplacePathsFromTemp(new[] { (stage, outputPath) });
+                try
+                {
+                    SaveBuildLayoutReport(buildLayoutReport, BuildLayoutReportFileName);
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogWarning($"AssetBundleBuilder: 无法保存正式构建布局报告：{exception.Message}");
+                }
             }
             finally
             {
-                if (bundleManifest != null) Object.DestroyImmediate(bundleManifest);
+                if (bundleManifest != null) UnityEngine.Object.DestroyImmediate(bundleManifest);
                 FileHelper.DeleteDirectoryOrFile(stage);
             }
         }
         
-        private static CompatibilityAssetBundleManifest BuildAssetBundle(string outputPath, BuildAssetBundleOptions buildOptions)
+        private static CompatibilityAssetBundleManifest BuildAssetBundle(string outputPath,
+            BuildAssetBundleOptions buildOptions)
+        {
+            return BuildAssetBundle(outputPath, buildOptions, out _);
+        }
+
+        private static CompatibilityAssetBundleManifest BuildAssetBundle(string outputPath,
+            BuildAssetBundleOptions buildOptions, out AssetBundleBuildLayoutReport buildLayoutReport)
         {
             var buildTarget = EditorUserBuildSettings.activeBuildTarget;
             var assetBundleBuilds = CreateAssetBundleBuildBySettings();
 
             FileHelper.CreateDirectory(outputPath);
 
-            var bundleManifest = CompatibilityBuildPipeline.BuildAssetBundles(outputPath, assetBundleBuilds, buildOptions, buildTarget);
-            if (bundleManifest == null)
-                throw new BuildFailedException($"AssetBundle build failed: {outputPath}");
+            var results = BuildAssetBundlesWithLayout(outputPath, assetBundleBuilds, buildOptions,
+                buildTarget, false, false, out buildLayoutReport);
+            var bundleManifest = ScriptableObject.CreateInstance<CompatibilityAssetBundleManifest>();
+            bundleManifest.SetResults(results.BundleInfos);
+            File.WriteAllText($"{outputPath}/{Path.GetFileName(outputPath)}.manifest", bundleManifest.ToString());
             if ((buildOptions & BuildAssetBundleOptions.DryRunBuild) != 0) return bundleManifest;
 
             try
@@ -83,11 +114,162 @@ namespace EasyFramework.Editor
             }
             catch
             {
-                Object.DestroyImmediate(bundleManifest);
+                UnityEngine.Object.DestroyImmediate(bundleManifest);
                 throw;
             }
 
             return bundleManifest;
+        }
+
+        public static AssetBundleBuildLayoutReport AnalyzeBySettings()
+        {
+            var settings = AssetBundleBuilderSettings.Instance;
+            var builds = CreateAssetBundleBuildBySettings();
+            EnsureNoDirtyProjectAssets();
+            var outputPath = FileHelper.CreateTempPath(Path.Combine(
+                AssetBundleBuilder.Instance.ToolsPlatformPath, "AssetBundleLayoutAnalysis"));
+
+            try
+            {
+                FileHelper.CreateDirectory(outputPath);
+                BuildAssetBundlesWithLayout(outputPath, builds, settings.buildAssetBundleOptions,
+                    EditorUserBuildSettings.activeBuildTarget, true, true, out var report);
+                SaveBuildLayoutReport(report, AnalysisReportFileName);
+                return report;
+            }
+            finally
+            {
+                FileHelper.DeleteDirectoryOrFile(outputPath);
+            }
+        }
+
+        public static AssetBundleBuildLayoutReport LoadLastBuildLayoutReport()
+        {
+            return LoadBuildLayoutReport(BuildLayoutReportFileName);
+        }
+
+        public static AssetBundleBuildLayoutReport LoadLastAnalysisReport()
+        {
+            return LoadBuildLayoutReport(AnalysisReportFileName);
+        }
+
+        private static IBundleBuildResults BuildAssetBundlesWithLayout(string outputPath,
+            AssetBundleBuild[] builds, BuildAssetBundleOptions options, BuildTarget target,
+            bool stopAfterLayout, bool isolateTemporaryOutput, out AssetBundleBuildLayoutReport report)
+        {
+            var parameters = new BundleBuildParameters(target, BuildPipeline.GetBuildTargetGroup(target), outputPath);
+            if ((options & BuildAssetBundleOptions.ForceRebuildAssetBundle) != 0)
+                parameters.UseCache = false;
+
+            if ((options & BuildAssetBundleOptions.AppendHashToAssetBundleName) != 0)
+                parameters.AppendHash = true;
+
+            if ((options & BuildAssetBundleOptions.ChunkBasedCompression) != 0)
+                parameters.BundleCompression = BuildCompression.LZ4;
+            else if ((options & BuildAssetBundleOptions.UncompressedAssetBundle) != 0)
+                parameters.BundleCompression = BuildCompression.Uncompressed;
+            else
+                parameters.BundleCompression = BuildCompression.LZMA;
+
+            if ((options & BuildAssetBundleOptions.DisableWriteTypeTree) != 0)
+                parameters.ContentBuildFlags |= ContentBuildFlags.DisableWriteTypeTree;
+
+#if BUILD_OPTIONS_RECURSE_DEPENDENCIES_2022_3 || BUILD_OPTIONS_RECURSE_DEPENDENCIES_2023_3 || UNITY_6000_0_OR_NEWER
+            if ((options & BuildAssetBundleOptions.RecurseDependencies) != 0)
+                parameters.NonRecursiveDependencies = false;
+#endif
+
+            if (isolateTemporaryOutput)
+            {
+                parameters.TempOutputFolder = Path.Combine(outputPath, "Temp");
+                parameters.ScriptOutputFolder = Path.Combine(outputPath, "ScriptAssemblies");
+            }
+
+            var captureTask = new AssetBundleBuildLayoutCapture(target.ToString(), options, stopAfterLayout);
+            var tasks = DefaultBuildTasks.Create(DefaultBuildTasks.Preset.AssetBundleCompatible);
+            var packingCallbackIndex = -1;
+            for (var index = 0; index < tasks.Count; index++)
+            {
+                if (tasks[index] is PostPackingCallback)
+                {
+                    packingCallbackIndex = index;
+                    break;
+                }
+            }
+
+            if (packingCallbackIndex < 0)
+                throw new InvalidOperationException("SBP AssetBundle task list does not contain PostPackingCallback.");
+
+            var captureTaskIndex = packingCallbackIndex + 1;
+            tasks.Insert(captureTaskIndex, captureTask);
+            if (stopAfterLayout)
+            {
+                while (tasks.Count > captureTaskIndex + 1)
+                    tasks.RemoveAt(tasks.Count - 1);
+            }
+
+            var content = new BundleBuildContent(builds);
+            var exitCode = ContentPipeline.BuildAssetBundles(parameters, content, out IBundleBuildResults results, tasks);
+            if (exitCode < ReturnCode.Success)
+                throw new BuildFailedException($"AssetBundle build failed: {exitCode}");
+
+            report = captureTask.Report;
+            if (report == null)
+                throw new BuildFailedException("AssetBundle layout capture did not produce a report.");
+
+            return results;
+        }
+
+        private static void SaveBuildLayoutReport(AssetBundleBuildLayoutReport report, string fileName)
+        {
+            if (report?.bundles == null) return;
+
+            var reportPath = Path.Combine(AssetBundleBuilder.Instance.DebugPlatformPath, fileName);
+            var tempPath = FileHelper.CreateTempPath(reportPath);
+            try
+            {
+                File.WriteAllText(tempPath, JsonUtility.ToJson(report, true));
+                FileHelper.ReplaceFileFromTemp(tempPath, reportPath);
+            }
+            finally
+            {
+                FileHelper.DeleteFile(tempPath);
+            }
+        }
+
+        private static AssetBundleBuildLayoutReport LoadBuildLayoutReport(string fileName)
+        {
+            var reportPath = Path.Combine(AssetBundleBuilder.Instance.DebugPlatformPath, fileName);
+            if (!File.Exists(reportPath)) return null;
+
+            try
+            {
+                return JsonUtility.FromJson<AssetBundleBuildLayoutReport>(File.ReadAllText(reportPath));
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"AssetBundleBuilder: 无法读取布局报告 {reportPath}: {exception.Message}");
+                return null;
+            }
+        }
+
+        private static void EnsureNoDirtyProjectAssets()
+        {
+            foreach (var asset in Resources.FindObjectsOfTypeAll<UnityEngine.Object>())
+            {
+                if (asset == null || !EditorUtility.IsPersistent(asset) || !EditorUtility.IsDirty(asset)) continue;
+
+                var assetPath = AssetDatabase.GetAssetPath(asset);
+                if (string.IsNullOrEmpty(assetPath)) continue;
+                var isProjectAsset = assetPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase);
+                var packageInfo = assetPath.StartsWith("Packages/", StringComparison.OrdinalIgnoreCase)
+                    ? UnityEditor.PackageManager.PackageInfo.FindForAssetPath(assetPath)
+                    : null;
+                var isEmbeddedPackageAsset = packageInfo?.source == UnityEditor.PackageManager.PackageSource.Embedded;
+                if (isProjectAsset || isEmbeddedPackageAsset)
+                    throw new BuildFailedException(
+                        $"AssetBundle layout analysis stopped because this asset has unsaved changes: {assetPath}");
+            }
         }
         
         public static void BuildManifestOnly()
@@ -120,7 +302,7 @@ namespace EasyFramework.Editor
             finally
             {
                 AssetDatabase.DeleteAsset(temporaryAsset);
-                if (bundleManifest != null) Object.DestroyImmediate(bundleManifest);
+                if (bundleManifest != null) UnityEngine.Object.DestroyImmediate(bundleManifest);
                 FileHelper.DeleteDirectoryOrFile(stage);
                 FileHelper.DeleteFile(manifestTempFile);
                 FileHelper.DeleteFile(manifestTempMeta);
