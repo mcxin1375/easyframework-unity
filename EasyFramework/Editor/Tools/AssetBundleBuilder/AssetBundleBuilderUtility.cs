@@ -563,7 +563,7 @@ namespace EasyFramework.Editor
             if (assetPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
             {
                 fileSystemPath = Path.Combine(projectRoot, assetPath.Replace('/', Path.DirectorySeparatorChar));
-                virtualRoot = "Assets";
+                virtualRoot = assetPath;
                 return Directory.Exists(fileSystemPath);
             }
 
@@ -600,7 +600,7 @@ namespace EasyFramework.Editor
                 : string.Empty;
             fileSystemPath = Path.Combine(packageRoot,
                 relative.Replace('/', Path.DirectorySeparatorChar));
-            virtualRoot = "Packages/" + packageName;
+            virtualRoot = assetPath;
             return Directory.Exists(fileSystemPath);
         }
 
