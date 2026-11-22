@@ -33,11 +33,11 @@ namespace EasyFramework
 
         public static IDebugger Debugger { get; set; } = new UnityDebugger();
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR && UNITY_6000_0_OR_NEWER
         [UnityEngine.HideInCallstack]
 #endif
         public static void Log(object message) => Log(message.ToString());
-#if UNITY_EDITOR
+#if UNITY_EDITOR && UNITY_6000_0_OR_NEWER
         [UnityEngine.HideInCallstack]
 #endif
         public static void Log(string message)
@@ -45,11 +45,11 @@ namespace EasyFramework
             if (_logEnabled) Debugger.Log(message);
         }
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR && UNITY_6000_0_OR_NEWER
         [UnityEngine.HideInCallstack]
 #endif
         public static void LogWarning(object message) => LogWarning(message.ToString());
-#if UNITY_EDITOR
+#if UNITY_EDITOR && UNITY_6000_0_OR_NEWER
         [UnityEngine.HideInCallstack]
 #endif
         public static void LogWarning(string message)
@@ -58,11 +58,11 @@ namespace EasyFramework
         }
 
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR && UNITY_6000_0_OR_NEWER
         [UnityEngine.HideInCallstack]
 #endif
         public static void LogError(object message) => LogError(message.ToString());
-#if UNITY_EDITOR
+#if UNITY_EDITOR && UNITY_6000_0_OR_NEWER
         [UnityEngine.HideInCallstack]
 #endif
         public static void LogError(string message)
@@ -70,7 +70,7 @@ namespace EasyFramework
             if (_logErrorEnabled) Debugger.LogError(message);
         }
         
-#if UNITY_EDITOR
+#if UNITY_EDITOR && UNITY_6000_0_OR_NEWER
         [UnityEngine.HideInCallstack]
 #endif
         public static void LogException(Exception exception)
