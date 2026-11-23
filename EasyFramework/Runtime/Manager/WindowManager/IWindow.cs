@@ -14,6 +14,7 @@ namespace EasyFramework
         bool Alive { get; }
         bool KeepAlive { get; }
         bool IsLoading { get; }
+        UILayer UILayer { get; }
         UILayerBehaviour LayerBehaviour { get; }
         GameObject WindowObject { get; }
         void Create();

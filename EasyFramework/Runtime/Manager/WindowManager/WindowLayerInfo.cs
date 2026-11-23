@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 
 namespace EasyFramework
 {
@@ -28,14 +27,14 @@ namespace EasyFramework
         {
             if (_windowList.Contains(window)) _windowList.Remove(window);
 
-            var attribute = window.GetType().GetCustomAttribute<WindowOpenBeforeAttribute>();
+            var openBeforeType = WindowConfigAttribute.GetConfig(window.GetType()).OpenBeforeType;
             bool added = false;
-            if (attribute != null)
+            if (openBeforeType != null)
             {
                 for (int i = 0; i < _windowList.Count; i++)
                 {
                     var v = _windowList[i];
-                    if (v.GetType() == attribute.WindowType)
+                    if (v.GetType() == openBeforeType)
                     {
                         _windowList.Insert(i, window);
                         added = true;

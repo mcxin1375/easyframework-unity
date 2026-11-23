@@ -126,7 +126,7 @@ namespace EasyFramework.Tests
             Tick();
             var first = ClosedSnapshot.IndexOf(a) > ClosedSnapshot.IndexOf(b) ? (TestWindow)a : b;
             var second = ReferenceEquals(first, a) ? (TestWindow)b : a;
-            a.KeepAliveSeconds = b.KeepAliveSeconds = -1;
+            a.ForceExpired = b.ForceExpired = true;
             TestWindow reopened = null;
             first.DestroyAction = () =>
             {
@@ -156,7 +156,7 @@ namespace EasyFramework.Tests
             _manager.Destroy(window);
             Assert.That(window.Destroys, Is.EqualTo(1));
             Assert.That(_manager.GetWindow<WindowA>(), Is.Null);
-            window.KeepAliveSeconds = -1;
+            window.ForceExpired = true;
 
             Tick();
 
@@ -176,7 +176,7 @@ namespace EasyFramework.Tests
             Tick();
             var first = ClosedSnapshot.IndexOf(a) > ClosedSnapshot.IndexOf(b) ? (TestWindow)a : b;
             var second = ReferenceEquals(first, a) ? (TestWindow)b : a;
-            a.KeepAliveSeconds = b.KeepAliveSeconds = -1;
+            a.ForceExpired = b.ForceExpired = true;
             first.DestroyAction = () => _manager.Destroy(second);
 
             Assert.DoesNotThrow(Tick);
@@ -237,7 +237,7 @@ namespace EasyFramework.Tests
             Assert.That(ClosedSnapshot, Has.Member(window));
             Assert.That(window.Updates, Is.Zero);
             Assert.That(window.Destroys, Is.Zero);
-            window.KeepAliveSeconds = -1;
+            window.ForceExpired = true;
             Assert.That(_manager.Open<WindowA>(), Is.SameAs(window));
             Tick();
             Assert.That(window.Updates, Is.EqualTo(1));
@@ -257,7 +257,7 @@ namespace EasyFramework.Tests
         {
             yield return null;
             var a = Open<WindowA>();
-            a.KeepAliveSeconds = -1;
+            a.ForceExpired = true;
             _manager.Close(a);
             WindowC created = null;
             a.DestroyAction = () => created = Open<WindowC>();
@@ -328,10 +328,10 @@ namespace EasyFramework.Tests
 
         public abstract class TestWindow : Window
         {
-            public float KeepAliveSeconds = 60;
+            public bool ForceExpired;
             public int Updates, Destroys;
             public Action UpdateAction, DestroyAction;
-            protected override float KeepAliveTime => KeepAliveSeconds;
+            public override bool KeepAlive => IsOpen || !ForceExpired && base.KeepAlive;
             protected override GameObject CreateWindowObject(Transform parent) => new GameObject("UpdateListWindow", typeof(RectTransform));
             protected override void OnUpdate() { Updates++; UpdateAction?.Invoke(); }
             protected override void OnDestroy() { Destroys++; DestroyAction?.Invoke(); }

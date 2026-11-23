@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace EasyFramework.Samples.Modules
 {
     // 在资源构建目录准备以 RectTransform 为根的 TemplateWindow.prefab。
-    // 主线程顺序等待 OpenAsync；Close 默认缓存 60 秒，Release 必须在打开结束后调用以销毁实例。
+    // 主线程顺序等待 OpenAsync；Close 默认缓存 60 秒，可用 WindowConfig.DestroyTime 调整，设为 0 时不自动回收。
     public sealed class TemplateWindow : Window
     {
         protected override void OnOpen() => Debug.Log("窗口已打开");
@@ -16,7 +16,7 @@ namespace EasyFramework.Samples.Modules
         public static async ETask<TemplateWindow> OpenAsync()
         {
             await F.InitializeAsync();
-            return await F.WindowManager.OpenAsync<TemplateWindow>(UILayer.HUD);
+            return await F.WindowManager.OpenAsync<TemplateWindow>();
         }
 
         public static void Close() => F.WindowManager.Close<TemplateWindow>();
@@ -72,6 +72,7 @@ namespace EasyFramework.Samples.Modules
     }
 
     // IWindowUI<T> 由框架 Roslyn 生成 UI 属性及同名组件自动绑定入口。
+    [WindowConfig(Layer = UILayer.Popup)]
     public partial class WindowUIExampleWindow : Window, IWindowUI<WindowUIExampleComponent>
     {
         protected override void OnOpen()
@@ -96,7 +97,7 @@ namespace EasyFramework.Samples.Modules
         public static async ETask<WindowUIExampleWindow> OpenAsync()
         {
             await F.InitializeAsync();
-            return await F.WindowManager.OpenAsync<WindowUIExampleWindow>(UILayer.Popup);
+            return await F.WindowManager.OpenAsync<WindowUIExampleWindow>();
         }
 
         public static void Release()
@@ -120,6 +121,7 @@ namespace EasyFramework.Samples.Modules
         public Button CloseButton;
     }
 
+    [WindowConfig(Layer = UILayer.Popup)]
     public partial class ParameterizedUIWindowExample : Window, IWindowUI<ParameterizedWindowUI>, ITParams<UiWindowArgs>
     {
         protected override void OnRefresh()
@@ -139,7 +141,7 @@ namespace EasyFramework.Samples.Modules
         {
             await F.InitializeAsync();
             return await F.WindowManager.OpenAsync<ParameterizedUIWindowExample, UiWindowArgs>(
-                UILayer.Popup, new UiWindowArgs(title, score));
+                new UiWindowArgs(title, score));
         }
     }
 
@@ -170,39 +172,41 @@ namespace EasyFramework.Samples.Modules
     public static class WindowParamsExample
     {
         public static WindowOneParamExample OpenOneSync(int value)
-            => F.WindowManager.Open<WindowOneParamExample, WindowOneArgs>(UILayer.HUD, new WindowOneArgs(value));
+            => F.WindowManager.Open<WindowOneParamExample, WindowOneArgs>(new WindowOneArgs(value));
 
         public static WindowTwoParamExample OpenTwoSync(int value, string text)
-            => F.WindowManager.Open<WindowTwoParamExample, WindowOneArgs, string>(UILayer.HUD, new WindowOneArgs(value), text);
+            => F.WindowManager.Open<WindowTwoParamExample, WindowOneArgs, string>(new WindowOneArgs(value), text);
 
         public static WindowThreeParamExample OpenThreeSync(int value, string text, bool active)
-            => F.WindowManager.Open<WindowThreeParamExample, WindowOneArgs, string, bool>(UILayer.HUD, new WindowOneArgs(value), text, active);
+            => F.WindowManager.Open<WindowThreeParamExample, WindowOneArgs, string, bool>(new WindowOneArgs(value), text, active);
 
         public static ETask<WindowOneParamExample> OpenOneAsync(int value)
-            => F.WindowManager.OpenAsync<WindowOneParamExample, WindowOneArgs>(UILayer.HUD, new WindowOneArgs(value));
+            => F.WindowManager.OpenAsync<WindowOneParamExample, WindowOneArgs>(new WindowOneArgs(value));
 
         public static ETask<WindowTwoParamExample> OpenTwoAsync(int value, string text)
-            => F.WindowManager.OpenAsync<WindowTwoParamExample, WindowOneArgs, string>(UILayer.HUD, new WindowOneArgs(value), text);
+            => F.WindowManager.OpenAsync<WindowTwoParamExample, WindowOneArgs, string>(new WindowOneArgs(value), text);
 
         public static ETask<WindowThreeParamExample> OpenThreeAsync(int value, string text, bool active)
-            => F.WindowManager.OpenAsync<WindowThreeParamExample, WindowOneArgs, string, bool>(UILayer.HUD, new WindowOneArgs(value), text, active);
+            => F.WindowManager.OpenAsync<WindowThreeParamExample, WindowOneArgs, string, bool>(new WindowOneArgs(value), text, active);
 
         public static WindowOneParamExample OpenByTypeSync(int value)
-            => F.WindowManager.Open(typeof(WindowOneParamExample), UILayer.Popup,
+            => F.WindowManager.Open(typeof(WindowOneParamExample),
                 new object[] { new WindowOneArgs(value) }) as WindowOneParamExample;
 
         public static async ETask<WindowThreeParamExample> OpenByTypeAsync(int value, string text, bool active)
         {
-            var window = await F.WindowManager.OpenAsync(typeof(WindowThreeParamExample), UILayer.Popup,
+            var window = await F.WindowManager.OpenAsync(typeof(WindowThreeParamExample),
                 new object[] { new WindowOneArgs(value), text, active });
             return window as WindowThreeParamExample;
         }
     }
 
     // Resources 默认按类型名加载：Resources/DefaultResourcesWindowExample.prefab。
+    [WindowConfig(Layer = UILayer.Popup)]
     public sealed class DefaultResourcesWindowExample : WindowResources { }
 
     // ResourcePath 指定 Resources 下的相对路径。
+    [WindowConfig(Layer = UILayer.Popup)]
     public sealed class PreferencesWindowExample : WindowResources
     {
         protected override string ResourcePath => "Windows/PreferencesWindow";
@@ -214,24 +218,24 @@ namespace EasyFramework.Samples.Modules
         public static async ETask<DefaultResourcesWindowExample> OpenDefaultAsync()
         {
             await F.InitializeAsync();
-            return await F.WindowManager.OpenAsync<DefaultResourcesWindowExample>(UILayer.Popup);
+            return await F.WindowManager.OpenAsync<DefaultResourcesWindowExample>();
         }
 
         public static async ETask<PreferencesWindowExample> OpenAsync()
         {
             await F.InitializeAsync();
-            return await F.WindowManager.OpenAsync<PreferencesWindowExample>(UILayer.Popup);
+            return await F.WindowManager.OpenAsync<PreferencesWindowExample>();
         }
     }
 
     public static class WindowManagerExample
     {
         // 除 OpenAsync 外，其余入口要求业务已等待 F.InitializeAsync()。
-        public static TemplateWindow OpenSync() => F.WindowManager.Open<TemplateWindow>(UILayer.HUD);
+        public static TemplateWindow OpenSync() => F.WindowManager.Open<TemplateWindow>();
         public static async ETask<TemplateWindow> OpenAsync()
         {
             await F.InitializeAsync();
-            return await F.WindowManager.OpenAsync<TemplateWindow>(UILayer.HUD);
+            return await F.WindowManager.OpenAsync<TemplateWindow>();
         }
 
         public static void Inspect()

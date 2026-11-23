@@ -93,99 +93,86 @@ namespace EasyFramework
         void IFrameworkTick.OnLateUpdate() { }
         void IFrameworkTick.OnDestroy() => OnDestroy();
 
-        public T Open<T>(UILayer uiLayer = UILayer.HUD) where T : class, IWindow, new()
+        public T Open<T>() where T : class, IWindow, new()
         {
-            FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {uiLayer}");
-
             var window = GetOrCreateWindow<T>();
+            FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {window.UILayer}");
             if (window is ITParams t) t.SetParamsDefault();
 
-            return OpenWindow(window, uiLayer) ? window : null;
+            return OpenWindow(window) ? window : null;
         }
-        public T Open<T, TK1>(UILayer uiLayer, in TK1 tk1) where T : class, IWindow, ITParams<TK1>, new()
+        public T Open<T, TK1>(in TK1 tk1) where T : class, IWindow, ITParams<TK1>, new()
         {
-            FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {uiLayer}");
-
             var window = GetOrCreateWindow<T>();
+            FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {window.UILayer}");
             window.SetParams(in tk1);
 
-            return OpenWindow(window, uiLayer) ? window : null;
+            return OpenWindow(window) ? window : null;
         }
-        public T Open<T, TK1, TK2>(UILayer uiLayer, in TK1 tk1, in TK2 tk2) where T : class, IWindow, ITParams<TK1, TK2>, new()
+        public T Open<T, TK1, TK2>(in TK1 tk1, in TK2 tk2) where T : class, IWindow, ITParams<TK1, TK2>, new()
         {
-            FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {uiLayer}");
-
             var window = GetOrCreateWindow<T>();
+            FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {window.UILayer}");
             window.SetParams(in tk1, in tk2);
 
-            return OpenWindow(window, uiLayer) ? window : null;
+            return OpenWindow(window) ? window : null;
         }
-        public T Open<T, TK1, TK2, TK3>(UILayer uiLayer, in TK1 tk1, in TK2 tk2, in TK3 tk3) where T : class, IWindow, ITParams<TK1, TK2, TK3>, new()
+        public T Open<T, TK1, TK2, TK3>(in TK1 tk1, in TK2 tk2, in TK3 tk3) where T : class, IWindow, ITParams<TK1, TK2, TK3>, new()
         {
-            FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {uiLayer}");
-
             var window = GetOrCreateWindow<T>();
+            FDebug.Log($"F.UISystem.Open(type: {typeof(T).Name}), uiLayer: {window.UILayer}");
             window.SetParams(in tk1, in tk2, in tk3);
 
-            return OpenWindow(window, uiLayer) ? window : null;
+            return OpenWindow(window) ? window : null;
         }
-        public IWindow Open(Type type, UILayer uiLayer, object[] tParams = null)
+        public IWindow Open(Type type, object[] tParams = null)
         {
-            FDebug.Log($"F.UISystem.Open(type: {type.Name}), uiLayer: {uiLayer}");
-
             var window = GetOrCreateWindow(type);
+            FDebug.Log($"F.UISystem.Open(type: {type.Name}), uiLayer: {window.UILayer}");
             if (window is ITParams t) t.SetParams(tParams);
 
-            return OpenWindow(window, uiLayer) ? window : null;
+            return OpenWindow(window) ? window : null;
         }
-
-        public ETask<T> OpenAsync<T>(UILayer uiLayer = UILayer.HUD) where T : class, IWindow, new()
+        public ETask<T> OpenAsync<T>() where T : class, IWindow, new()
         {
-            FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {uiLayer}");
-
             var window = GetOrCreateWindow<T>();
+            FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {window.UILayer}");
             if (window is ITParams t) t.SetParamsDefault();
 
-            return OpenWindowAsync(window, uiLayer);
+            return OpenWindowAsync(window);
         }
-        public ETask<T> OpenAsync<T, TK1>(UILayer uiLayer, in TK1 tk1) where T : class, IWindow, ITParams<TK1>, new()
+        public ETask<T> OpenAsync<T, TK1>(in TK1 tk1) where T : class, IWindow, ITParams<TK1>, new()
         {
-            FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {uiLayer}");
-
             var window = GetOrCreateWindow<T>();
+            FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {window.UILayer}");
             window.SetParams(in tk1);
 
-            return OpenWindowAsync(window, uiLayer);
+            return OpenWindowAsync(window);
         }
-        public ETask<T> OpenAsync<T, TK1, TK2>(UILayer uiLayer, in TK1 tk1, in TK2 tk2) where T : class, IWindow, ITParams<TK1, TK2>, new()
+        public ETask<T> OpenAsync<T, TK1, TK2>(in TK1 tk1, in TK2 tk2) where T : class, IWindow, ITParams<TK1, TK2>, new()
         {
-            FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {uiLayer}");
-
             var window = GetOrCreateWindow<T>();
+            FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {window.UILayer}");
             window.SetParams(in tk1, in tk2);
 
-            return OpenWindowAsync(window, uiLayer);
+            return OpenWindowAsync(window);
         }
-        public ETask<T> OpenAsync<T, TK1, TK2, TK3>(UILayer uiLayer, in TK1 tk1, in TK2 tk2, in TK3 tk3) where T : class, IWindow, ITParams<TK1, TK2, TK3>, new()
+        public ETask<T> OpenAsync<T, TK1, TK2, TK3>(in TK1 tk1, in TK2 tk2, in TK3 tk3) where T : class, IWindow, ITParams<TK1, TK2, TK3>, new()
         {
-            FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {uiLayer}");
-
             var window = GetOrCreateWindow<T>();
+            FDebug.Log($"F.UISystem.OpenAsync(type: {typeof(T).Name}), uiLayer: {window.UILayer}");
             window.SetParams(in tk1, in tk2, in tk3);
 
-            return OpenWindowAsync(window, uiLayer);
+            return OpenWindowAsync(window);
         }
-
-        public ETask<IWindow> OpenAsync(Type type, UILayer uiLayer, object[] tParams = null)
+        public ETask<IWindow> OpenAsync(Type type, object[] tParams = null)
         {
-            FDebug.Log($"F.UISystem.OpenAsync(type: {type.Name}), uiLayer: {uiLayer}");
-
             var window = GetOrCreateWindow(type);
+            FDebug.Log($"F.UISystem.OpenAsync(type: {type.Name}), uiLayer: {window.UILayer}");
             if (window is ITParams t) t.SetParams(tParams);
 
-            return OpenWindowAsync(window, uiLayer);
+            return OpenWindowAsync(window);
         }
-
         public void Close(IWindow window) => CloseWindow(window, true);
         public void Close<T>() where T : class, IWindow, new() => CloseWindow(GetWindow<T>(), true);
 
@@ -248,8 +235,9 @@ namespace EasyFramework
             return null;
         }
 
-        private bool OpenWindow(IWindow window, UILayer uiLayer)
+        private bool OpenWindow(IWindow window)
         {
+            var uiLayer = window.UILayer;
             if (window.IsLoading)
             {
                 FDebug.LogError($"F.UISystem.OpenWindow({window.GetType().Name}): window is loading.");
@@ -283,8 +271,9 @@ namespace EasyFramework
             return false;
         }
 
-        private async ETask<T> OpenWindowAsync<T>(T window, UILayer uiLayer) where T : class, IWindow
+        private async ETask<T> OpenWindowAsync<T>(T window) where T : class, IWindow
         {
+            var uiLayer = window.UILayer;
             if (window.IsLoading)
             {
                 FDebug.LogError($"F.UISystem.OpenWindow({window.GetType().Name}): window is loading.");

@@ -44,26 +44,58 @@ namespace EasyFramework.Tests
             FDebug.Debugger = _debugger;
         }
 
-        [UnityTest]
-        public IEnumerator CrossLayerOverlappingOpen_KeepsAcceptedOpenInItsLayer()
-            => RejectedOpenPreservesPendingWindow(true, UILayer.Popup);
+        [Test]
+        public void WindowConfig_ReadsConfiguredLayerAndDefaultsToHud()
+        {
+            IWindow configured = new ConfiguredLayerWindow();
+            IWindow defaultLayer = new DefaultLayerWindow();
+
+            Assert.That(configured.UILayer, Is.EqualTo(UILayer.Popup));
+            Assert.That(defaultLayer.UILayer, Is.EqualTo(UILayer.HUD));
+        }
+
+        [Test]
+        public void OpenWithoutLayer_UsesWindowConfig()
+        {
+            var window = F.WindowManager.Open<ConfiguredLayerWindow>();
+            _windows.Add(window);
+            Track(window.WindowObject);
+
+            Assert.That(window.UILayer, Is.EqualTo(UILayer.Popup));
+            Assert.That(window.LayerBehaviour, Is.SameAs(F.WindowManager.GetLayerData(UILayer.Popup)));
+            Assert.That(F.WindowManager.GetWindows(UILayer.Popup), Has.Member(window));
+        }
+
+        [Test]
+        public void WindowConfig_InsertsWindowBeforeConfiguredTarget()
+        {
+            var target = F.WindowManager.Open<OrderWindowA>();
+            var before = F.WindowManager.Open<OpenBeforeOrderWindow>();
+            _windows.Add(target);
+            _windows.Add(before);
+            Track(target.WindowObject);
+            Track(before.WindowObject);
+
+            Assert.That(F.WindowManager.GetWindows(UILayer.HUD),
+                Is.EqualTo(new IWindow[] { before, target }));
+        }
 
         [UnityTest]
         public IEnumerator SameLayerOverlappingOpen_KeepsAcceptedOpenRegistered()
-            => RejectedOpenPreservesPendingWindow(true, UILayer.HUD);
+            => RejectedOpenPreservesPendingWindow(true);
 
         [UnityTest]
         public IEnumerator RejectedSyncOpen_KeepsPendingAsyncOpenRegistered()
-            => RejectedOpenPreservesPendingWindow(false, UILayer.HUD);
+            => RejectedOpenPreservesPendingWindow(false);
 
-        private IEnumerator RejectedOpenPreservesPendingWindow(bool asynchronous, UILayer targetLayer)
+        private IEnumerator RejectedOpenPreservesPendingWindow(bool asynchronous)
         {
-            var first = F.WindowManager.OpenAsync<GateWindow>(UILayer.HUD);
+            var first = F.WindowManager.OpenAsync<GateWindow>();
             var window = F.WindowManager.GetWindow<GateWindow>();
             _windows.Add(window);
             var rejected = asynchronous
-                ? F.WindowManager.OpenAsync<GateWindow>(targetLayer).GetAwaiter().GetResult()
-                : F.WindowManager.Open<GateWindow>(targetLayer);
+                ? F.WindowManager.OpenAsync<GateWindow>().GetAwaiter().GetResult()
+                : F.WindowManager.Open<GateWindow>();
             window.Gate.SetResult(Track(new GameObject("ReviewWindow", typeof(RectTransform))));
             yield return Wait(() => first.GetAwaiter().IsCompleted);
             Assert.That(first.GetAwaiter().GetResult(), Is.SameAs(window));
@@ -74,7 +106,7 @@ namespace EasyFramework.Tests
                 "A rejected call must not destroy the window owned by the pending open.");
             Assert.That(window.LayerBehaviour, Is.SameAs(F.WindowManager.GetLayerData(UILayer.HUD)));
             Assert.That(F.WindowManager.GetWindows(UILayer.HUD), Has.Member(window),
-                "Accepted HUD open completed, but the failed Popup call moved its registration to Popup.");
+                "Accepted HUD open completed, but the rejected call changed its registration.");
         }
 
         [UnityTest]
@@ -439,6 +471,17 @@ namespace EasyFramework.Tests
             protected override GameObject CreateWindowObject(Transform parent) => null;
             protected override ETask<GameObject> CreateWindowObjectAsync(Transform parent) => ETask.FromResult<GameObject>(null);
         }
+        [WindowConfig(Layer = UILayer.Popup)]
+        public sealed class ConfiguredLayerWindow : Window
+        {
+            protected override GameObject CreateWindowObject(Transform parent)
+            {
+                var obj = new GameObject("ConfiguredLayerWindow", typeof(RectTransform));
+                obj.transform.SetParent(parent, false);
+                return obj;
+            }
+        }
+        public sealed class DefaultLayerWindow : Window { }
         public sealed class ProbeComponent : WindowComponent
         {
             public int Loads, Opens;
@@ -466,6 +509,8 @@ namespace EasyFramework.Tests
         public sealed class OrderWindowA : OrderWindow { }
         public sealed class OrderWindowB : OrderWindow { }
         public sealed class OrderWindowC : OrderWindow { }
+        [WindowConfig(OpenBeforeType = typeof(OrderWindowA))]
+        public sealed class OpenBeforeOrderWindow : OrderWindow { }
         public sealed class ComponentOrderWindow : OrderWindow
         {
             public readonly OrderProbeComponent Component = new();

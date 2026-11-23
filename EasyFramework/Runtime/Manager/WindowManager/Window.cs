@@ -15,25 +15,30 @@ namespace EasyFramework
     public abstract class Window : IWindow, ITimerObject, IResRequest
     {
         public bool Alive { get; private set; } = true;
-        public bool KeepAlive => IsOpen || _closedTime <= 0 || Time.time <= _closedTime + KeepAliveTime;
-        public bool IsTimerAlive => IsOpen;
-        public bool IsOpen { get; private set; }
         public bool IsLoading { get; private set; }
-        public bool IsActive { get; private set; }
+        public virtual bool KeepAlive => IsOpen || _closedTime <= 0 || _config.DestroyTime == 0 || Time.time <= _closedTime + _config.DestroyTime;
+
+        bool ITimerObject.Alive => IsOpen;
+        bool IResRequest.Alive => Alive;
+
+        public bool IsOpen { get; private set; }
+        public bool IsActive => WindowObject != null && WindowObject.activeSelf;
         public Type Type { get; }
+        public UILayer UILayer => _config.Layer;
         public UILayerBehaviour LayerBehaviour { get; private set; }
         public GameObject WindowObject { get; private set; }
         public RectTransform RectTransform { get; private set; }
         public Canvas Canvas { get; private set; }
         public GraphicRaycaster GraphicRaycaster { get; private set; }
 
-        protected virtual float KeepAliveTime => 60;
-        private float _closedTime;
+        private readonly WindowConfigAttribute _config;
         private readonly List<IWindowComponent> _componentList = new();
+        private float _closedTime;
         
         protected Window()
         {
             Type = GetType();
+            _config = WindowConfigAttribute.GetConfig(Type);
         }
         protected void RegisterComponent(IWindowComponent component)
         {
@@ -169,7 +174,6 @@ namespace EasyFramework
             if (!Alive) return;
             if (WindowObject == null) return;
 
-            IsActive = value;
             WindowObject.SetActive(value);
             OnSetActive(value);
             if (_componentList.Count > 0) foreach (var ex in _componentList) ex.OnSetActive(value);

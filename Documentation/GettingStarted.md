@@ -76,7 +76,7 @@ public sealed class HelloWindow : Window
 }
 ```
 
-准备以 RectTransform 为根的 HelloWindow.prefab，放入构建目录。初始化后调用 `await F.WindowManager.OpenAsync<HelloWindow>(UILayer.HUD)`。未指定 UI Root 时使用包内 Resources/UIRoot。自定义 Root 要配置层、Camera、EventSystem。
+准备以 RectTransform 为根的 HelloWindow.prefab，放入构建目录。初始化后调用 `await F.WindowManager.OpenAsync<HelloWindow>()`；窗口层可通过 `[WindowConfig(Layer = UILayer.Popup)]` 配置，未配置时使用 `HUD`。未指定 UI Root 时使用包内 Resources/UIRoot。自定义 Root 要配置层、Camera、EventSystem。
 
 暂时隐藏用 Close<HelloWindow>()，释放实例先关闭再 Destroy<HelloWindow>()。继承 WindowResources 并重写 `ResourcePath` 可指定 `Resources` 下的资源路径。[Runtime/WindowExample.cs](../Samples~/Runtime/WindowExample.cs) 提供 `OpenAsync()`、`Close()` 和 `Release()` 模板；需先准备以 RectTransform 为根的 `TemplateWindow.prefab`，顺序等待打开后再关闭或释放。
 

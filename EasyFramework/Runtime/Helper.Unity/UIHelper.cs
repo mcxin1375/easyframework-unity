@@ -14,7 +14,7 @@ namespace EasyFramework
     /// <summary>
     /// UGUI 工具类
     /// </summary>
-    public static class UGUIHelper
+    public static class UIHelper
     {
         /// <summary>
         /// 世界坐标 转 UGUI坐标

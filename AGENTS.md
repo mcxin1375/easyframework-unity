@@ -28,7 +28,7 @@
 
 1. 定义继承 `Window` 的窗口类型，并根据需要重写 `OnOpen`、`OnClose` 等生命周期方法。
 2. 准备窗口资源，并确保资源名与窗口类型名 `Type.Name` 一致。默认 `Window` 会通过 `F.ResLoader` 按类型名加载并实例化资源。
-3. 在初始化完成后通过 `F.WindowManager.OpenAsync<T>(layer)` 打开窗口，业务流程应等待返回的 `ETask<T>`。
+3. 可在窗口类型上使用 `[WindowConfig(Layer = UILayer.Popup)]` 声明层级；通过 `DestroyTime` 配置关闭后的自动回收秒数，默认 60 秒，设为 0 时不自动回收。初始化完成后通过 `F.WindowManager.OpenAsync<T>()` 打开窗口，业务流程应等待返回的 `ETask<T>`。没有配置时使用 `HUD`，窗口层级可从 `IWindow.UILayer` 获取。
 4. 暂时隐藏窗口使用 `F.WindowManager.Close<T>()`；不再使用并需要释放实例时使用 `F.WindowManager.Destroy<T>()`。
 5. 需要参数时，让窗口实现对应的 `ITParams<T1...>` 接口，并使用匹配泛型参数顺序的 `Open` 或 `OpenAsync` 重载。
 6. 资源名与窗口类型名不一致时，继承 `WindowResources` 并重写 `ResourcePath` 指定资源路径，不要在业务调用处重复实现窗口资源加载逻辑。

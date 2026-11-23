@@ -519,9 +519,9 @@ namespace EasyFramework.Tests
         {
             var manager = F.WindowManager;
             var debugger = (QuietDebugger)FDebug.Debugger;
-            var first = manager.OpenAsync<ProbeWindow>(UILayer.HUD);
+            var first = manager.OpenAsync<ProbeWindow>();
             var window = manager.GetWindow<ProbeWindow>();
-            var second = manager.OpenAsync<ProbeWindow>(UILayer.Popup);
+            var second = manager.OpenAsync<ProbeWindow>();
             Assert.That(second.GetAwaiter().GetResult(), Is.Null);
             Assert.That(debugger.LastError, Is.EqualTo("F.UISystem.OpenWindow(ProbeWindow): window is loading."));
             Assert.That(debugger.LastException, Is.Null);
@@ -532,10 +532,10 @@ namespace EasyFramework.Tests
             Assert.That(first.GetAwaiter().GetResult(), Is.SameAs(window));
             Assert.That(manager.GetWindow<ProbeWindow>(), Is.SameAs(window),
                 "Rejecting a second open must not remove the first operation's window.");
-            Assert.That(manager.OpenAsync<ProbeWindow>(UILayer.Popup).GetAwaiter().GetResult(), Is.SameAs(window));
+            Assert.That(manager.OpenAsync<ProbeWindow>().GetAwaiter().GetResult(), Is.SameAs(window));
             Assert.That(window.Creates, Is.EqualTo(1));
             Assert.That(window.Requests, Is.EqualTo(1));
-            Assert.That(window.LayerBehaviour, Is.SameAs(manager.GetLayerData(UILayer.Popup)));
+            Assert.That(window.LayerBehaviour, Is.SameAs(manager.GetLayerData(UILayer.HUD)));
             manager.Destroy(window);
         }
 
@@ -634,7 +634,7 @@ namespace EasyFramework.Tests
             public int Updates, Refreshes, ActiveChanges;
             public Action DestroyAction;
             public readonly List<string> CleanupOrder = new();
-            protected override float KeepAliveTime => -1;
+            public override bool KeepAlive => IsOpen;
             protected override GameObject CreateWindowObject(Transform parent)
             {
                 Requests++;

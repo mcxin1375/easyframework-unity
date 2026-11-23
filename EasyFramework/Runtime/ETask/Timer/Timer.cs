@@ -12,7 +12,7 @@ namespace EasyFramework
 {
     public interface ITimerObject
     {
-        bool IsTimerAlive => true;
+        bool Alive => true;
     }
 
     public class Timer
@@ -82,7 +82,7 @@ namespace EasyFramework
 
             public void Tick()
             {
-                if (_timerObject is { IsTimerAlive: false })
+                if (_timerObject is { Alive: false })
                 {
                     _timer.Remove(Token);
                     return;

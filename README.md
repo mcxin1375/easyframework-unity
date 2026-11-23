@@ -88,10 +88,11 @@ public sealed class GameController : Controller<GameController>
 {
     protected override async ETask OnEnterAsync()
     {
-        await F.WindowManager.OpenAsync<HelloWindow>(UILayer.HUD);
+        await F.WindowManager.OpenAsync<HelloWindow>();
     }
 }
 
+[WindowConfig(Layer = UILayer.Popup)]
 public sealed class HelloWindow : Window
 {
     protected override void OnOpen() => Debug.Log("Hello, EasyFramework!");

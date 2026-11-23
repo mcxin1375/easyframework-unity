@@ -8,10 +8,11 @@
 
 ```csharp
 await F.InitializeAsync();
-await F.WindowManager.OpenAsync<HelloWorldWindow1>(UILayer.HUD);
+await F.WindowManager.OpenAsync<HelloWorldWindow1>();
 ```
 
 UI Root、各个 `UILayer` 和窗口资源也必须已经配置。`UILayer` 当前包含 `HUD`、`Popup`、`Notice`、`Higher`、`Loading` 和组合值 `All`。
+窗口类型可用 `WindowConfigAttribute` 的命名字段分别配置层级和前置窗口：`[WindowConfig(Layer = UILayer.Popup)]`。配置按窗口类型缓存；未标注时创建默认配置对象，默认层为 `HUD`、`OpenBeforeType` 为空、`DestroyTime` 为 60 秒。需要让窗口排在同层指定窗口之前时，设置 `OpenBeforeType`，例如 `[WindowConfig(OpenBeforeType = typeof(LoginWindow))]`；两个字段也可以同时设置，例如 `[WindowConfig(Layer = UILayer.Popup, OpenBeforeType = typeof(LoginWindow))]`。业务通过 `IWindow.UILayer` 获取窗口层级。
 
 ## 管理器属性
 
@@ -26,16 +27,17 @@ UI Root、各个 `UILayer` 和窗口资源也必须已经配置。`UILayer` 当�
 
 | API | 说明 |
 | --- | --- |
-| `Open<T>(UILayer)` | 同步创建并打开窗口，默认层为 `HUD` |
-| `Open<T, T1>(layer, value1)` | 带一个参数打开窗口，窗口实现 `ITParams<T1>` |
-| `Open<T, T1, T2>(layer, value1, value2)` | 带两个参数打开窗口，窗口实现 `ITParams<T1, T2>` |
-| `Open<T, T1, T2, T3>(layer, value1, value2, value3)` | 带三个参数打开窗口，窗口实现 `ITParams<T1, T2, T3>` |
-| `Open(Type, layer, object[])` | 按运行时类型和参数打开窗口 |
-| `OpenAsync<T>(UILayer)` | 异步创建并打开窗口，返回 `ETask<T>` |
-| `OpenAsync<T, T1..T3>(...)` | 异步带参打开窗口 |
-| `OpenAsync(Type, layer, object[])` | 异步按运行时类型打开窗口 |
+| `Open<T>()` | 按窗口配置层同步创建并打开窗口；未配置时使用 `HUD` |
+| `Open<T, T1>(value1)` | 按窗口配置层带一个参数打开窗口，窗口实现 `ITParams<T1>` |
+| `Open<T, T1, T2>(value1, value2)` | 按窗口配置层带两个参数打开窗口，窗口实现 `ITParams<T1, T2>` |
+| `Open<T, T1, T2, T3>(value1, value2, value3)` | 按窗口配置层带三个参数打开窗口，窗口实现 `ITParams<T1, T2, T3>` |
+| `Open(Type, object[])` | 按窗口配置层和运行时类型、参数打开窗口 |
+| `OpenAsync<T>()` | 按窗口配置层异步创建并打开窗口，返回 `ETask<T>` |
+| `OpenAsync<T, T1..T3>(...)` | 按窗口配置层异步带参打开窗口 |
+| `OpenAsync(Type, object[])` | 按窗口配置层异步按运行时类型打开窗口 |
 
 泛型窗口需要满足 `class, IWindow, new()`。优先使用泛型 API，这样窗口类型和参数约束可以在编译期检查。
+`IWindowManager` 不接受单次打开的层参数；新代码应让窗口通过 `WindowConfigAttribute` 声明层级。
 
 窗口入口在 Unity 主线程调用。Window 的对象在首次 Open / OpenAsync 时创建，IWindow.Create() 是管理器创建实例时的入口。异步加载由 IsLoading 标记保护，加载结束或抛错都会在 finally 中复位；仅在加载中直接重复调用 IWindow.Open / OpenAsync 时抛出 InvalidOperationException，已加载对象仍可复用。管理器在修改层登记前检查 IsLoading，重叠请求记录错误并返回 null，保留首个请求及其登记；打开过程抛错则清理对应实例并返回 null。资源对象为 null 也视为打开失败，后续请求可以重新创建。参数仍在管理器入口写入，拒绝的重叠请求也可能改变参数，因此同类型打开应顺序 await。
 
@@ -51,7 +53,7 @@ Window 的 Alive 初始为 true，Close 后仍为 true，Destroy 入口将其置
 | `CloseAll()` | 关闭全部窗口 |
 | `Destroy(IWindow)` / `Destroy<T>()` | 销毁窗口实例及其 GameObject |
 
-`Close` 和 `Destroy` 语义不同：需要暂时隐藏时关闭，需要释放实例时销毁。关闭会移除层映射及层列表登记，类型缓存仍保留实例供重新打开。WindowManager 在需要刷新时，从类型缓存建立打开窗口的 `_updateList` 和已关闭窗口的 `_closedList`；更新时跳过已经移除层映射或仍在加载的实例，关闭缓存的 `KeepAlive` 为 `false` 时经管理器销毁。`Window` 默认在关闭后保留 60 秒，可通过重写 `KeepAliveTime` 调整时长。
+`Close` 和 `Destroy` 语义不同：需要暂时隐藏时关闭，需要释放实例时销毁。关闭会移除层映射及层列表登记，类型缓存仍保留实例供重新打开。WindowManager 在需要刷新时，从类型缓存建立打开窗口的 `_updateList` 和已关闭窗口的 `_closedList`；更新时跳过已经移除层映射或仍在加载的实例，关闭缓存的 `KeepAlive` 为 `false` 时经管理器销毁。关闭后自动回收时间由 `[WindowConfig(DestroyTime = 30)]` 设置，单位为秒，默认 60 秒；设为 0 时不自动回收。倒计时从窗口关闭时开始，达到时间后由 WindowManager 的更新回收窗口。
 
 管理器销毁前先验证类型缓存仍指向传入实例，再删除该缓存并移除层关系；旧关闭缓存不能删除同类型的新实例。Window.Destroy 先同步调用 Close，再执行窗口 OnDestroy、组件 OnDestroy 和原生对象销毁。窗口快照按需在后续 Update 刷新，本帧已无层映射的实例停止更新，回调中新开的实例从下一次快照刷新参与 Update。
 
@@ -77,7 +79,7 @@ Destroy 不主动调用资源卸载。窗口作为 IResRequest 的 Alive=false �
 
 IsOpen 查询管理器中的层登记，因此打开已登记但仍在加载时也可能为 true；需要使用原生对象时必须等待 OpenAsync 完成。GetWindows / GetTopWindow 同样依据层列表返回实例。RefreshAllWindow 使用当前更新快照，并跳过已移除或加载中的窗口。
 
-每层由 WindowLayerInfo 保存顺序。普通 Add / Remove 只修改列表；只有正在排序时发生变更才立即嵌套重排，旧循环在当前窗口回调返回后检测 UID 并退出，finally 复位标记。打开操作结束后管理器刷新该层排序；窗口及组件回调逐次读取 Canvas.sortingOrder。移除窗口后允许排序值留空，只要求剩余窗口相对顺序正确，不为压紧数值额外重排。
+每层由 WindowLayerInfo 保存顺序。普通 Add / Remove 只修改列表；只有正在排序时发生变更才立即嵌套重排，旧循环在当前窗口回调返回后检测 UID 并退出，finally 复位标记。打开配置了 `OpenBeforeType` 的窗口时，如果目标窗口已在同层列表中则插入到目标之前，否则按普通窗口追加。打开操作结束后管理器刷新该层排序；窗口及组件回调逐次读取 Canvas.sortingOrder。移除窗口后允许排序值留空，只要求剩余窗口相对顺序正确，不为压紧数值额外重排。
 
 ## 定义窗口
 
@@ -89,6 +91,7 @@ IsOpen 查询管理器中的层登记，因此打开已登记但仍在加载时�
 using EasyFramework;
 using UnityEngine;
 
+[WindowConfig(Layer = UILayer.Popup)]
 public class HelloWorldWindow1 : Window
 {
     protected override void OnOpen()
@@ -169,7 +172,6 @@ public partial class HelloWorldWindow3 : Window, ITParams<HelloWorldWindow3Param
 ```csharp
 await F.WindowManager.OpenAsync<HelloWorldWindow3,
     HelloWorldWindow3Params, string>(
-    UILayer.HUD,
     new HelloWorldWindow3Params { Value1 = 1 },
     "123");
 ```
@@ -196,10 +198,9 @@ public class HelloWorldResourcesWindow : WindowResources
 ```csharp
 public static async ETask Test()
 {
-    await F.WindowManager.OpenAsync<HelloWorldWindow1>(UILayer.HUD);
+    await F.WindowManager.OpenAsync<HelloWorldWindow1>();
     await F.WindowManager.OpenAsync<HelloWorldWindow3,
         HelloWorldWindow3Params, string>(
-        UILayer.HUD,
         new HelloWorldWindow3Params(),
         "123");
 }
