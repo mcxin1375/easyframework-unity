@@ -330,7 +330,7 @@ namespace EasyFramework.Editor
 
         private void DrawBundleRow(BundleViewData bundle)
         {
-            var selected = string.Equals(bundle.Name, _selectedBundleName, StringComparison.OrdinalIgnoreCase);
+            var selected = string.Equals(bundle.Name, _selectedBundleName, StringComparison.Ordinal);
             var duplicateCount = bundle.Resources.Count(resource =>
                 IsResourceVisible(resource) && IsAnyDuplicate(resource.AssetPath));
             var exactDuplicateCount = bundle.Resources.Count(resource =>
@@ -339,16 +339,24 @@ namespace EasyFramework.Editor
                 IsResourceVisible(resource) && IsContentDuplicate(resource.AssetPath));
             var duplicate = duplicateCount > 0;
             var previousBackground = GUI.backgroundColor;
+            var previousContentColor = GUI.contentColor;
 
             if (selected)
                 GUI.backgroundColor = new Color(0.32f, 0.56f, 0.88f);
             else if (duplicate)
                 GUI.backgroundColor = new Color(1f, 0.82f, 0.45f);
+            if (bundle.HasNameConflict)
+                GUI.contentColor = new Color(0.95f, 0.2f, 0.2f);
 
             var label = FormatBundleLabel(bundle);
-            var tooltip = duplicate
-                ? $"同对象重复 {exactDuplicateCount} 个，内容重复 {contentDuplicateCount} 个，共 {duplicateCount} 个。"
+            var tooltip = bundle.HasNameConflict
+                ? $"Bundle 名称忽略大小写后冲突：\n{string.Join("\n", bundle.ConflictingNames)}"
                 : null;
+            if (duplicate)
+            {
+                var duplicateTooltip = $"同对象重复 {exactDuplicateCount} 个，内容重复 {contentDuplicateCount} 个，共 {duplicateCount} 个。";
+                tooltip = string.IsNullOrEmpty(tooltip) ? duplicateTooltip : $"{tooltip}\n\n{duplicateTooltip}";
+            }
             if (GUILayout.Button(new GUIContent(label, tooltip),
                     EditorStyles.miniButton, GUILayout.Height(RowHeight)))
             {
@@ -358,6 +366,7 @@ namespace EasyFramework.Editor
             }
 
             GUI.backgroundColor = previousBackground;
+            GUI.contentColor = previousContentColor;
         }
 
         private void DrawResourceList(List<BundleViewData> visibleBundles)
@@ -365,7 +374,7 @@ namespace EasyFramework.Editor
             using (new EditorGUILayout.VerticalScope())
             {
                 var selectedBundle = _bundles.FirstOrDefault(bundle =>
-                    string.Equals(bundle.Name, _selectedBundleName, StringComparison.OrdinalIgnoreCase));
+                    string.Equals(bundle.Name, _selectedBundleName, StringComparison.Ordinal));
                 if (selectedBundle == null)
                 {
                     EditorGUILayout.HelpBox(
@@ -489,6 +498,9 @@ namespace EasyFramework.Editor
                     IsResourceVisible(resource) && IsAnyDuplicate(resource.AssetPath))) &&
                 (!_showMultipleDirectResourcesOnly || GetVisibleDirectResourceCount(bundle) > 1) &&
                 (string.IsNullOrWhiteSpace(_searchText) || BundleMatchesSearch(bundle)))
+                .OrderByDescending(bundle => bundle.HasNameConflict)
+                .ThenBy(bundle => bundle.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(bundle => bundle.Name, StringComparer.Ordinal)
                 .ToList();
         }
 
@@ -518,7 +530,7 @@ namespace EasyFramework.Editor
         private void EnsureSelectedBundle(List<BundleViewData> visibleBundles)
         {
             if (visibleBundles.Any(bundle =>
-                    string.Equals(bundle.Name, _selectedBundleName, StringComparison.OrdinalIgnoreCase))) return;
+                    string.Equals(bundle.Name, _selectedBundleName, StringComparison.Ordinal))) return;
 
             _selectedBundleName = visibleBundles.Count > 0 ? visibleBundles[0].Name : null;
             _resourceScrollPosition = Vector2.zero;
@@ -596,8 +608,33 @@ namespace EasyFramework.Editor
             else
                 LoadBuildLayout(_viewIndex == 1 ? _lastBuildReport : _lastAnalysisReport);
 
+            MarkConflictingBundleNames();
             EnsureSelectedBundle(GetVisibleBundles());
             Repaint();
+        }
+
+        private void MarkConflictingBundleNames()
+        {
+            foreach (var bundle in _bundles)
+            {
+                bundle.HasNameConflict = false;
+                bundle.ConflictingNames = Array.Empty<string>();
+            }
+
+            foreach (var group in _bundles
+                         .GroupBy(bundle => bundle.Name, StringComparer.OrdinalIgnoreCase)
+                         .Where(group => group.Count() > 1))
+            {
+                var conflictingNames = group.Select(bundle => bundle.Name)
+                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(name => name, StringComparer.Ordinal)
+                    .ToArray();
+                foreach (var bundle in group)
+                {
+                    bundle.HasNameConflict = true;
+                    bundle.ConflictingNames = conflictingNames;
+                }
+            }
         }
 
         private void LoadConfiguredBuilds()
@@ -951,6 +988,8 @@ namespace EasyFramework.Editor
         {
             public readonly string Name;
             public readonly ResourceViewData[] Resources;
+            public bool HasNameConflict;
+            public string[] ConflictingNames = Array.Empty<string>();
 
             public BundleViewData(string name, ResourceViewData[] resources)
             {

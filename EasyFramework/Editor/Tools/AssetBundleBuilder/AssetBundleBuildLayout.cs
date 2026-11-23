@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.Build.Content;
 using UnityEditor.Build.Pipeline;
 using UnityEditor.Build.Pipeline.Injector;
@@ -89,6 +90,30 @@ namespace EasyFramework.Editor
             foreach (var bundleLayout in _buildContent.BundleLayout)
             {
                 var bundle = new BundleData(bundleLayout.Key);
+                if (bundles.TryGetValue(bundle.Name, out var existingBundle))
+                {
+                    var conflictPaths = bundleLayout.Value
+                        .Select(rootGuid => NormalizeAssetPath(AssetDatabase.GUIDToAssetPath(rootGuid.ToString())))
+                        .Where(path => !string.IsNullOrWhiteSpace(path))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
+                    var existingPathsMessage = existingBundle.DirectPaths.Count > 0
+                        ? string.Join(Environment.NewLine, existingBundle.DirectPaths
+                            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                            .Select(path => $"  - {path}"))
+                        : "  - <无法解析资源路径>";
+                    var conflictPathsMessage = conflictPaths.Length > 0
+                        ? string.Join(Environment.NewLine, conflictPaths.Select(path => $"  - {path}"))
+                        : "  - <无法解析资源路径>";
+
+                    throw new BuildFailedException(
+                        $"AssetBundle 布局捕获失败：Bundle 名称 '{existingBundle.Name}' 与 '{bundle.Name}' 相同或仅大小写不同。{Environment.NewLine}" +
+                        $"原因：布局报告按忽略大小写识别 Bundle 名称，无法将这两个包分别记录。{Environment.NewLine}" +
+                        $"已有 Bundle 的直接资源路径：{Environment.NewLine}{existingPathsMessage}{Environment.NewLine}" +
+                        $"冲突 Bundle 的直接资源路径：{Environment.NewLine}{conflictPathsMessage}");
+                }
+
                 bundles.Add(bundle.Name, bundle);
 
                 foreach (var rootGuid in bundleLayout.Value)
