@@ -1,6 +1,6 @@
 # EasyFramework for Unity
 
-EasyFramework 是面向 Unity 的模块化 C# 框架，围绕异步任务、业务流程、资源与 UI，提供从游戏运行到构建发布的一套开发工具。UPM 包名为 `com.cookie.easyframework`，当前版本为 `1.0.2`。
+EasyFramework 是面向 Unity 的模块化 C# 框架，围绕异步任务、业务流程、资源与 UI，提供从游戏运行到构建发布的一套开发工具。UPM 包名为 `cn.mengchengxin.easyframework`，当前版本为 `1.0.2`。
 
 [核心能力](#核心能力) · [快速开始](#快速开始) · [文档索引](#文档索引) · [更新日志](CHANGELOG.md) · [许可证](LICENSE)
 

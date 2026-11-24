@@ -19,7 +19,7 @@ namespace EasyFramework.Editor
     //     {
     //         new DLCBuilderPackage(EDLCMode.DLC.ToString(), new string[]
     //         {
-    //             "Packages/com.cookie.easyframework/Res/DLC",
+    //             "Packages/cn.mengchengxin.easyframework/Res/DLC",
     //             EasyFrameworkPreferences.AssetsDataDLCPath
     //         })
     //     };
