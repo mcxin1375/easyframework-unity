@@ -42,11 +42,11 @@
 AssetBundleBuilder 遍历所有配置的基础目录：
 
 - 以 `.ab` 结尾的目录，其目录内全部资源打包为一个 Bundle。
-- 其他资源按文件分别打包，每个资源单独生成一个 Bundle。
+- 普通文件按文件名生成小写 Bundle 名，归一化后同名的定义合包。
 - 遍历跳过 `Editor` 目录和 `.meta` 文件，并应用文件名和扩展名过滤配置。
 - 所有 `IAssetBundleBuilderSettings` 配置会自动发现、合并和去重。
 
-资源加载时只传入资源名，不在业务代码中拼接 Bundle 文件名、哈希文件名或下载路径：
+资源加载时传入保留原始大小写的资源名。
 
 ```csharp
 GameObject cube = await F.ResLoader.CreateObjAsync("Cube");

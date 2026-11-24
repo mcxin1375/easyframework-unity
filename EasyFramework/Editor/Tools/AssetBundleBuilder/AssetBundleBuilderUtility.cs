@@ -353,7 +353,6 @@ namespace EasyFramework.Editor
         public static AssetBundleBuild[] CreateAssetBundleBuildBySettings()
         {
             ToolExtension<IAssetBundleBuilderSettings>.Refresh();
-            var settings = AssetBundleBuilderSettings.Instance;
             
             List<AssetBundleBuild> buildList = new List<AssetBundleBuild>();
             
@@ -382,20 +381,27 @@ namespace EasyFramework.Editor
                 }
             }
             
-            var arr = CreateAssetBundleBuildsByDirectories(directories.ToArray());
-            if (arr?.Length > 0) buildList.AddRange(arr);
-
-            Dictionary<string, AssetBundleBuild> dict = new Dictionary<string, AssetBundleBuild>();
-            foreach (AssetBundleBuild ab in buildList)
-            {
-                if (dict.ContainsKey(ab.assetBundleName)) dict[ab.assetBundleName] = Merge(dict[ab.assetBundleName], ab);
-                else dict.Add(ab.assetBundleName, ab);
-            }
-            
-            return dict.Values.ToArray();
+            buildList.AddRange(CollectBuildsByDirectories(directories));
+            return MergeBuilds(buildList);
         }
 
-        public static AssetBundleBuild[] CreateAssetBundleBuildsByDirectories(params string[] directories)
+        private static AssetBundleBuild[] MergeBuilds(IEnumerable<AssetBundleBuild> builds)
+        {
+            var bundles = new Dictionary<string, AssetBundleBuild>(StringComparer.Ordinal);
+            foreach (var build in builds)
+            {
+                if (bundles.TryGetValue(build.assetBundleName, out var existing))
+                    bundles[build.assetBundleName] = Merge(existing, build);
+                else
+                    bundles.Add(build.assetBundleName, build);
+            }
+
+            return bundles.Values.ToArray();
+        }
+
+        public static AssetBundleBuild[] CreateAssetBundleBuildsByDirectories(params string[] directories) => MergeBuilds(CollectBuildsByDirectories(directories));
+
+        private static List<AssetBundleBuild> CollectBuildsByDirectories(IEnumerable<string> directories)
         {
             List<AssetBundleBuild> buildList = new List<AssetBundleBuild>();
             List<string> folderList = new List<string>();
@@ -404,6 +410,7 @@ namespace EasyFramework.Editor
             var instance = AssetBundleBuilderSettings.Instance;
             var resFileIgnoreExs = instance.ignoreFileExes.ToHashSet();
             var resFileIgnoreNames = instance.ignoreFileNames.ToHashSet();
+            var suffix = EasyFrameworkSettings.Instance.abSuffix;
             
             void For(string path)
             {
@@ -432,7 +439,7 @@ namespace EasyFramework.Editor
                 {
                     string name = Path.GetFileName(folder);
                     if (name == "Editor") continue;
-                    if (name.EndsWith(EasyFrameworkSettings.Instance.abSuffix))
+                    if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
                     {
                         string newPath = ToUnityAssetPath(folder, fileSystemPath, virtualRoot);
                         if (!folderList.Contains(newPath)) folderList.Add(newPath);
@@ -451,14 +458,14 @@ namespace EasyFramework.Editor
             
             foreach (string folder in folderList)
             {
-                buildList.Add(AssetBundleBuilderUtility.CreateDirectory(Path.GetFileNameWithoutExtension(folder), folder));
+                buildList.Add(AssetBundleBuilderUtility.CreateDirectory(Path.GetFileName(folder), folder));
             }
             foreach (string file in fileList)
             {
                 buildList.Add(AssetBundleBuilderUtility.CreateFile(Path.GetFileNameWithoutExtension(file), file));
             }
 
-            return buildList.ToArray();
+            return buildList;
         }
 
         public static AssetBundleBuild CreateShaderDirectory(string abName, string directory) => CreateShaderDirectory(abName, new string[] { directory });
@@ -630,11 +637,7 @@ namespace EasyFramework.Editor
                 return default;
             }
 
-            if (!abName.EndsWith(EasyFrameworkSettings.Instance.abSuffix))
-            {
-                abName = $"{abName}{EasyFrameworkSettings.Instance.abSuffix}";
-            }
-
+            abName = AssetBundleLoaderHelper.NameToKey(abName);
             ValidateAddressableNames(abName, assetNames, addressableNames);
 
             return new AssetBundleBuild
@@ -648,42 +651,13 @@ namespace EasyFramework.Editor
 
         public static AssetBundleBuild Merge(AssetBundleBuild ab, AssetBundleBuild ab2)
         {
-            List<string> assetNameList = new List<string>();
-            
-            foreach (string s in ab.assetNames) if (!assetNameList.Contains(s)) assetNameList.Add(s);
-            foreach (string s in ab2.assetNames) if (!assetNameList.Contains(s)) assetNameList.Add(s);
-
-            ab.assetNames = assetNameList.ToArray();
+            ab.assetNames = ab.assetNames.Concat(ab2.assetNames).Distinct(StringComparer.Ordinal).ToArray();
             ab.addressableNames = CreateAddressableNames(ab.assetNames);
-            ValidateAddressableNames(ab.assetBundleName, ab.assetNames, ab.addressableNames);
             return ab;
         }
 
-        private static string[] CreateAddressableNames(string[] assetNames)
-        {
-            if (assetNames == null) return null;
-
-            var normalizedPaths = assetNames.Select(NormalizeAssetPath).ToArray();
-            var shortNames = normalizedPaths
-                .Select(Path.GetFileNameWithoutExtension)
-                .ToArray();
-            var duplicateShortNames = shortNames
-                .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
-                .Where(group => group.Count() > 1)
-                .Select(group => group.Key)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            return shortNames
-                .Select((shortName, index) => duplicateShortNames.Contains(shortName)
-                    ? normalizedPaths[index]
-                    : shortName)
-                .ToArray();
-        }
-
-        private static string NormalizeAssetPath(string path)
-        {
-            return path?.Replace('\\', '/');
-        }
+        private static string[] CreateAddressableNames(string[] assetNames) =>
+            assetNames.Select(path => Path.GetFileNameWithoutExtension(path?.Replace('\\', '/'))).ToArray();
 
         private static void ValidateAddressableNames(string abName, string[] assetNames, string[] addressableNames)
         {
@@ -691,21 +665,8 @@ namespace EasyFramework.Editor
             if (assetNames.Length != addressableNames.Length)
                 throw new BuildFailedException($"AssetBundle [{abName}] assetNames and addressableNames count mismatch.");
 
-            var pathDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < addressableNames.Length; i++)
-            {
-                var addressableName = addressableNames[i];
-                if (string.IsNullOrWhiteSpace(addressableName))
-                    throw new BuildFailedException($"AssetBundle [{abName}] contains an empty addressable name.");
-
-                var key = NormalizeAssetPath(addressableName);
-                if (pathDict.TryGetValue(key, out var previousPath))
-                    throw new BuildFailedException(
-                        $"AssetBundle [{abName}] contains duplicate addressable name [{addressableName}]: " +
-                        $"{previousPath} and {assetNames[i]}");
-
-                pathDict.Add(key, assetNames[i]);
-            }
+            if (addressableNames.Any(string.IsNullOrWhiteSpace))
+                throw new BuildFailedException($"AssetBundle [{abName}] contains an empty addressable name.");
         }
     }
 }

@@ -17,13 +17,24 @@ AssetBundleLoader 初始化直接清空并填充内部 _abDict，不额外分配
 | `IsLoading` / `IsUnloading` / `GetLoadingProgress` | 状态查询 |
 | `GetAllDependencies` | 查询依赖 Bundle |
 
-资源名来自构建 Manifest，不需要自行拼接 .ab 或哈希文件名。`.ab` 目录合包时，`assetName` 使用 Bundle 内地址名，默认规则为文件名去扩展名；同一 Bundle 内不同路径出现同名文件时，冲突资源使用完整 Unity 资源路径（含扩展名）作为地址名：
+Bundle 文件名统一为小写。加载时传入去掉扩展名、保留原始大小写的资源名。例如自动分包的 `Res_AA.png` 和 `Res_aa.png` 都在 `res_aa.ab` 中，可以分别加载。
 
 ```csharp
-var texture = await F.ResLoader.LoadAssetAsync<Texture2D>("Textures", "Texture1", request: this);
+var upper = await F.ResLoader.LoadAssetAsync<Texture2D>("Res_AA");
+var lower = await F.ResLoader.LoadAssetAsync<Texture2D>("Res_aa");
 ```
 
-精确加载后仍按 `abName` 释放 Bundle：`F.ResLoader.Unload("Textures", this)`。资源不存在时 CreateObjAsync 会记录错误并返回 null。
+`AssetBundleLoaderHelper.NameToKey` 检查配置的后缀并返回完整的小写包索引。运行时先按原始输入查 `_keyDict`，未命中时才使用 `NameToKey` 的结果查 `_abDict`。`Res_AA` 和 `Res_aa` 各缓存一条，指向同一个 `AssetBundleInfo` 并共用其依赖信息。Editor 资源桥接也缓存原始输入。
+
+使用 `.ab` 目录或显式配置合包时，传入 Bundle 名和资源地址。
+
+```csharp
+var texture = await F.ResLoader.LoadAssetAsync<Texture2D>("textures", "Texture1", request: this);
+```
+
+完全同名的资源全部保留。按资源地址加载会返回其中一个，可用 `LoadAllAssets<T>` 获取包内所有同类型资源。重打包后，原来传入完整资源路径的同名资源加载调用需改用资源地址或批量加载。
+
+指定 Bundle 加载后按相同的 `abName` 释放，示例对应 `F.ResLoader.Unload("textures", this)`。资源不存在时 CreateObjAsync 会记录错误并返回 null。
 
 ## 持有与释放
 

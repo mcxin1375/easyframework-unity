@@ -24,7 +24,7 @@ namespace EasyFramework.Editor
                                                                  BuildAssetBundleOptions.AssetBundleStripUnityVersion |
                                                                  BuildAssetBundleOptions.DisableLoadAssetByFileNameWithExtension;
         
-        [Header("1. 遍历所有目录，每个文件打成一个AB包（忽略Editor目录）\n2. 后缀为(.ab)的目录，整个目录打成AB包)")]
+        [Header("1. 普通文件按文件名生成小写 AB，同名合包（跳过 Editor 目录）\n2. .ab 目录整体打包")]
         public string[] buildDirectories = new string[]
         {
             "Assets/Res_DLC"

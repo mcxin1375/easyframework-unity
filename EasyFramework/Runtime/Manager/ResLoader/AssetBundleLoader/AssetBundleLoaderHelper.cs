@@ -1,4 +1,4 @@
-using System.IO;
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -8,9 +8,12 @@ namespace EasyFramework
     public static class AssetBundleLoaderHelper
     {
         
-        public static string NameToKey(string abName) => abName.EndsWith(EasyFrameworkSettings.Instance.abSuffix)
-            ? abName
-            : $"{abName}{EasyFrameworkSettings.Instance.abSuffix}";
+        public static string NameToKey(string abName)
+        {
+            var suffix = EasyFrameworkSettings.Instance.abSuffix;
+            var nameWithSuffix = abName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase) ? abName : abName + suffix;
+            return nameWithSuffix.ToLowerInvariant();
+        }
         
         public static string NameToURL(string abName)
         {

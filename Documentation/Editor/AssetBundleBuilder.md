@@ -12,6 +12,10 @@
 
 `AssetBundleWindow` 提供构建列表、最近正式构建和模拟分析三个页签。构建列表显示直接资源和间接资源；模拟分析额外显示“写入资源”，其中间接资源统一来自 `AssetDatabase.GetDependencies()`，写入资源来自 SBP 实际写入对象，因此同一路径可以同时出现在间接资源和写入资源列表。引用数列统计包含该资源的 AB 数量，悬浮资源路径可查看所在 AB 列表；SBP 生成的 `temp:/`、`archive:/` 和 `library:/` 内部对象不计入资源列表或统计。顶部开关为“重复资源”“代码”和“Shader”，AB 列表顶部另有“直接资源数>1”筛选，代码与 Shader 默认不计入列表及统计，打开对应开关后纳入显示。重复统计分为“同对象重复”和“内容重复”：前者要求相同 `ObjectIdentifier` 实际写入多个 AB，后者要求不同对象的临时序列化数据哈希相同，并给出未压缩序列化数据的重复字节估算。构建列表只显示直接资源的重复配置；间接资源仍展示但不作为重复证据，直接重复资源和对应 AB 会标色提醒。最近正式构建显示对象级结果，内容级结果需要报告包含内容分析；模拟分析会生成内容分析。AB 名称只在直接资源数大于 1 时显示 `(n)`，不显示间接资源数量。模拟分析只检查当前活动场景是否有未保存修改；场景没有变化时直接进入分析，场景有修改时由用户确认保存后继续。Shader 和 ComputeShader 导入对象的 Unity dirty 状态不再阻止分析。分析调用 `AssetBundleBuilderUtility.AnalyzeBySettings()`，模拟分析会写入隔离的临时序列化文件，在序列化写入后捕获对象数据，然后在归档 AssetBundle 前停止；不会写正式 AssetBundle 文件。分析会编译 Player 脚本，并把脚本输出、临时输出和构建日志放入隔离目录后清理；SBP/Unity 构建缓存仍可能更新。
 
+点击“分析当前配置”后，分析会在当前窗口绘制事件结束后启动；完成时刷新模拟分析报告。
+
+资源行依次显示“索引 / 路径 / 引用数”。索引显示加载时传入的 key，来自构建定义或报告中记录的实际地址。同一个 AB 内完全相同的索引单元格标黄，`Res_AA` 和 `Res_aa` 按各自的拼写显示。悬浮索引可查看完整 key。没有独立加载索引的依赖资源，以及缺少索引字段的旧报告条目，显示 `—`。
+
 AB 名称列表按忽略大小写识别冲突；冲突名称会标红并置顶，悬浮名称可查看同组冲突项。筛选仍作用于当前可见列表。
 
 ## 配置入口
@@ -74,7 +78,7 @@ internal sealed class GameAssetBundleBuildSettings : IAssetBundleBuilderSettings
 }
 ```
 
-`BuildDirectories` 和 `BuildInfos` 可以返回 `null`。所有配置对象和代码扩展都会被自动发现，按 `Order` 升序收集；同名 Bundle 的资源列表会合并并去重。
+`BuildDirectories` 和 `BuildInfos` 可以返回 `null`。所有配置对象和代码扩展都会被自动发现，按 `Order` 升序收集。
 
 每次收集构建配置都会重新发现配置资产，默认目录通过实时 getter 读取当前设置。同一 Editor 会话内修改目录，以及新增、禁用或删除 `AssetBundleBuildSettings`，下一次构建立即生效。
 
@@ -84,10 +88,11 @@ internal sealed class GameAssetBundleBuildSettings : IAssetBundleBuilderSettings
 - `ignoreFileNames` 和 `ignoreFileExes` 在自动扫描时生效。
 - 普通文件按不含扩展名的文件名生成 Bundle 名。
 - 以 `.ab` 结尾的目录会整体生成一个 Bundle，Bundle 名去掉 `.ab` 后缀。
-- `.ab` 目录中的文件默认使用去掉扩展名的文件名作为 Bundle 内地址名；同一 Bundle 内不同路径出现同名文件时，冲突资源使用完整 Unity 资源路径作为地址名。
-- 显式 `BuildInfos` 先生成，再与目录扫描结果按 Bundle 名合并。
-- Bundle 名缺少当前 `EasyFrameworkSettings.abSuffix` 时会自动追加后缀。
-- Bundle 布局名称按忽略大小写判重；若构建管线中出现相同或仅大小写不同的名称，构建会终止并输出冲突名称及双方直接资源路径。
+- `AssetBundleLoaderHelper.NameToKey` 按 `EasyFrameworkSettings.abSuffix` 补齐后缀，返回完整的小写 Bundle 名。
+- 显式 `BuildInfos` 与目录扫描结果按小写 Bundle 名合并。同一 Bundle 中重复收集的资源路径只打包一次。
+- Bundle 内的资源地址使用去掉扩展名的原始文件名，保留大小写，也保留不同路径下完全同名的条目。
+
+例如自动扫描到 `Res_AA.png` 和 `Res_aa.png` 时，两者进入同一个 `res_aa.ab`，加载地址分别为 `Res_AA` 和 `Res_aa`。加载方式见 [ResLoader](../Runtime/ResLoader.md)。
 
 路径应使用 Unity 资源路径或当前工程可访问的路径；Package 路径推荐使用不带版本号的形式，例如 `Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures`。构建器也会兼容带 `@版本` 的 Package 路径并解析到 PackageCache。避免同一资源被多个配置重复添加。
 

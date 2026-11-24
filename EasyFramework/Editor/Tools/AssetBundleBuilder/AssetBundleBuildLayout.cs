@@ -17,7 +17,7 @@ namespace EasyFramework.Editor
     [Serializable]
     public sealed class AssetBundleBuildLayoutReport
     {
-        public int schemaVersion = 2;
+        public int schemaVersion = 3;
         public string buildTarget;
         public string generatedAt;
         public int buildOptions;
@@ -37,6 +37,7 @@ namespace EasyFramework.Editor
     public sealed class AssetBundleBuildLayoutResource
     {
         public string assetPath;
+        public string addressableName;
         public bool isDirect;
         public bool isDuplicate;
         public int duplicateObjectCount;
@@ -71,7 +72,7 @@ namespace EasyFramework.Editor
         [InjectContext]
         private IBundleBuildResults _buildResults;
 
-        public int Version => 2;
+        public int Version => 3;
         public AssetBundleBuildLayoutReport Report { get; private set; }
 
         public AssetBundleBuildLayoutCapture(string buildTarget, BuildAssetBundleOptions buildOptions,
@@ -122,7 +123,9 @@ namespace EasyFramework.Editor
                     if (string.IsNullOrWhiteSpace(rootPath)) continue;
 
                     bundle.DirectPaths.Add(rootPath);
-                    GetOrAddResource(bundle, rootPath).IsDirect = true;
+                    var resource = GetOrAddResource(bundle, rootPath);
+                    resource.IsDirect = true;
+                    resource.AddressableName = _buildContent.Addresses.GetValueOrDefault(rootGuid);
 
                     if (_dependencyData.AssetInfo.TryGetValue(rootGuid, out var assetInfo))
                     {
@@ -179,6 +182,7 @@ namespace EasyFramework.Editor
                             .Select(resource => new AssetBundleBuildLayoutResource
                             {
                                 assetPath = resource.AssetPath,
+                                addressableName = resource.AddressableName,
                                 isDirect = resource.IsDirect,
                                 isDuplicate = resource.DuplicateObjectCount > 0,
                                 duplicateObjectCount = resource.DuplicateObjectCount,
@@ -443,6 +447,7 @@ namespace EasyFramework.Editor
         private sealed class AssetBundleBuildLayoutResourceData
         {
             public readonly string AssetPath;
+            public string AddressableName;
             public readonly HashSet<string> ObjectIds = new HashSet<string>(StringComparer.Ordinal);
             public readonly HashSet<string> ReferencingFiles =
                 new HashSet<string>(StringComparer.OrdinalIgnoreCase);

@@ -1,6 +1,6 @@
 # EasyFramework for Unity
 
-EasyFramework 是面向 Unity 的模块化 C# 框架，围绕异步任务、业务流程、资源与 UI，提供从游戏运行到构建发布的一套开发工具。UPM 包名为 `com.cookie.easyframework`，当前版本为 `1.0.1`。
+EasyFramework 是面向 Unity 的模块化 C# 框架，围绕异步任务、业务流程、资源与 UI，提供从游戏运行到构建发布的一套开发工具。UPM 包名为 `com.cookie.easyframework`，当前版本为 `1.0.2`。
 
 [核心能力](#核心能力) · [快速开始](#快速开始) · [文档索引](#文档索引) · [更新日志](CHANGELOG.md) · [许可证](LICENSE)
 
@@ -25,7 +25,7 @@ var cube = await F.ResLoader.CreateObjAsync("Cube");
 var texture = await F.ResLoader.LoadAssetAsync<Texture2D>("Textures", "Texture1");
 ```
 
-业务无需拼接哈希文件名；合包资源使用 `abName` 和 `assetName` 精确加载。同一 Bundle 内的同名文件会使用完整资源路径区分。Player 使用构建清单定位 Bundle 并处理依赖；Editor 默认通过资源桥接加载，可不打包调试。长期持有资源时，可通过 `IResRequest` 管理持有与释放。[了解资源管理](Documentation/Runtime/ResLoader.md)
+资源按原始大小写加载。合包资源使用 `abName` 和 `assetName` 定位，完全同名的条目可通过 `LoadAllAssets<T>` 一起获取。Player 使用构建清单定位 Bundle 并处理依赖，Editor 默认通过资源桥接加载。长期持有资源时，可通过 `IResRequest` 管理持有与释放。[了解资源管理](Documentation/Runtime/ResLoader.md)
 
 ### PlayerBuilder · 一键构建发布
 

@@ -1,5 +1,37 @@
 # 更新日志
 
+## [1.0.2] - 2026-11-24
+
+### 新增
+
+- AssetBundle 模拟分析基于临时序列化数据检测跨包内容重复，分别统计同对象重复和内容重复，并估算重复数据的字节数。模拟结果新增“写入资源”列表，显示 SBP 实际写入的资源。
+- AssetBundle 窗口增加代码、Shader 和“直接资源数大于 1”筛选。悬浮重复资源可查看写入该资源的 Bundle。
+- AssetBundle 布局报告升级至第 3 版，记录资源加载索引。窗口标黄同包内完全相同的索引。
+- AssetBundleBuilder 支持扫描 `Packages/...` 下的资源，兼容带 `@版本` 的 Package 路径。
+
+### 变更
+
+- `WindowConfigAttribute` 统一配置窗口层级、同层前置窗口和关闭后的回收时间。默认层级为 `HUD`，回收时间为 60 秒，设为 0 可关闭自动回收。可通过 `IWindow.UILayer` 查询窗口层级。
+- AssetBundle 名统一转为小写，同名构建定义合并。资源地址采用去掉扩展名的原始文件名并保留大小写，同包保留不同路径下的同名资源。
+- AssetBundle 构建列表按直接资源标记重复配置。若构建布局仍有包名冲突（忽略大小写），构建会终止并输出冲突包名及直接资源路径。窗口将冲突包名标红并置顶。
+- AssetBundle 模拟分析只在当前活动场景有未保存修改时提示保存，Shader 和 ComputeShader 导入对象的脏状态不再阻止分析。
+- `CreateObj` 和 `CreateObjAsync` 在包名与资源地址相同时走单参数加载。Editor 资源桥接的单参数加载优先匹配地址，可回退到包内首个匹配类型的资源。
+- SVCCollector 将新收集的 Shader 变体增量合并到已有集合。
+- UPM 包版本更新至 `1.0.2`。
+
+### 修复
+
+- 修复扫描 `Assets/...` 和 `Packages/...` 子目录时生成的资源路径缺少配置目录前缀的问题。
+- Editor 资源桥接卸载场景时使用解析后的场景路径。
+- 将 `UnityDebugger` 的 `HideInCallstack` 标记限定在编辑器编译中。
+
+### 升级提示
+
+- 从 `IWindowManager.Open` 和 `OpenAsync` 的调用中移除 `UILayer` 参数，在窗口类型上用 `[WindowConfig(Layer = UILayer.Popup)]` 指定层级。自行实现 `IWindow` 的类型需提供 `UILayer`。
+- 将 `WindowOpenBeforeAttribute` 迁移到 `WindowConfigAttribute.OpenBeforeType`，将 `Window.KeepAliveTime` 的配置迁移到 `WindowConfigAttribute.DestroyTime`。
+- `ITimerObject.IsTimerAlive` 更名为 `Alive`，`UGUIHelper` 更名为 `UIHelper`。
+- 按新规则重打包后，将原来使用完整资源路径加载同名资源的调用改为使用资源地址。地址完全相同的资源可通过 `LoadAllAssets<T>` 批量获取。
+
 ## [1.0.1] - 2026-11-20
 
 ### 新增

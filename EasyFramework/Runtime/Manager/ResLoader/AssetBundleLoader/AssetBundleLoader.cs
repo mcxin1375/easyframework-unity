@@ -20,8 +20,8 @@ namespace EasyFramework
         internal IReadOnlyDictionary<string, AssetBundleInfo> AbDict => _abDict;
         internal IReadOnlyDictionary<string, AssetBundleRequest> RequestDict => _requestDict;
         
-        private readonly Dictionary<string, AssetBundleInfo> _keyDict = new();
-        private readonly Dictionary<string, AssetBundleInfo> _abDict = new();
+        private readonly Dictionary<string, AssetBundleInfo> _keyDict = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, AssetBundleInfo> _abDict = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, AssetBundleRequest> _requestDict = new();
         private readonly Queue<AssetBundleRequest> _unloadQueue = new();
         private readonly List<AssetBundleInfo> _tmpList = new();
@@ -56,6 +56,7 @@ namespace EasyFramework
             //     return;
             // }
 
+            _keyDict.Clear();
             _abDict.Clear();
             foreach (var abName in manifest.abNames)
             {
@@ -240,26 +241,12 @@ namespace EasyFramework
             return p / len;
         }
 
-        public string[] GetAllDependencies(string abName) => Manifest?.GetAllDependencies(abName);
+        public string[] GetAllDependencies(string abName) => TryGetOrCreate(abName, out var info) ? info.DepNames : null;
 
-        public T LoadAsset<T>(string abName, IResRequest request = null) where T : Object
-        {
-            return LoadAsset<T>(abName, abName, request);
-        }
-        public T LoadAsset<T>(string abName, string assetName, IResRequest request = null) where T : Object
-        {
-            var ab = Load(abName, request);
-            return ab?.LoadAsset<T>(assetName);
-        }
-        public T[] LoadAllAssets<T>(string abName, IResRequest request = null) where T : Object
-        {
-            var ab = Load(abName, request);
-            return ab?.LoadAllAssets<T>();
-        }
-        public async ETask<T> LoadAssetAsync<T>(string abName, IResRequest request = null) where T : Object
-        {
-            return await LoadAssetAsync<T>(abName, abName, request);
-        }
+        public T LoadAsset<T>(string abName, IResRequest request = null) where T : Object => LoadAsset<T>(abName, abName, request);
+        public T LoadAsset<T>(string abName, string assetName, IResRequest request = null) where T : Object => Load(abName, request)?.LoadAsset<T>(assetName);
+        public T[] LoadAllAssets<T>(string abName, IResRequest request = null) where T : Object => Load(abName, request)?.LoadAllAssets<T>();
+        public ETask<T> LoadAssetAsync<T>(string abName, IResRequest request = null) where T : Object => LoadAssetAsync<T>(abName, abName, request);
         public async ETask<T> LoadAssetAsync<T>(string abName, string assetName, IResRequest request = null) where T : Object
         {
             var ab = await LoadAsync(abName, request);
@@ -304,16 +291,17 @@ namespace EasyFramework
         
         private bool TryGetOrCreate(string abName, out AssetBundleInfo mainInfo)
         {
-            if (!_keyDict.TryGetValue(abName, out mainInfo))
-            {
-                var nameKey = AssetBundleLoaderHelper.NameToKey(abName);
-                if (!_abDict.TryGetValue(nameKey, out mainInfo)) return false;
+            if (_keyDict.TryGetValue(abName, out mainInfo)) return true;
 
+            var nameKey = AssetBundleLoaderHelper.NameToKey(abName);
+            if (!_abDict.TryGetValue(nameKey, out mainInfo)) return false;
+
+            if (mainInfo.Dependencies == null)
+            {
                 _tmpList.Clear();
-                var dependencies = Manifest.GetAllDependencies(mainInfo.FileName);
-                if (dependencies?.Length > 0)
+                if (mainInfo.DepNames?.Length > 0)
                 {
-                    foreach (string depName in dependencies)
+                    foreach (string depName in mainInfo.DepNames)
                     {
                         if (!_abDict.TryGetValue(depName, out var depInfo)) continue;
                         if (mainInfo == depInfo) continue;
@@ -321,9 +309,9 @@ namespace EasyFramework
                     }
                 }
                 mainInfo.Dependencies = _tmpList.ToArray();
-                
-                _keyDict[abName] = mainInfo;
             }
+
+            _keyDict.Add(abName, mainInfo);
             return true;
         }
     }

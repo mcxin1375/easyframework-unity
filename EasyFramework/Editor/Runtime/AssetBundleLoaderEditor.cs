@@ -7,7 +7,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -23,15 +22,15 @@ namespace EasyFramework.Editor
         public AssetBundleLoaderEditor()
         {
             var assetBundleBuilds = AssetBundleBuilderUtility.CreateAssetBundleBuildBySettings();
-            _assetsMap = assetBundleBuilds.ToDictionary(item => NormalizeAbName(item.assetBundleName), item => item);
+            _assetsMap = assetBundleBuilds.ToDictionary(build => build.assetBundleName, StringComparer.Ordinal);
         }
 
         public string GetFilePath(string abName)
         {
-            if (_assetsMap.TryGetValue(NormalizeAbName(abName), out var info) &&
-                info.assetNames?.Length > 0)
-                return info.assetNames[0];
-            return string.Empty;
+            if (!TryGetBuild(abName, out var build) || build.assetNames.Length == 0) return string.Empty;
+
+            var path = FindAssetPath(build, WithoutBundleSuffix(abName), out var caseMismatch);
+            return path ?? (caseMismatch ? string.Empty : build.assetNames[0]);
         }
 
         public AssetBundle Load(string abName, IResRequest request = null) => null;
@@ -46,22 +45,28 @@ namespace EasyFramework.Editor
         
         public T LoadAsset<T>(string abName, IResRequest request = null) where T : Object
         {
-            if (!_assetsMap.TryGetValue(NormalizeAbName(abName), out var abBuild)) return null;
-            return LoadFirstAsset<T>(abBuild);
+            if (!TryGetBuild(abName, out var build)) return null;
+
+            var path = FindAssetPath(build, WithoutBundleSuffix(abName), out var caseMismatch);
+            if (path != null) return AssetDatabase.LoadAssetAtPath<T>(path);
+            return caseMismatch ? null : LoadFirstAsset<T>(build);
         }
         public T LoadAsset<T>(string abName, string assetName, IResRequest request = null) where T : Object
         {
-            if (!_assetsMap.TryGetValue(NormalizeAbName(abName), out var abBuild)) return null;
+            if (!TryGetBuild(abName, out var build)) return null;
 
-            var assetNames = abBuild.assetNames ?? Array.Empty<string>();
-            for (var i = 0; i < assetNames.Length; i++)
+            var path = FindAssetPath(build, assetName, out _);
+            return path == null ? null : AssetDatabase.LoadAssetAtPath<T>(path);
+        }
+
+        private static string FindAssetPath(AssetBundleBuild build, string assetName, out bool caseMismatch)
+        {
+            caseMismatch = false;
+            for (var i = 0; i < build.addressableNames.Length; i++)
             {
-                var assetPath = assetNames[i];
-                var addressableName = abBuild.addressableNames?.Length == assetNames.Length
-                    ? abBuild.addressableNames[i]
-                    : Path.GetFileNameWithoutExtension(assetPath);
-                if (addressableName != assetName) continue;
-                return AssetDatabase.LoadAssetAtPath<T>(assetPath);
+                var address = build.addressableNames[i];
+                if (address == assetName) return build.assetNames[i];
+                if (string.Equals(address, assetName, StringComparison.OrdinalIgnoreCase)) caseMismatch = true;
             }
 
             return null;
@@ -79,7 +84,7 @@ namespace EasyFramework.Editor
         }
         public T[] LoadAllAssets<T>(string abName, IResRequest request = null) where T : Object
         {
-            if (_assetsMap.TryGetValue(NormalizeAbName(abName), out var abBuild))
+            if (TryGetBuild(abName, out var abBuild))
             {
                 List<T> tmp = new List<T>();
                 foreach (var file in abBuild.assetNames ?? Array.Empty<string>())
@@ -112,14 +117,25 @@ namespace EasyFramework.Editor
         }
         public ETask<AsyncOperation> UnloadSceneAsync(string sceneName, IResRequest handler = null)
         {
-            // string scenePath = F.ResLoader.GetAssetPath(sceneName);
-            return ETask.FromResult(UnityEditor.SceneManagement.EditorSceneManager.UnloadSceneAsync(sceneName));
+            var scenePath = GetFilePath(sceneName);
+            return ETask.FromResult(UnityEditor.SceneManagement.EditorSceneManager.UnloadSceneAsync(string.IsNullOrEmpty(scenePath) ? sceneName : scenePath));
         }
 
-        private static string NormalizeAbName(string abName)
+        private bool TryGetBuild(string abName, out AssetBundleBuild build)
+        {
+            if (_assetsMap.TryGetValue(abName, out build)) return true;
+
+            var nameKey = AssetBundleLoaderHelper.NameToKey(abName);
+            if (!_assetsMap.TryGetValue(nameKey, out build)) return false;
+
+            _assetsMap.Add(abName, build);
+            return true;
+        }
+
+        private static string WithoutBundleSuffix(string abName)
         {
             var suffix = EasyFrameworkSettings.Instance.abSuffix;
-            return abName.EndsWith(suffix, StringComparison.Ordinal) ? abName.Substring(0, abName.Length - suffix.Length) : abName;
+            return abName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase) ? abName.Substring(0, abName.Length - suffix.Length) : abName;
         }
     }
 }

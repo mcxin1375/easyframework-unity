@@ -33,7 +33,7 @@ namespace EasyFramework.Editor
 
                     if (_deps)
                     {
-                        var dependencies = AssetBundleLoader.Instance.GetAllDependencies(bundle.FileName);
+                        var dependencies = bundle.DepNames;
                         if (dependencies?.Length > 0)
                         {
                             foreach (var dep in dependencies)

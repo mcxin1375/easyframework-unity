@@ -134,7 +134,17 @@ namespace EasyFramework.Tests
             Assert.That(textureEntries.All(entry => entry.resource.duplicateObjectCount > 0), Is.True);
             Assert.That(textureEntries.All(entry => entry.resource.objectIds.Length > 0), Is.True);
             Assert.That(textureEntries.All(entry => entry.resource.referencingFiles.Length > 0), Is.True);
+            Assert.That(textureEntries.All(entry => string.IsNullOrEmpty(entry.resource.addressableName)), Is.True);
             Assert.That(File.Exists(_analysisReportPath), Is.True);
+
+            var savedResources = AssetBundleBuilderUtility.LoadLastAnalysisReport().bundles
+                .SelectMany(bundle => bundle.resources)
+                .ToArray();
+            Assert.That(savedResources.Single(resource => resource.assetPath == _prefabAPath).addressableName,
+                Is.EqualTo("LayoutPrefabA"));
+            Assert.That(savedResources.Single(resource => resource.assetPath == _prefabBPath).addressableName,
+                Is.EqualTo("LayoutPrefabB"));
+
             CollectionAssert.AreEqual(_publishedBundlesBefore, GetPublishedBundles(),
                 "Layout analysis must not write or replace published AssetBundles.");
         }

@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace EasyFramework.Samples.Modules.Editor
 {
-    // 创建资产并配置目录后才参与构建；.ab 目录整体打包，其他文件单独打包。
+    // 创建资产并配置目录后参与构建。.ab 目录整体打包，普通文件按小写包名合并。
     [CreateAssetMenu(menuName = "EasyFramework/Samples/Bundle Settings")]
     public sealed class AssetBundleBuilderExample : ScriptableObject, IAssetBundleBuilderSettings
     {

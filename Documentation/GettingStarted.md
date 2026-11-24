@@ -10,7 +10,7 @@ Unity Package Manager 中选择 Add package from git URL：
 https://github.com/mcxin1375/easyframework-unity.git
 ```
 
-包名为 `com.cookie.easyframework`，当前版本为 `1.0.1`。package.json 自动声明 Newtonsoft.Json 与 Scriptable Build Pipeline 依赖。版本变更见 [更新日志](../CHANGELOG.md)。
+包名为 `com.cookie.easyframework`，当前版本为 `1.0.2`。package.json 自动声明 Newtonsoft.Json 与 Scriptable Build Pipeline 依赖。版本变更见 [更新日志](../CHANGELOG.md)。
 
 当前 `EasyFramework/Runtime/EasyFramework.asmdef` 还无条件引用 TextMesh Pro、Universal RP、HybridCLR 程序集，Profiler 也引用 URP。因此纯净工程仅添加 Git URL 可能不能编译。先在目标 Unity 的 Package Manager 安装兼容版本的以下包，再导入框架：
 
@@ -27,7 +27,7 @@ https://github.com/mcxin1375/easyframework-unity.git
 
 在 Project Settings > EasyFramework Tools > AssetBundleBuilder 配置 Build Directories，默认 Assets/Res_DLC。将 Cube.prefab 保存到该目录，再由业务显式调用示例中的 `await ResourceExample.RunAsync("Cube", parent)`。
 
-普通文件单独打包，以 .ab 结尾的目录整体打包；跳过 Editor、.meta 和配置的过滤项。多个 IAssetBundleBuilderSettings 自动合并配置。业务传入资源名 Cube，无须拼接 .ab、哈希名或下载路径；合包资源使用 `F.ResLoader.LoadAsset<T>(abName, assetName)` 精确加载。
+普通文件按去掉扩展名的文件名分包，以 `.ab` 结尾的目录整体打包。扫描时跳过 `Editor` 目录、`.meta` 文件及配置的过滤项。框架自动收集多个 `IAssetBundleBuilderSettings` 的配置，将 Bundle 名转为小写并合并同名定义。加载时传入保留原始大小写的资源名（如 `Cube`），无须拼接 `.ab`、哈希名或下载路径。合包资源使用 `F.ResLoader.LoadAsset<T>(abName, assetName)` 按地址加载。
 
 Editor 默认 resLoaderEditorMode = true，使用编辑器桥接，可不打包运行资源示例。Player 前必须构建资源并准备 DLC。
 
