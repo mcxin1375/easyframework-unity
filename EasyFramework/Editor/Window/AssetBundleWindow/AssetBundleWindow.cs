@@ -49,6 +49,7 @@ namespace EasyFramework.Editor
         private bool _showMultipleDirectResourcesOnly;
         private bool _includeCode;
         private bool _includeShaders;
+        private bool _includeMaterials;
         private bool _hasLoaded;
         private bool _isAnalyzing;
 
@@ -92,6 +93,7 @@ namespace EasyFramework.Editor
 
             if (!string.IsNullOrEmpty(_refreshError))
             {
+                if (_viewIndex == 2) DrawAnalysisControls();
                 EditorGUILayout.HelpBox(_refreshError, MessageType.Error);
                 return;
             }
@@ -128,8 +130,7 @@ namespace EasyFramework.Editor
                 GUILayout.FlexibleSpace();
                 GUILayout.Label("搜索", EditorStyles.miniLabel, GUILayout.Width(32f));
                 var searchFieldStyle = GUI.skin.FindStyle("ToolbarSearchTextField") ?? EditorStyles.toolbarTextField;
-                var searchText = EditorGUILayout.TextField(_searchText, searchFieldStyle,
-                    GUILayout.MinWidth(160f), GUILayout.MaxWidth(360f));
+                var searchText = EditorGUILayout.TextField(_searchText, searchFieldStyle, GUILayout.MinWidth(120f), GUILayout.MaxWidth(360f));
                 if (!string.Equals(searchText, _searchText, StringComparison.Ordinal))
                 {
                     _searchText = searchText;
@@ -170,6 +171,14 @@ namespace EasyFramework.Editor
                     OnFilterChanged();
                 }
 
+                GUILayout.Space(4f);
+                var materialFilter = EditorGUILayout.ToggleLeft("材质", _includeMaterials, GUILayout.Width(52f));
+                if (materialFilter != _includeMaterials)
+                {
+                    _includeMaterials = materialFilter;
+                    OnFilterChanged();
+                }
+
                 GUILayout.Space(6f);
                 if (GUILayout.Button("配置", EditorStyles.toolbarButton, GUILayout.Width(48f)))
                     SettingsService.OpenProjectSettings("Project/EasyFramework Tools/AssetBundleBuilder");
@@ -189,22 +198,23 @@ namespace EasyFramework.Editor
             Repaint();
         }
 
-        private bool IsResourceVisible(ResourceViewData resource)
-        {
-            if (!_includeCode && resource.IsCode) return false;
-            if (!_includeShaders && resource.IsShader) return false;
-            return true;
-        }
+        private bool IsResourceVisible(ResourceViewData resource) => IsCategoryVisible(resource.Category);
 
         private bool IsResourcePathVisible(string assetPath)
         {
             if (!_resourceCategories.TryGetValue(assetPath, out var category))
                 category = GetResourceCategory(assetPath);
 
-            if (!_includeCode && category == ResourceCategory.Code) return false;
-            if (!_includeShaders && category == ResourceCategory.Shader) return false;
-            return true;
+            return IsCategoryVisible(category);
         }
+
+        private bool IsCategoryVisible(ResourceCategory category) => category switch
+        {
+            ResourceCategory.Code => _includeCode,
+            ResourceCategory.Shader => _includeShaders,
+            ResourceCategory.Material => _includeMaterials,
+            _ => true
+        };
 
         private void DrawViewHeader()
         {
@@ -804,6 +814,7 @@ namespace EasyFramework.Editor
             if (mainAssetType == typeof(MonoScript)) return ResourceCategory.Code;
             if (mainAssetType == typeof(Shader) || mainAssetType == typeof(ComputeShader))
                 return ResourceCategory.Shader;
+            if (mainAssetType == typeof(Material)) return ResourceCategory.Material;
 
             switch (Path.GetExtension(assetPath).ToLowerInvariant())
             {
@@ -822,6 +833,8 @@ namespace EasyFramework.Editor
                 case ".hlsl":
                 case ".hlslinc":
                     return ResourceCategory.Shader;
+                case ".mat":
+                    return ResourceCategory.Material;
                 default:
                     return ResourceCategory.Other;
             }
@@ -1001,7 +1014,8 @@ namespace EasyFramework.Editor
         {
             Other,
             Code,
-            Shader
+            Shader,
+            Material
         }
 
         private sealed class BundleViewData
@@ -1046,8 +1060,6 @@ namespace EasyFramework.Editor
             public bool IsDirect => (DisplayKind & ResourceDisplayKind.Direct) != 0;
             public bool IsIndirect => (DisplayKind & ResourceDisplayKind.Indirect) != 0;
             public bool IsWritten => (DisplayKind & ResourceDisplayKind.Written) != 0;
-            public bool IsCode => Category == ResourceCategory.Code;
-            public bool IsShader => Category == ResourceCategory.Shader;
 
             public ResourceViewData(string assetPath, ResourceDisplayKind displayKind, bool isDuplicateInLayout,
                 string[] referencingFiles, ResourceCategory category, int duplicateObjectCount,
